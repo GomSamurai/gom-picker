@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GOM Color Picker Pro — El Color Picker Definitivo para Photoshop y Artistas</title>
+  <meta name="description" content="Suite definitiva de color para ilustradores y pintores: Rueda Coolorus, Hero Color, Bandas Compañeras, Munsell, Gamut Masks de James Gurney, Pigmentos Florent Farges, Chromilla, Atmósfera Dinámica, Maestros del Arte, Extractor K-Means en Lote y Asesor IA Local y Privado.">
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%236366F1'/><path d='M30 50 Q50 20 70 50 T30 50' fill='%2306B6D4'/></svg>">
+</head>
+<body>
+
+<div class="app-shell" id="appShell">
+
+  <!-- LEFT SIDEBAR: Suite Navigation, Brand & Global Tools -->
+  <aside class="app-sidebar" id="appSidebar">
+    
+    <!-- Brand Section with Toggle -->
+    <div class="sidebar-brand-box">
+      <div class="brand-section">
+        <div class="brand-logo" title="GOM Color Studio Pro">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">GOM PICKER</h1>
+          <span class="brand-badge">STUDIO PRO</span>
+        </div>
+      </div>
+      <button id="btnToggleSidebar" class="sidebar-toggle-btn" title="Colapsar / Expandir Barra Lateral">
+        <span>◀</span>
+      </button>
+    </div>
+
+    <!-- Navigation Menu (Workspaces de la Suite) -->
+    <div class="sidebar-nav-container">
+      <div class="sidebar-category-label">SUITE DE COLOR</div>
+      <nav class="sidebar-nav">
+        <button class="nav-tab-btn active" data-tab="studio" title="Estudio Cromático (Rueda & Armonías)">
+          <span class="tab-icon">🎨</span>
+          <span class="tab-label">Estudio</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="gamut_munsell" title="Máscaras de Gama & Sistema Munsell">
+          <span class="tab-icon">🎯</span>
+          <span class="tab-label">Máscaras & Munsell</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="chromilla" title="Chromilla: Catálogo de Tubos Reales">
+          <span class="tab-icon">🧪</span>
+          <span class="tab-label">Chromilla: Tubos</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="florent" title="Teoría del Color de Florent Farges">
+          <span class="tab-icon">👨‍🎨</span>
+          <span class="tab-label">Florent Farges</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="atmosphere" title="Modificador Dinámico de Atmósfera">
+          <span class="tab-icon">🌅</span>
+          <span class="tab-label">Atmósfera & Sombras</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="masters" title="Paletas de Grandes Maestros">
+          <span class="tab-icon">🏛️</span>
+          <span class="tab-label">Maestros</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="extractor" title="Extractor K-Means & Análisis de Imagen">
+          <span class="tab-icon">📷</span>
+          <span class="tab-label">Extractor K-Means</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="ai" title="Asesor Cromático IA Local y Privado">
+          <span class="tab-icon">🧠</span>
+          <span class="tab-label">Asesor IA</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="swatches" title="Bibliotecas de Muestras & Exportación">
+          <span class="tab-icon">📚</span>
+          <span class="tab-label">Bibliotecas</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Quick Utilities / Global Tools -->
+    <div class="sidebar-footer">
+      <div class="sidebar-category-label">UTILIDADES GLOBALES</div>
+      <div class="sidebar-tools">
+        <button id="btnAtmosphereToggle" class="tool-action-btn sidebar-tool-btn" title="Activar/Desactivar Modificador Dinámico de Luz y Atmósfera global">
+          <span>🌅</span>
+          <span class="btn-tool-text">Modificador: OFF</span>
+        </button>
+        <button id="btnToggleSwatchPopupsSidebar" class="tool-action-btn sidebar-tool-btn btn-toggle-swatch-popups active-toggle" title="Activar/Desactivar popups informativos sobre las muestras">
+          <span>💬</span>
+          <span class="btn-tool-text">Popups Muestras: ON</span>
+        </button>
+        <button id="btnValueCheck" class="tool-action-btn sidebar-tool-btn" title="Inspección de valores tonales en Blanco y Negro (Tecla V)">
+          <span>👁️</span>
+          <span class="btn-tool-text">Valor B/N (V)</span>
+        </button>
+        <button id="btnCompactMode" class="tool-action-btn sidebar-tool-btn" title="Abrir ventana emergente flotante e independiente sincronizada en tiempo real (Popup para Photoshop / Krita)">
+          <span>🪟</span>
+          <span class="btn-tool-text">Panel Flotante</span>
+        </button>
+      </div>
+
+      <div class="sidebar-status-box">
+        <span class="status-pulse-dot"></span>
+        <span class="status-text">100% Offline & Privado</span>
+      </div>
+
+      <div class="subliminal-author" title="GOM Color Picker Pro" style="font-size: 0.58rem; color: rgba(255,255,255,0.16); letter-spacing: 0.08em; text-align: center; padding: 6px 4px 8px; user-select: none; transition: color 0.3s ease; cursor: default;">
+        Creado por Fran Gómez
+      </div>
+    </div>
+  </aside>
+
+  <!-- CONTENT WRAPPER -->
+  <div class="app-content-wrapper">
+    <!-- Slim workspace topbar -->
+    <header class="workspace-topbar">
+      <div class="workspace-breadcrumb">
+        <span id="workspaceBreadcrumbIcon" class="breadcrumb-icon">🎨</span>
+        <div class="breadcrumb-text-box">
+          <span id="workspaceBreadcrumbTitle" class="breadcrumb-title">Estudio Cromático</span>
+          <span id="workspaceBreadcrumbSub" class="breadcrumb-subtitle">Rueda Coolorus, Armonías interactivas y Bandas Compañeras</span>
+        </div>
+      </div>
+
+      <div class="workspace-topbar-actions">
+        <button id="btnToggleSwatchPopups" class="tool-action-btn btn-toggle-swatch-popups active-toggle" title="Activar/Desactivar popups informativos sobre las muestras">
+          <span>💬</span>
+          <span class="btn-tool-text">Popups: ON</span>
+        </button>
+        <div class="topbar-live-preview">
+          <span class="topbar-preview-label">Activo:</span>
+          <div id="topbarColorPill" class="topbar-color-pill" style="background-color: #6366F1;"></div>
+          <span id="topbarHex" class="topbar-hex copyable-hex" title="Click para copiar HEX">#6366F1</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Responsive Grid Workspace (2 Spacious Columns) -->
+    <main class="app-main">
+    
+    <!-- LEFT COLUMN: Color Wheel, Hero Color Display, Companion Bands & Numerical Sliders -->
+    <section class="column-left">
+      
+      <!-- Primary Color Wheel Panel -->
+      <div class="glass-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>🎯</span> Rueda Cromática
+          </div>
+          <div class="panel-controls">
+            <select id="wheelModeSelect" class="chip-select" title="Geometría y Modo del Selector">
+              <option value="triangle">Triángulo (Coolorus)</option>
+              <option value="square">Caja / Cuadrado (Photoshop)</option>
+              <option value="florent">Rueda Florent Farges (Pigmentos)</option>
+              <option value="ryb">Rueda Pintor Tradicional (RYB)</option>
+              <option value="oklch">Perceptual Polar (OKLCH)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Wheel Canvas -->
+        <div class="wheel-wrapper">
+          <canvas id="colorWheelCanvas" width="320" height="320"></canvas>
+        </div>
+
+        <!-- HERO ACTIVE COLOR DISPLAY & COMPANION BANDS -->
+        <div class="hero-color-section">
+          
+          <!-- Dual Well & Coordinates Box -->
+          <div class="hero-well-card">
+            <!-- Large Main Swatches (FG / BG) -->
+            <div class="hero-dual-well">
+              <div id="fgWell" class="hero-swatch-box fg active" title="Color Frontal (Principal) - Click para activar">
+                <span class="well-badge">FG</span>
+              </div>
+              <div id="bgWell" class="hero-swatch-box bg" title="Color de Fondo (Secundario) - Click para activar">
+                <span class="well-badge">BG</span>
+              </div>
+            </div>
+
+            <!-- Swap Button -->
+            <button id="btnSwapWells" class="well-swap-btn" title="Intercambiar colores frontal y fondo (Tecla X)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/>
+              </svg>
+            </button>
+
+            <!-- Coordinates & Chromatic Data -->
+            <div class="hero-color-details">
+              <div class="hero-hex-row">
+                <span id="displayHex" class="hero-hex copyable-hex" title="Click para copiar código HEX automáticamante">#6366F1</span>
+                <span id="gamutTag" class="gamut-tag in-gamut" title="Compatibilidad de Gamut de Impresión CMYK">
+                  <span>●</span> En Gamut CMYK
+                </span>
+              </div>
+              <div class="hero-subdata-row">
+                <span id="displayMunsell" class="hero-munsell-badge" title="Notación Albert Munsell (Matiz Valor/Croma)">5PB 4.2/10</span>
+                <span id="heroTempBadge" class="hero-temp-badge" title="Temperatura cromática estimada">Frío Espectral</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- RELATIVE COMPANION COLOR BANDS -->
+          <div class="companion-bands-box">
+            <div class="companion-bands-header">
+              <span class="companion-bands-title">BANDAS COMPAÑERAS:</span>
+              <select id="companionAlgoSelect" class="chip-select companion-select" title="Algoritmo de cálculo para las bandas compañeras">
+                <option value="shades_tints" selected>Escala Tonal (Luces & Sombras)</option>
+                <option value="analogous">Matices Análogos Próximos (±30°)</option>
+                <option value="temperature">Variación Térmica (Cálido ↔ Frío)</option>
+                <option value="complementary">Eje Complementario & Neutros</option>
+                <option value="saturation">Rampa de Saturación (Gris a Puro)</option>
+              </select>
+            </div>
+            
+            <div id="companionBandsList" class="companion-bands-strip">
+              <!-- Rendered dynamically by companionBands.js -->
+            </div>
+          </div>
+
+          <!-- ARTIST PHYSICAL MIXING RECIPE & STUDIO TIPS CARD -->
+          <div id="heroRecipeCard" class="hero-recipe-card">
+            <div class="recipe-card-header">
+              <span class="recipe-card-title">🧪 Receta Física & Consejos:</span>
+              <span id="heroPigmentOpacity" class="recipe-badge">Semi-transparente</span>
+            </div>
+            <div id="heroRecipeText" class="recipe-text">
+              Azul Ultramar (PB29) + Azul Cobalto (PB28) + Blanco de Titanio (PW6)
+            </div>
+            <div id="heroArtistTip" class="recipe-tip">
+              💡 El azul ultramar rebajado con siena tostada crea grises perla magistrales para cielos y fondos sin perder riqueza.
+            </div>
+          </div>
+
+        </div>
+
+        <!-- SUBLIME RECENT COLOR HISTORY STUDIO PANEL -->
+        <div class="history-card-box">
+          <div class="history-card-header">
+            <div class="history-title-group">
+              <span class="history-badge-icon">🕒</span>
+              <span class="history-title-text">Historial Reciente</span>
+              <span id="historyCountBadge" class="history-counter-pill" title="Total de muestras en el historial">0</span>
+            </div>
+            <div class="history-controls-group">
+              <button id="btnHistoryAddActive" class="history-btn-action" title="Añadir color frontal actual al historial (+)">
+                <span>+</span>
+              </button>
+              <button id="btnScrollHistoryLeft" class="history-btn-action" title="Desplazar historial hacia la izquierda (◀)">
+                <span>◀</span>
+              </button>
+              <button id="btnScrollHistoryRight" class="history-btn-action" title="Desplazar historial hacia la derecha (▶)">
+                <span>▶</span>
+              </button>
+              <button id="btnToggleHistoryGrid" class="history-btn-action" title="Alternar entre Carrusel / Cuadrícula completa (⊞)">
+                <span id="historyGridIcon">⊞</span>
+              </button>
+              <button id="btnClearHistory" class="history-btn-action danger" title="Vaciar historial de muestras (🗑️)">
+                <span>🗑️</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Swatches Ribbon / Grid Container with Smooth Scroll -->
+          <div id="historyRibbonWrapper" class="history-ribbon-wrapper">
+            <div id="historyRibbon" class="history-ribbon">
+              <!-- Rendered dynamically by app.js -->
+            </div>
+          </div>
+
+          <!-- Quick Info Bar at bottom of History -->
+          <div class="history-footer-bar">
+            <span class="history-hint">Click: FG • Alt+Click: BG • Rueda: Scroll</span>
+            <span id="historyLastHex" class="history-last-hex copyable-hex" title="Click para copiar HEX">#6366F1</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Numerical Dual-Space Controls (RGB / CMYK / HSL) -->
+      <div class="glass-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>🔢</span> Espacio Numérico Preciso
+          </div>
+          <div class="space-tabs">
+            <button class="space-tab-btn active" data-space="rgb">RGB</button>
+            <button class="space-tab-btn" data-space="cmyk">CMYK</button>
+            <button class="space-tab-btn" data-space="hsl">HSL</button>
+          </div>
+        </div>
+
+        <div id="numControlsGrid" class="num-controls-grid">
+          <!-- Dynamic Sliders rendered by script -->
+        </div>
+
+        <!-- Out of Gamut Correction Notice -->
+        <div id="gamutWarningBox" style="display: none; margin-top: 10px; background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.3); border-radius: 6px; padding: 8px 10px;">
+          <div style="font-size: 0.72rem; color: #FDA4AF; display: flex; align-items: center; justify-content: space-between;">
+            <span>⚠️ Fuera de Gamut de Impresión CMYK</span>
+            <button id="btnFixGamut" style="background: #F43F5E; border: none; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">Corregir a Límite CMYK</button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT/MAIN WORKSPACE: Full Dynamic Tabs Workspace -->
+    <section class="column-center">
+      
+      <!-- TAB 1: STUDIO (HARMONIES, MATRIX, PHYSICAL PIGMENT BLENDER & QUICK PALETTE INTEGRATION) -->
+      <div id="viewStudio" class="tab-view active-view">
+        
+        <!-- Quick Palette Strip & Drag Bar -->
+        <div class="glass-panel quick-palette-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>📚</span> Paleta Rápida Activa (Arrastra cualquier muestra aquí para guardarla)
+            </div>
+            <div class="panel-controls">
+              <button id="btnQuickAddToActive" class="tool-action-btn" style="padding: 2px 8px; font-size: 0.72rem;" title="Añadir color frontal actual">
+                <span>+</span> Añadir Actual
+              </button>
+              <button id="btnOpenFullSwatches" class="tool-action-btn" style="padding: 2px 8px; font-size: 0.72rem;" title="Ir a la pestaña completa de Bibliotecas y Catálogos">
+                <span>📂</span> Ver Bibliotecas Completas
+              </button>
+            </div>
+          </div>
+          <div id="quickPaletteContainer" class="quick-palette-container" data-drop-palette-id="active">
+            <!-- Dynamic swatches with drag & drop support -->
+          </div>
+        </div>
+
+        <!-- Dynamic Harmonies Panel -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🌈</span> Reglas de Armonía Dinámica
+            </div>
+            <select id="harmonyRuleSelect" class="chip-select">
+              <option value="complementary">Complementario (180°)</option>
+              <option value="split-complementary">Comp. Dividido (150°, 210°)</option>
+              <option value="triadic" selected>Triádico (120°, 240°)</option>
+              <option value="tetradic">Tetrádico Rectangular</option>
+              <option value="square">Cuadrado (90°, 180°, 270°)</option>
+              <option value="analogous">Análogo (±30°)</option>
+              <option value="analogous-extended">Análogo Extendido (±60°)</option>
+              <option value="monochromatic">Monocromático (L/S)</option>
+              <option value="double-split">Doble Dividido</option>
+            </select>
+          </div>
+
+          <div id="harmonySwatchesGrid" class="harmony-swatches-grid">
+            <!-- Rendered by harmonies.js -->
+          </div>
+        </div>
+
+        <!-- Tints, Shades & Tones Matrix -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🎚️</span> Matriz de Tonalidades (Tints, Shades & Tones)
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Pasa el ratón para inspeccionar o fijar con Tecla P</span>
+          </div>
+
+          <div id="matrixContainer" class="matrix-container">
+            <!-- Rendered by app.js -->
+          </div>
+        </div>
+
+        <!-- Realistic Physical Pigment Blender (Kubelka-Munk) -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🧪</span> Mezclador Óptico de Pigmentos Físicos
+            </div>
+            <span style="font-size: 0.72rem; color: var(--accent-emerald);">Física Sustractiva Real (Frontal ↔ Fondo)</span>
+          </div>
+
+          <div class="pigment-mixer-box">
+            <div class="pigment-endpoints">
+              <div class="endpoint-color">
+                <div id="pigmentChipA" class="endpoint-chip"></div>
+                <span class="endpoint-name">Frontal (FG)</span>
+              </div>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Gradación Óptica en el Lienzo</span>
+              <div class="endpoint-color">
+                <span class="endpoint-name">Fondo (BG)</span>
+                <div id="pigmentChipB" class="endpoint-chip"></div>
+              </div>
+            </div>
+
+            <div id="pigmentRamp" class="pigment-ramp">
+              <!-- Rendered by harmonies.js -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 2: ATMOSPHERE & SCIENTIFIC SHADOW STUDIO -->
+      <div id="viewAtmosphere" class="tab-view" style="display: none;">
+        
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🌅</span> Estudio de Atmósfera, Hora del Día & Física de Sombras
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btnAtmospherePanelToggle" class="atmo-master-toggle-btn" title="Activar/Desactivar el filtro de luz atmosférica en toda la app">
+                <span class="atmo-toggle-icon">🌅</span>
+                <span id="btnAtmospherePanelToggleText">Modificador: DESACTIVADO (OFF)</span>
+              </button>
+              <button id="btnApplyAtmosphereToLibrary" class="tool-action-btn" title="Transforma no destructivamente una biblioteca completa con la luz atmosférica actual">
+                <span>📦</span> Aplicar a Biblioteca
+              </button>
+            </div>
+          </div>
+          
+          <div class="pedagogical-banner">
+            <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+              <strong>La física clásica del color en la pintura:</strong> La sombra <strong>no es añadir negro</strong> ni la luz es <strong>añadir blanco</strong>. 
+              La dispersión Rayleigh de la atmósfera tiñe la luz directa de tonos cálidos solares (3000K-5500K), mientras que las sombras reciben el relleno ambiental del domo celeste frío (azul 215°), calentadas en la base por el rebote del suelo y saturadas en el terminador por dispersión subsuperficial (SSS).
+            </p>
+          </div>
+
+          <!-- Time of Day Slider & Presets -->
+          <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.8rem; font-weight: 600;">Hora del Día (Trayectoria Solar):</span>
+              <span id="displayTimeOfDay" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent-cyan); font-weight: 600;">14:00 (Mediodía)</span>
+            </div>
+            <input type="range" id="sliderTimeOfDay" min="0" max="24" step="0.25" value="14" style="width: 100%; accent-color: var(--accent-primary); cursor: pointer;">
+            
+            <!-- Atmospheric Presets -->
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
+              <button class="chip-select atmo-preset-btn" data-preset="dawn">🌅 Amanecer (06:30)</button>
+              <button class="chip-select atmo-preset-btn" data-preset="noon">☀️ Mediodía (12:00)</button>
+              <button class="chip-select atmo-preset-btn" data-preset="golden_hour">🌇 Golden Hour (18:45)</button>
+              <button class="chip-select atmo-preset-btn" data-preset="blue_hour">🌌 Hora Azul (20:00)</button>
+              <button class="chip-select atmo-preset-btn" data-preset="moonlight">🌕 Luna Llena / Purkinje (00:30)</button>
+              <button class="chip-select atmo-preset-btn" data-preset="overcast">☁️ Día Nublado (14:00)</button>
+            </div>
+          </div>
+
+          <!-- Scientific Shading Decomposition for Active Color -->
+          <div style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.82rem; font-weight: 600;">Desglose Científico del Color Activo (Luz, Terminador, Sombra, Rebote):</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Click en cualquier tono para cargarlo como color frontal</span>
+            </div>
+            <div id="atmoShadingStagesGrid">
+              <!-- Rendered dynamically by atmosphereEngine -->
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL 2: ADVANCED ATMOSPHERIC CONTROLS -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🎛️</span> Física de Sombras & Parámetros Ópticos de Escena
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Ajuste fino de dispersión Rayleigh, temperaturas y rebotes</span>
+          </div>
+
+          <!-- Advanced Atmospheric Controls Grid -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; background: rgba(0,0,0,0.25); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+            
+            <!-- Sunlight Kelvin Temp -->
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
+                <span>Temperatura Sol (Kelvin):</span>
+                <span id="displaySunKelvin" style="font-family: var(--font-mono); color: #F59E0B;">5500K</span>
+              </div>
+              <input type="range" id="sliderSunKelvin" min="2000" max="9500" step="100" value="5500" style="width: 100%;">
+            </div>
+
+            <!-- Skylight Ambient Hue -->
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
+                <span>Matiz Cielo (Relleno Sombra):</span>
+                <span id="displaySkyHue" style="font-family: var(--font-mono); color: #06B6D4;">215° (Azul)</span>
+              </div>
+              <input type="range" id="sliderSkyHue" min="0" max="360" step="5" value="215" style="width: 100%;">
+            </div>
+
+            <!-- Ground Bounce Intensity -->
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
+                <span>Rebote de Suelo (Bounce):</span>
+                <span id="displayBounce" style="font-family: var(--font-mono);">35%</span>
+              </div>
+              <input type="range" id="sliderBounce" min="0" max="100" step="5" value="35" style="width: 100%;">
+            </div>
+
+            <!-- Subsurface Scattering (Terminator SSS) -->
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
+                <span>Saturación del Terminador (SSS):</span>
+                <span id="displaySss" style="font-family: var(--font-mono); color: #EC4899;">40%</span>
+              </div>
+              <input type="range" id="sliderSss" min="0" max="100" step="5" value="40" style="width: 100%;">
+            </div>
+
+            <!-- Aerial Perspective (Distance Haze) -->
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
+                <span>Perspectiva Aérea / Neblina:</span>
+                <span id="displayHaze" style="font-family: var(--font-mono);">0%</span>
+              </div>
+              <input type="range" id="sliderHaze" min="0" max="80" step="5" value="0" style="width: 100%;">
+            </div>
+
+            <!-- Master Modifier Intensity -->
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
+                <span>Intensidad Global del Filtro:</span>
+                <span id="displayAtmoIntensity" style="font-family: var(--font-mono); color: var(--accent-cyan); font-weight: 600;">100%</span>
+              </div>
+              <input type="range" id="sliderAtmoIntensity" min="10" max="100" step="5" value="100" style="width: 100%;">
+            </div>
+
+            <!-- Purkinje Effect Toggle & Master Strength -->
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <label style="font-size: 0.74rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" id="checkPurkinje" style="accent-color: var(--accent-primary);">
+                <span>Efecto Purkinje (Sensibilidad Nocturna a Azules)</span>
+              </label>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- TAB 3: JAMES GURNEY GAMUT MASKS, MUNSELL SYSTEM & LIMITED PALETTES -->
+      <div id="viewGamutMunsell" class="tab-view" style="display: none;">
+        
+        <!-- Gamut Masking Studio (James Gurney) -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🎯</span> Máscaras de Gama de James Gurney (Gamut Masking)
+            </div>
+            <button id="btnGamutMaskToggle" class="tool-action-btn">
+              <span>🎭</span> Máscara: OFF
+            </button>
+          </div>
+
+          <div class="pedagogical-banner">
+            <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+              <strong>¿Qué es una Máscara de Gama?</strong> Técnica magistral popularizada por James Gurney en <em>Color and Light</em>: 
+              consiste en recortar una figura geométrica sobre la rueda de color. Al impedir el uso de colores fuera de la máscara, 
+              <strong>se erradica el caos cromático y se logra una unidad de iluminación cinematográfica perfecta</strong>.
+            </p>
+          </div>
+
+          <!-- Presets with clear descriptions -->
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+            <button class="chip-select gamut-preset-btn" data-preset="triad_warm" title="Tríada cálida: dominante en ocres y dorados con acento verde/azul sutil">Tríada Cálida (Gurney)</button>
+            <button class="chip-select gamut-preset-btn" data-preset="complementary_slit" title="Hendidura estrecha: máximo drama y contraste de opuestos con neutros en el centro">Hendidura Complementaria</button>
+            <button class="chip-select gamut-preset-btn" data-preset="twilight_blue" title="Atmósfera nocturna fría con acento cálido de farolas o fuego">Crepúsculo Azul Marino</button>
+            <button class="chip-select gamut-preset-btn" data-preset="desert_amber" title="Clima árido y cálido con colores de arena y sol abrasador">Desierto Ámbar</button>
+            <button class="chip-select gamut-preset-btn" data-preset="mood_diamond" title="Gama de 4 vértices para balance armónico rico y controlado">Diamante Armónico</button>
+            <button class="chip-select gamut-preset-btn" data-preset="muted_analogous" title="Sector análogo: colores vecinos con baja saturación para escenas melancólicas">Sector Análogo</button>
+          </div>
+
+          <!-- Controls Grid -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; background: rgba(0,0,0,0.25); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+            <div>
+              <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Forma Geométrica:</label>
+              <select id="maskShapeSelect" class="chip-select" style="width: 100%;">
+                <option value="triangle" selected>Triángulo (Tríada Dinámica)</option>
+                <option value="diamond">Diamante (4 Polos Equilibrados)</option>
+                <option value="slit">Hendidura (Contraste Máximo)</option>
+                <option value="sector">Sector Circular (Análogo)</option>
+                <option value="ellipse">Elipse (Gradiente Suave)</option>
+              </select>
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px;">
+                <span title="Gira la máscara hacia el matiz emocional deseado">Rotación (Ángulo):</span>
+                <span id="dispMaskRot" style="font-family: var(--font-mono); color: #fff;">45°</span>
+              </div>
+              <input type="range" id="sliderMaskRot" min="0" max="360" value="45" style="width: 100%;">
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px;">
+                <span title="Controla la saturación máxima permitida en la composición">Límite de Croma (Escala):</span>
+                <span id="dispMaskScale" style="font-family: var(--font-mono); color: #fff;">65%</span>
+              </div>
+              <input type="range" id="sliderMaskScale" min="30" max="95" value="65" style="width: 100%;">
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px;">
+                <span title="Desplaza el centro de gravedad hacia tonos cálidos o fríos">Dominancia Térmica:</span>
+                <span id="dispMaskOffset" style="font-family: var(--font-mono); color: #fff;">25%</span>
+              </div>
+              <input type="range" id="sliderMaskOffset" min="0" max="60" value="25" style="width: 100%;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Munsell System Color Tree Slice Chart -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>📐</span> Sistema Munsell (Munsell Book of Color Slice)
+            </div>
+            <div id="munsellActiveNotationLarge" style="font-family: var(--font-mono); font-size: 0.85rem; color: #FBBF24; font-weight: 700; background: rgba(0,0,0,0.4); padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid rgba(251,191,36,0.3);">
+              5PB 4.2/10
+            </div>
+          </div>
+
+          <div class="pedagogical-banner">
+            <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+              <strong>¿Cómo leer la notación Munsell (H V/C)?</strong><br>
+              • <strong>Hue (H - Matiz):</strong> La familia cromática (ej. 5R = Rojo puro, 5Y = Amarillo, 5PB = Púrpura-Azul).<br>
+              • <strong>Value (V - Claridad 0 a 10):</strong> El valor tonal estandarizado independiente del matiz (0 = Negro absoluto, 10 = Blanco puro).<br>
+              • <strong>Chroma (C - Croma /0 a /14+):</strong> La pureza o saturación del pigmento (/0 = Gris neutro, /14 = Máxima intensidad).
+            </p>
+          </div>
+
+          <div id="munsellSliceChartContainer" style="overflow-x: auto; padding-bottom: 6px;">
+            <!-- Rendered by munsellSystem.js -->
+          </div>
+        </div>
+
+        <!-- Limited Palettes Studio -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🎨</span> Estudio de Paletas Limitadas de Maestros
+            </div>
+            <select id="limitedPaletteSelect" class="chip-select">
+              <option value="zorn" selected>Paleta Zorn (Anders Zorn - 4 Tubos Canónicos)</option>
+              <option value="primary_triad">Tríada Primaria Clásica (Cyan, Magenta, Amarillo)</option>
+              <option value="renaissance_earth">Paleta Tierra Renacentista (Ocre, Sombra, Almagre)</option>
+              <option value="split_primary">Split-Primary (6 Primarios Cálidos & Fríos)</option>
+            </select>
+          </div>
+
+          <p id="limitedPaletteDesc" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45; margin-bottom: 12px;">
+            La célebre paleta de Anders Zorn utiliza solo 4 tubos (Blanco, Ocre, Rojo Cadmio y Negro Marfil). El negro marfil funciona como un azul frío en mezclas con blanco y ocre, produciendo una gama magistral de tonos de piel y paisajes.
+          </p>
+
+          <div style="margin-bottom: 12px;">
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px;">TUBOS FÍSICOS DE LA PALETA:</div>
+            <div id="limitedPaletteTubesList" style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <!-- Tubes pills -->
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: 0.75rem; font-weight: 600; margin-bottom: 6px;">Matriz 2D de Mezclas Físicas Posibles:</div>
+            <div id="limitedPaletteMatrixGrid" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- 2D Pigment mixing matrix -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 4: CHROMILLA PHYSICAL PAINT MIXING STUDIO & GENUINE BRANDS -->
+      <div id="viewChromilla" class="tab-view" style="display: none;">
+        
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🧪</span> Chromilla: Recetas Físicas & Catálogo de Tubos Reales de Artista
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <select id="chromillaBrandFilterSelect" class="chip-select" title="Filtrar tubos por casa fabricante de bellas artes">
+                <option value="all">Todas las Marcas</option>
+                <option value="winsor_newton">Winsor & Newton (Artists' Oil)</option>
+                <option value="sennelier">Sennelier (Huile Extra-Fine)</option>
+                <option value="golden">Golden (Heavy Body Acrylic)</option>
+                <option value="old_holland">Old Holland (Classic Oils)</option>
+                <option value="rembrandt">Rembrandt (Royal Talens)</option>
+              </select>
+              <select id="chromillaMediumSelect" class="chip-select">
+                <option value="oil" selected>Óleo (Oil)</option>
+                <option value="acrylic">Acrílico (Acrylic)</option>
+                <option value="watercolor">Acuarela (Watercolor)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="pedagogical-banner">
+            <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+              Inspirado en la tecnología de <strong>Chromilla</strong>: calcula la <strong>receta exacta de mezcla física</strong> 
+              utilizando exclusivamente los tubos reales de tu estudio, teniendo en cuenta la física de pigmentos sustractivos, la opacidad y la <strong>predicción de secado (Dry-down shift)</strong>.
+            </p>
+          </div>
+
+          <!-- Dry-down prediction card -->
+          <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px; margin-bottom: 14px;">
+            <div style="font-size: 0.75rem; font-weight: 600; color: #FFFFFF; margin-bottom: 6px; display: flex; justify-content: space-between;">
+              <span>Predicción de Secado (Dry-Down Shift):</span>
+              <span id="chromillaShiftBadge" style="font-size: 0.7rem; color: var(--accent-cyan);">Óleo: Secado fiel</span>
+            </div>
+            <div style="display: flex; gap: 14px; align-items: center;">
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 0.68rem; color: var(--text-muted);">Muestra Húmeda (En Paleta):</span>
+                <div id="chromillaWetSwatch" style="height: 38px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2);"></div>
+                <span id="chromillaWetHex" class="copyable-hex" style="font-family: var(--font-mono); font-size: 0.7rem; cursor: pointer;">#6366F1</span>
+              </div>
+              <div style="font-size: 1.2rem; color: var(--text-muted);">➔</div>
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 0.68rem; color: var(--text-muted);">Muestra Seca (En Lienzo):</span>
+                <div id="chromillaDrySwatch" style="height: 38px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2);"></div>
+                <span id="chromillaDryHex" class="copyable-hex" style="font-family: var(--font-mono); font-size: 0.7rem; cursor: pointer;">#6366F1</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Exact Paint Tube Recipe -->
+          <div style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.82rem; font-weight: 600;">Receta Exacta en Partes:</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <label style="font-size: 0.72rem; color: var(--text-muted);">Tamaño Lote:</label>
+                <input type="number" id="chromillaBatchInput" value="20" min="1" max="500" style="width: 50px; background: rgba(0,0,0,0.4); border: 1px solid var(--border-subtle); color: #fff; font-family: var(--font-mono); font-size: 0.75rem; border-radius: 4px; padding: 2px 4px; text-align: right;">
+                <select id="chromillaBatchUnit" class="chip-select" style="padding: 2px 6px;">
+                  <option value="g">Gramos (g)</option>
+                  <option value="ml">Mililitros (ml)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Recipe items list -->
+            <div id="chromillaRecipeList" style="display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.25); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+              <!-- Rendered by paintMixerChromilla.js -->
+            </div>
+          </div>
+
+          <!-- Mix Correction Assistant -->
+          <div style="background: rgba(99,102,241,0.08); border: 1px solid var(--border-accent); border-radius: var(--radius-md); padding: 12px;">
+            <div style="font-size: 0.78rem; font-weight: 700; color: #A5B4FC; margin-bottom: 6px;">
+              🛠️ Asistente de Corrección de Mezclas en Caballete:
+            </div>
+            <div id="chromillaCorrectionAdvice" style="font-size: 0.74rem; color: var(--text-secondary); line-height: 1.45;">
+              Mezcla calculada con éxito.
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL 2: MY PAINT BOX / TUBE INVENTORY -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>📦</span> Mi Caja de Pinturas (Inventario de Tubos Reales de Artista)
+            </div>
+            <span id="chromillaTubesCountBadge" style="font-size: 0.72rem; color: var(--accent-cyan); font-weight: 600; background: rgba(6,182,212,0.12); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(6,182,212,0.25);">26 Tubos Disponibles</span>
+          </div>
+
+          <p style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+            Selecciona los tubos que posees físicamente en tu estudio para que Chromilla calcule recetas factibles exclusivamente con tus pigmentos disponibles.
+          </p>
+
+          <div id="chromillaTubeInventoryGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; max-height: 380px; overflow-y: auto; padding: 4px;">
+            <!-- Tubes rendered by script -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 5: FLORENT FARGES PRACTICAL COLOR THEORY & MIXING WHEEL -->
+      <div id="viewFlorent" class="tab-view" style="display: none;">
+        
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>👨‍🎨</span> Florent Farges: Color Mixing Wheel & Teoría Práctica
+            </div>
+            <div style="display: flex; gap: 6px;" id="florentWheelTabs">
+              <button class="chip-select active-toggle" data-fwheel="1">Rueda 1: Pigmentos</button>
+              <button class="chip-select" data-fwheel="2">Rueda 2: Curvas de Arco</button>
+              <button class="chip-select" data-fwheel="3">Rueda 3: Valores 3D</button>
+            </div>
+          </div>
+
+          <div class="pedagogical-banner">
+            <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+              El educador de bellas artes <strong>Florent Farges</strong> sustituyó la teoría abstracta por la <strong>física de pigmentos reales de caballete</strong>. 
+              Su <em>Three Wheel System</em> demuestra que los tubos no se mezclan en línea recta sino mediante <strong>curvas de arco hacia el gris neutro</strong>, con valores intrínsecos dispares y fuerzas de tinte desiguales.
+            </p>
+          </div>
+
+          <!-- Florent Wheel Canvas & Live Diagnosis -->
+          <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 14px;">
+            <div style="position: relative; width: 280px; height: 280px;">
+              <canvas id="florentWheelCanvas" width="280" height="280" style="width: 100%; height: 100%;"></canvas>
+            </div>
+
+            <div style="flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.8rem; font-weight: 700; color: #FFFFFF;">Diagnóstico de Mezcla en Caballete:</span>
+                <span id="florentActiveHueBadge" style="font-family: var(--font-mono); font-size: 0.72rem; color: #FBBF24; background: rgba(251,191,36,0.15); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(251,191,36,0.3);">
+                  Matiz: 210°
+                </span>
+              </div>
+
+              <!-- Candidate pigments cards -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div id="florentCand1Card" style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+                  <!-- Candidate 1 -->
+                </div>
+                <div id="florentCand2Card" style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+                  <!-- Candidate 2 -->
+                </div>
+              </div>
+
+              <!-- Optical Complementary Neutralizer -->
+              <div id="florentComplementBox" style="background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); padding: 8px 10px; border-radius: 6px;">
+                <!-- Complement info -->
+              </div>
+
+              <!-- Value adjustment & behavior notes -->
+              <div id="florentValueNote" style="font-size: 0.73rem; color: var(--text-secondary); line-height: 1.4;">
+                <!-- Value note -->
+              </div>
+              <div id="florentBehaviorNote" style="font-size: 0.72rem; color: var(--accent-cyan); line-height: 1.4;">
+                <!-- Behavior note -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Academic Flesh Tones & Facial Triad of Florent Farges -->
+          <div style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.82rem; font-weight: 700; color: #FFFFFF;">🏛️ Tríada Facial y Retrato Académico de Florent Farges:</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Las 3 zonas canónicas de la piel humana</span>
+            </div>
+
+            <div id="florentFleshGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
+              <!-- Flesh zone cards -->
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL 2: OLIVE SHIFT & FLORENT FARGES CANONICAL STUDIO PALETTE -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🔬</span> El Fenómeno del "Amarillo + Negro" (Olive Shift) & Paleta Canónica
+            </div>
+            <span style="font-size: 0.72rem; color: var(--accent-amber); font-weight: 600; background: rgba(245,158,11,0.12); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(245,158,11,0.25);">Lección Magistral de Taller</span>
+          </div>
+
+          <!-- Yellow + Black Olive Shift Phenomenon -->
+          <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-accent); border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px;">
+            <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 10px;">
+              En casi todas las escuelas tradicionales enseñan que el negro "oscurece" cualquier color. Florent Farges demuestra empíricamente que 
+              <strong>Amarillo Cadmio + Negro Marfil produce Verde Oliva</strong> debido a la absorción selectiva de longitudes de onda del carbón vegetal. 
+              Para obtener la verdadera sombra dorada y natural del amarillo, Farges enseña a sustituir el negro por <strong>Tierra de Sombra Natural (Raw Umber)</strong> o <strong>Siena Tostada</strong>.
+            </p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.3); display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 0.74rem; font-weight: 600; color: #FCA5A5;">❌ Error Clásico: Amarillo + Negro</span>
+                  <span style="font-size: 0.68rem; color: var(--text-muted);">Vira a Verde</span>
+                </div>
+                <div style="height: 32px; border-radius: 4px; background: linear-gradient(to right, #FFD700 0%, #4D511A 100%); border: 1px solid rgba(255,255,255,0.1);"></div>
+                <span style="font-size: 0.7rem; color: var(--text-muted);">Cadmium Yellow (PY35) + Ivory Black (PBk9) = Verde Oliva deslucido</span>
+              </div>
+
+              <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px; border: 1px solid rgba(16,185,129,0.3); display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 0.74rem; font-weight: 600; color: #6EE7B7;">✔️ Solución Farges: Amarillo + Tierras</span>
+                  <span style="font-size: 0.68rem; color: var(--accent-emerald);">Mantiene Calidez</span>
+                </div>
+                <div style="height: 32px; border-radius: 4px; background: linear-gradient(to right, #FFD700 0%, #8D541B 50%, #463A2B 100%); border: 1px solid rgba(255,255,255,0.1);"></div>
+                <span style="font-size: 0.7rem; color: var(--text-muted);">Cadmium Yellow (PY35) + Siena Tostada / Raw Umber = Oro profundo vivo</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Studio Palette of Florent Farges -->
+          <div>
+            <div style="font-size: 0.78rem; font-weight: 600; margin-bottom: 6px;">
+              🎨 Paleta de Estudio Recomendada de Florent Farges (Haz clic en un tubo para seleccionarlo):
+            </div>
+            <div id="florentStudioTubesList" style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <!-- Tubes pills -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- TAB 6: MASTER PAINTERS GALLERY (FIXED CUTOFF & JITTER-FREE) -->
+      <div id="viewMasters" class="tab-view" style="display: none;">
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🏛️</span> Paletas Legendarias de Grandes Maestros del Arte
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Inspiración Histórica Directa (Monet, Van Gogh, Rembrandt, Sorolla, Sargent, Vermeer, Mucha, Klimt)</span>
+          </div>
+          
+          <div class="pedagogical-banner">
+            <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4;">
+              Haz clic en cualquier muestra de una obra histórica para cargarla inmediatamente en tu rueda cromática, o usa la tecla <strong>P</strong> sobre cualquier tono para anclar su fórmula analítica.
+            </p>
+          </div>
+
+          <div id="paintersGrid" class="painters-grid">
+            <!-- Rendered by masterPalettes.js without vertical cutoff -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 7: EXTRACTOR CROMÁTICO INTELIGENTE (ALGORITMO K-MEANS & PROCESAMIENTO EN LOTE) -->
+      <div id="viewExtractor" class="tab-view" style="display: none;">
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>📷</span> Extractor Cromático Inteligente (Algoritmo K-Means & Lotes)
+            </div>
+            <div class="panel-controls">
+              <button id="btnSampleMonet" class="chip-select">Muestra Monet</button>
+              <button id="btnSampleVanGogh" class="chip-select">Muestra Van Gogh</button>
+              <button id="btnSampleRembrandt" class="chip-select">Muestra Rembrandt</button>
+            </div>
+          </div>
+
+          <div class="pedagogical-banner">
+            <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+              <strong>¿Qué es la Extracción K-Means?</strong> Es un algoritmo de <em>Machine Learning</em> y cuantización vectorial que agrupa millones de píxeles 
+              en <em>clusters</em> tridimensionales basados en la proximidad cromática Euclidiana en espacio Lab/RGB. Ahora soporta 
+              <strong>carga de múltiples imágenes o carpetas completas</strong> para sintetizar la paleta unificada de toda una sesión de concept art o fotografía.
+            </p>
+          </div>
+
+          <!-- Drop Area & Batch File Inputs -->
+          <div id="imageDropArea" class="image-drop-area">
+            <input type="file" id="imageFileInput" accept="image/*" multiple style="display: none;">
+            <input type="file" id="batchFolderInput" webkitdirectory directory multiple style="display: none;">
+            
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <div style="font-size: 0.88rem; font-weight: 600; color: #FFFFFF;">Arrastra aquí una o varias imágenes, o haz clic para subir</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">PNG, JPG, WEBP, SVG • Soporta selección múltiple de archivos</div>
+            
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+              <button id="btnSelectBatchFiles" class="chip-select" style="padding: 4px 10px;">Cargar Varios Archivos</button>
+              <button id="btnSelectFolder" class="chip-select" style="padding: 4px 10px;">Cargar Carpeta Completa</button>
+            </div>
+          </div>
+
+          <!-- Live Image Canvas Preview -->
+          <div class="image-canvas-container" style="margin-top: 14px;">
+            <canvas id="extractCanvas"></canvas>
+          </div>
+
+          <!-- Batch Thumbnails Gallery Strip (when multiple images are loaded) -->
+          <div id="batchThumbnailsStrip" style="display: none; margin-top: 12px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; border: 1px solid var(--border-subtle);">
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between;">
+              <span>IMÁGENES EN EL LOTE:</span>
+              <span id="batchCountBadge" style="color: var(--accent-cyan); font-weight: 600;">0 imágenes</span>
+            </div>
+            <div id="batchThumbnailsList" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
+              <!-- Thumbnails rendered by script -->
+            </div>
+          </div>
+
+          <!-- Extractor Controls Bar -->
+          <div class="extract-controls-bar">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label style="font-size: 0.75rem; color: var(--text-secondary);">Cantidad:</label>
+              <select id="extractCountSelect" class="chip-select">
+                <option value="4">4 colores</option>
+                <option value="6" selected>6 colores</option>
+                <option value="8">8 colores</option>
+                <option value="12">12 colores</option>
+                <option value="16">16 colores</option>
+              </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label style="font-size: 0.75rem; color: var(--text-secondary);">Filtro Analítico:</label>
+              <select id="extractFilterSelect" class="chip-select">
+                <option value="dominant">Dominantes (Frecuencia)</option>
+                <option value="vibrant">Vibrantes / Saturados</option>
+                <option value="pastel">Pasteles / Claros</option>
+                <option value="dark">Sombras / Profundos</option>
+                <option value="contrast">Alto Contraste Tonal</option>
+              </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label style="font-size: 0.75rem; color: var(--text-secondary);">Orden:</label>
+              <select id="extractSortSelect" class="chip-select">
+                <option value="dominance">Por Dominancia %</option>
+                <option value="hue">Por Matiz (Hue 0-360°)</option>
+                <option value="luminance">Por Luminosidad</option>
+              </select>
+            </div>
+
+            <button id="btnExtractAction" class="tool-action-btn active-toggle">
+              <span>⚡</span> Extraer Paleta
+            </button>
+          </div>
+
+          <!-- Extracted Palette Results -->
+          <div style="margin-top: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.8rem; font-weight: 600;">Paleta Resultante (Click en muestra para seleccionar • Arrastra para guardar):</span>
+              <button id="btnSaveExtracted" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem;">
+                <span>💾</span> Guardar en Biblioteca
+              </button>
+            </div>
+            <div id="extractedSwatchesGrid" style="display: flex; gap: 6px; height: 50px; border-radius: 8px; overflow: hidden;">
+              <!-- Extracted items -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: Asesor IA y Bibliotecas integrados permanentemente -->
+    <section class="column-right" id="columnRight">
+      <div class="column-right-container">
+        
+        <!-- Segmented Header & Collapse Button -->
+        <div class="right-column-header">
+          <div class="right-segmented-tabs">
+            <button id="rTabAi" class="right-tab-btn active" data-rtab="ai" title="Asesor Cromático de Inteligencia Artificial (100% Local & Privado)">
+              <span>🧠</span> Asesor IA
+            </button>
+            <button id="rTabSwatches" class="right-tab-btn" data-rtab="swatches" title="Bibliotecas de Muestras y Catálogos Profesionales">
+              <span>📚</span> Bibliotecas
+            </button>
+          </div>
+          
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <button id="btnExpandRightColumn" class="right-column-toggle-btn" title="Ampliar / Reducir ancho del panel derecho">
+              <span>↔</span>
+            </button>
+            <button id="btnToggleRightColumn" class="right-column-toggle-btn" title="Colapsar / Expandir Columna Derecha">
+              <span>▶</span>
+            </button>
+          </div>
+
+          <!-- Icons for collapsed rail -->
+          <div class="right-collapsed-rail">
+            <button class="collapsed-rail-icon-btn" data-rtab="ai" title="Abrir Asesor IA">🧠</button>
+            <button class="collapsed-rail-icon-btn" data-rtab="swatches" title="Abrir Bibliotecas">📚</button>
+          </div>
+        </div>
+
+        <!-- RIGHT PANEL VIEW 1: ASESOR IA (100% LOCAL, PRIVADO, COMPOSICIONES MÚLTIPLES Y DIAGNÓSTICO) -->
+        <div id="viewAi" class="right-panel-view active">
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-header-top">
+              <div class="panel-title">
+                <span>🧠</span> Asesor Cromático IA
+              </div>
+              <span style="font-size: 0.7rem; color: var(--accent-emerald); font-weight: 600; background: rgba(16,185,129,0.12); padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(16,185,129,0.25);">⚡ Heurístico Local</span>
+            </div>
+          </div>
+
+          <!-- AI Prompt Box -->
+          <div class="ai-prompt-box">
+            <input type="text" id="aiPromptInput" class="ai-prompt-input" placeholder="Describe cualquier escena, emoción o criatura..." value="dragón volcánico en cueva de obsidiana">
+            <button id="btnAiGenerate" class="ai-gen-btn">
+              <span>Sintetizar Esquema</span>
+            </button>
+          </div>
+
+          <!-- Quick Suggestion Chips -->
+          <div class="ai-prompt-chips">
+            <button class="ai-chip-prompt" data-prompt="dragón volcánico en cueva de obsidiana">🐉 Dragón Volcánico</button>
+            <button class="ai-chip-prompt" data-prompt="cyberpunk neotokyo noche de neón">🌃 Cyberpunk</button>
+            <button class="ai-chip-prompt" data-prompt="bosque de otoño ambarino y musgo">🌲 Bosque Místico</button>
+            <button class="ai-chip-prompt" data-prompt="atardecer golden hour en el mar">🌅 Golden Hour</button>
+            <button class="ai-chip-prompt" data-prompt="dark fantasy alquimia y magia gótica">⚔️ Dark Fantasy</button>
+            <button class="ai-chip-prompt" data-prompt="abismo oceánico bioluminiscente">🌊 Abismo Marino</button>
+          </div>
+
+          <!-- Psychological Semantic Vectors -->
+          <div id="semanticGaugesBox" class="semantic-gauges-box">
+            <div class="semantic-gauges-title">VECTORES PSICOLÓGICOS DEL COLOR</div>
+            <div id="semanticGaugesList" class="semantic-gauges-grid">
+              <!-- Rendered by AIAdvisor -->
+            </div>
+          </div>
+
+          <!-- Composition Preview with 6 Selectable Scenes -->
+          <div class="ai-composition-card">
+            
+            <div class="ai-composition-header">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 0.8rem; font-weight: 600; color: #FFFFFF;">Maqueta de Composición Visual:</span>
+                <select id="aiSceneSelect" class="chip-select" style="font-size: 0.74rem;">
+                  <option value="creature" selected>🐉 Criatura / Dragón en Caverna</option>
+                  <option value="landscape">🏞️ Paisaje Natural y Domo Celeste</option>
+                  <option value="portrait">👤 Retrato y Figura Humana</option>
+                  <option value="poster">📐 Cartel Gráfico y Branding (Bauhaus)</option>
+                  <option value="cyberpunk">🌃 Escena Sci-Fi / Cyberpunk Nocturna</option>
+                  <option value="still_life">🏺 Bodegón Clásico / Naturaleza Muerta</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- SVG Composition Canvas Viewport -->
+            <div id="aiCompositionViewport" class="composition-preview-viewport" style="height: 220px;">
+              <!-- SVG rendered by AIAssistant -->
+            </div>
+
+            <!-- 60-30-10 Rule Breakdown -->
+            <div class="composition-ratios-breakdown" style="margin-top: 10px;">
+              <div id="ratioBar" class="ratio-bar">
+                <!-- Colored segments -->
+              </div>
+              <div id="ratioLegend" class="ratio-legend">
+                <!-- Dynamic dots and labels -->
+              </div>
+            </div>
+
+            <!-- Working Dynamic Modifiers Ribbon -->
+            <div class="modifier-buttons-ribbon" style="margin-top: 10px;">
+              <button class="modifier-btn" data-mod="warm" title="Vira la paleta hacia calidez solar dorada">☀️ Cálido</button>
+              <button class="modifier-btn" data-mod="cool" title="Vira la paleta hacia tonos fríos azulados">❄️ Frío</button>
+              <button class="modifier-btn" data-mod="vibrant" title="Aumenta la saturación y viveza cromática">⚡ Vibrante</button>
+              <button class="modifier-btn" data-mod="mute" title="Atenúa y desatura con tono cinematográfico">🌫️ Muted</button>
+              <button class="modifier-btn" data-mod="invert_values" title="Invierte valores tonales (Claves bajas a altas)">🔄 Invertir Valores</button>
+            </div>
+          </div>
+
+          <!-- Dedicated AI Palette Swatches & Library Integration -->
+          <div class="ai-swatches-section">
+            <div class="ai-swatches-header">
+              <span class="ai-swatches-title">🎨 MUESTRAS DE LA PALETA (60 • 30 • 10)</span>
+              <button id="btnAiSaveToLibrary" class="ai-save-btn" title="Guardar esta paleta completa en tu biblioteca de muestras">
+                💾 Guardar en Biblioteca
+              </button>
+            </div>
+            <div id="aiSwatchesGrid" class="ai-swatches-grid">
+              <!-- Dynamically rendered 5 swatches with FG/BG and copy -->
+            </div>
+          </div>
+
+          <!-- Real-Time Clinical Palette Diagnostic & Art Direction Critique -->
+          <div id="aiDiagnosticBox" style="margin-top: 12px; background: rgba(0,0,0,0.35); border: 1px solid var(--border-accent); border-radius: 8px; padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 0.8rem; font-weight: 700; color: #A5B4FC;">Diagnóstico Académico y Dirección de Arte:</span>
+              <span id="diagnosticScore" style="font-family: var(--font-mono); font-size: 0.75rem; background: rgba(99,102,241,0.25); color: #C7D2FE; padding: 2px 8px; border-radius: 4px;">92/100 Pts</span>
+            </div>
+            <div id="diagnosticFindings" style="font-size: 0.74rem; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 4px;">
+              <!-- Dynamic findings -->
+            </div>
+            <div id="diagnosticAdvice" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-subtle); font-size: 0.74rem; color: var(--accent-cyan); line-height: 1.45;">
+              <!-- Actionable advice -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL VIEW 2: BIBLIOTECAS DE MUESTRAS, CATÁLOGOS COPIC/PANTONE & EXPORTACIÓN ILIMITADA -->
+      <div id="viewSwatches" class="right-panel-view" style="display: none;">
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-header-top">
+              <div class="panel-title" style="font-size: 0.88rem; font-weight: 700;">
+                <span>📚</span> Bibliotecas & Catálogos
+              </div>
+              <div class="panel-header-actions">
+                <button id="btnCreatePalette" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem;" title="Crear nueva paleta de usuario">
+                  <span>+</span> Nueva Paleta
+                </button>
+                <button id="btnAutoGeneratePalette" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem;" title="Crear paleta armónica automática">
+                  <span>✨</span> Auto Paleta
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="pedagogical-banner">
+            <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+              <strong>Capacidad ilimitada de muestras:</strong> Puedes tener desde 2 hasta más de 100 colores por paleta. 
+              <strong>Arrastra cualquier muestra desde cualquier pestaña</strong> y suéltala sobre cualquier paleta para incorporarla instantáneamente. 
+              Incluye los catálogos oficiales de <strong>Copic Sketch Markers (72+ tonos)</strong>, <strong>Pantone Formula Guide Coated (60+ tintas directas)</strong> y <strong>Prismacolor Premier</strong>.
+            </p>
+          </div>
+
+          <!-- Catalog Filter Tabs -->
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px;" id="catalogFilterTabs">
+            <button class="chip-select active-toggle" data-cat="all">Todas las Colecciones</button>
+            <button class="chip-select" data-cat="user">Mis Paletas Guardadas</button>
+            <button class="chip-select" data-cat="copic_system">Marcadores Copic Sketch (72+)</button>
+            <button class="chip-select" data-cat="pantone_coated">Pantone Formula Guide (PMS)</button>
+            <button class="chip-select" data-cat="prismacolor_premier">Prismacolor Premier</button>
+          </div>
+
+          <!-- Palettes and Swatches Container (Uncapped, Drag & Drop Enabled) -->
+          <div id="swatchesCollection" class="swatches-collection-grid">
+            <!-- Rendered dynamically by swatches.js and paletteCatalogs.js -->
+          </div>
+
+          <!-- Universal Professional Export Bar -->
+          <div style="margin-top: 18px; background: rgba(0,0,0,0.3); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+            <div style="font-size: 0.8rem; font-weight: 700; color: #FFFFFF; margin-bottom: 10px;">
+              📦 Exportación de Paletas Multi-Formato Profesional:
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px;">
+              <button id="btnExportAse" class="tool-action-btn" style="justify-content: center;" title="Adobe Swatch Exchange binario compatible con Photoshop, Illustrator e InDesign">
+                <span>📦</span> Exportar .ASE (Photoshop)
+              </button>
+              <button id="btnExportGpl" class="tool-action-btn" style="justify-content: center;" title="Paleta GPL compatible con GIMP, Krita e Inkscape">
+                <span>🎨</span> Exportar .GPL (Krita/GIMP)
+              </button>
+              <button id="btnExportCss" class="tool-action-btn" style="justify-content: center;" title="Copiar variables CSS Custom Properties al portapapeles">
+                <span>💻</span> Variables CSS
+              </button>
+              <button id="btnExportJson" class="tool-action-btn" style="justify-content: center;" title="Tokens de diseño estructurados en JSON">
+                <span>⚙️</span> Tokens JSON
+              </button>
+              <button id="btnExportSvgCard" class="tool-action-btn" style="justify-content: center;" title="Descargar ficha gráfica de alta resolución en SVG">
+                <span>🖼️</span> Tarjeta SVG Presentación
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      </div> <!-- /column-right-container -->
+    </section> <!-- /column-right -->
+
+  </main>
+  </div> <!-- /app-content-wrapper -->
+</div> <!-- /app-shell -->
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script type="module" src="scripts/app.js"></script>
+</body>
+</html>

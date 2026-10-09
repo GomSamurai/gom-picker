@@ -1,0 +1,350 @@
+/**
+ * GOM Picker - Professional Paint Brands Database for Chromilla Studio
+ * Catalogs genuine artist tubes from the world's top paint houses:
+ * Winsor & Newton, Sennelier, Golden, Old Holland, Schmincke, and Rembrandt.
+ */
+
+export const BrandPigments = {
+  BRANDS: [
+    { id: 'all', name: 'Todas las Marcas' },
+    { id: 'winsor_newton', name: 'Winsor & Newton (Artists\' Oil)' },
+    { id: 'sennelier', name: 'Sennelier (Huile Extra-Fine)' },
+    { id: 'golden', name: 'Golden (Heavy Body Acrylics)' },
+    { id: 'old_holland', name: 'Old Holland (Classic Oil Colours)' },
+    { id: 'rembrandt', name: 'Rembrandt (Extra-Fine Artists)' }
+  ],
+
+  TUBES: [
+    // --- WINSOR & NEWTON (Artists' Oil) ---
+    {
+      id: 'wn_titanium_white',
+      brand: 'winsor_newton',
+      brandName: 'Winsor & Newton',
+      name: 'Titanium White',
+      ci: 'PW6',
+      series: 1,
+      opacity: 'Opaco',
+      lightfastness: 'ASTM I (Permanente)',
+      medium: 'Óleo',
+      hex: '#FDFBF7',
+      rgb: { r: 253, g: 251, b: 247 },
+      description: 'El blanco más opaco y cubriente. Fabricado con aceite de cártamo para evitar el amarilleamiento.'
+    },
+    {
+      id: 'wn_french_ultramarine',
+      brand: 'winsor_newton',
+      brandName: 'Winsor & Newton',
+      name: 'French Ultramarine',
+      ci: 'PB29',
+      series: 2,
+      opacity: 'Transparente',
+      lightfastness: 'ASTM I (Permanente)',
+      medium: 'Óleo',
+      hex: '#1B2682',
+      rgb: { r: 27, g: 38, b: 130 },
+      description: 'Azul profundo de matiz rojizo cálido. Granulación natural y transparencia ideal para veladuras.'
+    },
+    {
+      id: 'wn_winsor_yellow',
+      brand: 'winsor_newton',
+      brandName: 'Winsor & Newton',
+      name: 'Winsor Yellow',
+      ci: 'PY74',
+      series: 1,
+      opacity: 'Semi-opaco',
+      lightfastness: 'ASTM I (Permanente)',
+      medium: 'Óleo',
+      hex: '#FFD700',
+      rgb: { r: 255, g: 215, b: 0 },
+      description: 'Amarillo primario luminoso, excelente alternativa orgánica moderna y libre de toxicidad al cadmio.'
+    },
+    {
+      id: 'wn_cadmium_red',
+      brand: 'winsor_newton',
+      brandName: 'Winsor & Newton',
+      name: 'Cadmium Red Medium',
+      ci: 'PR108',
+      series: 4,
+      opacity: 'Opaco',
+      lightfastness: 'ASTM I (Permanente)',
+      medium: 'Óleo',
+      hex: '#D91424',
+      rgb: { r: 217, g: 20, b: 36 },
+      description: 'Rojo cálido denso e intenso de sulfoseleniuro de cadmio con extraordinario poder cubriente.'
+    },
+    {
+      id: 'wn_permanent_rose',
+      brand: 'winsor_newton',
+      brandName: 'Winsor & Newton',
+      name: 'Permanent Rose',
+      ci: 'PV19',
+      series: 2,
+      opacity: 'Transparente',
+      lightfastness: 'ASTM I (Permanente)',
+      medium: 'Óleo',
+      hex: '#C01368',
+      rgb: { r: 192, g: 19, b: 104 },
+      description: 'Rosa quinacridona frío y luminoso. El primario magenta sustractivo ideal para mezclar violetas puros.'
+    },
+    {
+      id: 'wn_yellow_ochre',
+      brand: 'winsor_newton',
+      brandName: 'Winsor & Newton',
+      name: 'Yellow Ochre',
+      ci: 'PY43',
+      series: 1,
+      opacity: 'Semi-opaco',
+      lightfastness: 'ASTM I (Permanente)',
+      medium: 'Óleo',
+      hex: '#CC9933',
+      rgb: { r: 204, g: 153, b: 51 },
+      description: 'Tierra natural de óxido de hierro. Piedra angular de la paleta académica y las carnaciones.'
+    },
+    {
+      id: 'wn_burnt_sienna',
+      brand: 'winsor_newton',
+      brandName: 'Winsor & Newton',
+      name: 'Burnt Sienna',
+      ci: 'PR101',
+      series: 1,
+      opacity: 'Transparente',
+      lightfastness: 'ASTM I (Permanente)',
+      medium: 'Óleo',
+      hex: '#8D361F',
+      rgb: { r: 141, g: 54, b: 31 },
+      description: 'Tierra calcinada rojiza rica y cálida. Neutraliza el azul ultramar para lograr grises cromáticos magistrales.'
+    },
+    {
+      id: 'wn_raw_umber',
+      brand: 'winsor_newton',
+      brandName: 'Winsor & Newton',
+      name: 'Raw Umber',
+      ci: 'PBr7',
+      series: 1,
+      opacity: 'Semi-opaco',
+      lightfastness: 'ASTM I (Permanente)',
+      medium: 'Óleo',
+      hex: '#463A2B',
+      rgb: { r: 70, g: 58, b: 43 },
+      description: 'Tierra verdosa fría de secado rápido. Perfecta para grisallas, sombreado de amarillos y bajada de tono.'
+    },
+    {
+      id: 'wn_winsor_blue_gs',
+      brand: 'winsor_newton',
+      brandName: 'Winsor & Newton',
+      name: 'Winsor Blue (Green Shade)',
+      ci: 'PB15:3',
+      series: 1,
+      opacity: 'Transparente',
+      lightfastness: 'ASTM I (Permanente)',
+      medium: 'Óleo',
+      hex: '#003366',
+      rgb: { r: 0, g: 51, b: 102 },
+      description: 'Azul ftalocianina de fuerza de tinte masiva. Produce verdes esmeralda intensos y cianes deslumbrantes.'
+    },
+    {
+      id: 'wn_viridian',
+      brand: 'winsor_newton',
+      brandName: 'Winsor & Newton',
+      name: 'Viridian',
+      ci: 'PG18',
+      series: 3,
+      opacity: 'Transparente',
+      lightfastness: 'ASTM I (Permanente)',
+      medium: 'Óleo',
+      hex: '#126848',
+      rgb: { r: 18, g: 104, b: 72 },
+      description: 'Verde esmeralda frío clásico al óxido de cromo hidratado. Transparencia inigualable para veladuras.'
+    },
+    {
+      id: 'wn_ivory_black',
+      brand: 'winsor_newton',
+      brandName: 'Winsor & Newton',
+      name: 'Ivory Black',
+      ci: 'PBk9',
+      series: 1,
+      opacity: 'Semi-transparente',
+      lightfastness: 'ASTM I (Permanente)',
+      medium: 'Óleo',
+      hex: '#1E1D1B',
+      rgb: { r: 30, g: 29, b: 27 },
+      description: 'Negro de carbón animal cálido en masa, pero de matiz frío azulado en rebajes con blanco.'
+    },
+
+    // --- SENNELIER (Huile Extra-Fine) ---
+    {
+      id: 'sen_ultramarine_deep',
+      brand: 'sennelier',
+      brandName: 'Sennelier',
+      name: 'Outremer Foncé (Ultramarine Deep)',
+      ci: 'PB29',
+      series: 2,
+      opacity: 'Transparente',
+      lightfastness: 'ASTM I (Excelente)',
+      medium: 'Óleo',
+      hex: '#142070',
+      rgb: { r: 20, g: 32, b: 112 },
+      description: 'Formulado con aceite de cártamo que evita el amarilleamiento y resalta la luminosidad de Cézanne.'
+    },
+    {
+      id: 'sen_lemon_yellow',
+      brand: 'sennelier',
+      brandName: 'Sennelier',
+      name: 'Jaune Citron Sennelier',
+      ci: 'PY3',
+      series: 1,
+      opacity: 'Semi-transparente',
+      lightfastness: 'ASTM II (Muy buena)',
+      medium: 'Óleo',
+      hex: '#FFF438',
+      rgb: { r: 255, g: 244, b: 56 },
+      description: 'Amarillo verdoso brillante preferido por los impresionistas para luces de paisaje y follaje.'
+    },
+    {
+      id: 'sen_vermilion_french',
+      brand: 'sennelier',
+      brandName: 'Sennelier',
+      name: 'Vermillon Français',
+      ci: 'PR242 / PO43',
+      series: 3,
+      opacity: 'Opaco',
+      lightfastness: 'ASTM I (Excelente)',
+      medium: 'Óleo',
+      hex: '#E83015',
+      rgb: { r: 232, g: 48, b: 21 },
+      description: 'Escarlata radiante inspirado en la receta histórica de los pintores de la Escuela de Barbizon.'
+    },
+    {
+      id: 'sen_cobalt_violet',
+      brand: 'sennelier',
+      brandName: 'Sennelier',
+      name: 'Violet de Cobalt Pur',
+      ci: 'PV14',
+      series: 5,
+      opacity: 'Semi-transparente',
+      lightfastness: 'ASTM I (Excelente)',
+      medium: 'Óleo',
+      hex: '#6A2E7B',
+      rgb: { r: 106, g: 46, b: 123 },
+      description: 'Fosfato de cobalto genuino. El violeta más delicado, luminoso e inmutable de la historia del arte.'
+    },
+
+    // --- GOLDEN (Heavy Body Acrylics) ---
+    {
+      id: 'gol_primary_cyan',
+      brand: 'golden',
+      brandName: 'Golden',
+      name: 'Primary Cyan',
+      ci: 'PB15:3 / PW6',
+      series: 3,
+      opacity: 'Semi-opaco',
+      lightfastness: 'ASTM I (Excelente)',
+      medium: 'Acrílico',
+      hex: '#0083B8',
+      rgb: { r: 0, g: 131, b: 184 },
+      description: 'El cian calibrado por Golden para mezclas sustractivas CMYK impecables sin oscurecimiento indeseado.'
+    },
+    {
+      id: 'gol_quinacridone_magenta',
+      brand: 'golden',
+      brandName: 'Golden',
+      name: 'Quinacridone Magenta',
+      ci: 'PR122',
+      series: 4,
+      opacity: 'Transparente',
+      lightfastness: 'ASTM I (Excelente)',
+      medium: 'Acrílico',
+      hex: '#B2175A',
+      rgb: { r: 178, g: 23, b: 90 },
+      description: 'Acrílico de máxima carga pigmentaria. Crea los violetas y morados más vivos al mezclarse con azules.'
+    },
+    {
+      id: 'gol_hansa_yellow_med',
+      brand: 'golden',
+      brandName: 'Golden',
+      name: 'Hansa Yellow Medium',
+      ci: 'PY73',
+      series: 2,
+      opacity: 'Semi-transparente',
+      lightfastness: 'ASTM II (Muy buena)',
+      medium: 'Acrílico',
+      hex: '#FFD300',
+      rgb: { r: 255, g: 211, b: 0 },
+      description: 'Amarillo limpio y cálido de excelente fluidez y saturación constante al secar.'
+    },
+    {
+      id: 'gol_phthalo_green_bs',
+      brand: 'golden',
+      brandName: 'Golden',
+      name: 'Phthalo Green (Blue Shade)',
+      ci: 'PG7',
+      series: 3,
+      opacity: 'Transparente',
+      lightfastness: 'ASTM I (Excelente)',
+      medium: 'Acrílico',
+      hex: '#005E3D',
+      rgb: { r: 0, g: 94, b: 61 },
+      description: 'Intensidad insuperable. Se recomienda usar en cantidades mínimas debido a su alta potencia.'
+    },
+
+    // --- OLD HOLLAND (Classic Oil Colours) ---
+    {
+      id: 'oh_scheveningen_blue',
+      brand: 'old_holland',
+      brandName: 'Old Holland',
+      name: 'Scheveningen Blue Light',
+      ci: 'PB15:3 / PW4',
+      series: 2,
+      opacity: 'Semi-opaco',
+      lightfastness: 'ASTM I (Excelente)',
+      medium: 'Óleo',
+      hex: '#2B7AB8',
+      rgb: { r: 43, g: 122, b: 184 },
+      description: 'Molienda artesanal lenta con rodillos de piedra según el método tradicional holandés de 1664.'
+    },
+    {
+      id: 'oh_madder_lake_deep',
+      brand: 'old_holland',
+      brandName: 'Old Holland',
+      name: 'Madder Lake Deep Extra',
+      ci: 'PR264',
+      series: 3,
+      opacity: 'Transparente',
+      lightfastness: 'ASTM I (Excelente)',
+      medium: 'Óleo',
+      hex: '#7A1526',
+      rgb: { r: 122, g: 21, b: 38 },
+      description: 'Rojo granate profundo de rubia tradicional, ideal para sombras en ropajes y veladuras barrocas.'
+    },
+
+    // --- REMBRANDT (Royal Talens) ---
+    {
+      id: 'rem_burnt_umber',
+      brand: 'rembrandt',
+      brandName: 'Rembrandt',
+      name: 'Burnt Umber',
+      ci: 'PBr7',
+      series: 1,
+      opacity: 'Semi-opaco',
+      lightfastness: 'ASTM I (Excelente)',
+      medium: 'Óleo',
+      hex: '#4A2A1A',
+      rgb: { r: 74, g: 42, b: 26 },
+      description: 'Molienda extrafina de tierras calcáreas. Excelente fluidez y secado uniforme para claroscuros.'
+    },
+    {
+      id: 'rem_cobalt_blue',
+      brand: 'rembrandt',
+      brandName: 'Rembrandt',
+      name: 'Cobalt Blue',
+      ci: 'PB28',
+      series: 4,
+      opacity: 'Semi-opaco',
+      lightfastness: 'ASTM I (Excelente)',
+      medium: 'Óleo',
+      hex: '#0047AB',
+      rgb: { r: 0, g: 71, b: 171 },
+      description: 'Aluminato de cobalto puro. El azul atmosférico más neutro y perfecto para cielos diurnos.'
+    }
+  ]
+};

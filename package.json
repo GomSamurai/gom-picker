@@ -1,0 +1,27 @@
+{
+  "name": "gom-picker",
+  "version": "1.0.0",
+  "description": "The Definitive Color Picker & Harmony Suite for Adobe Photoshop and Digital Artists",
+  "main": "index.html",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "color-picker",
+    "photoshop",
+    "uxp",
+    "color-theory",
+    "coolorus",
+    "cmyk",
+    "harmonies",
+    "master-painters",
+    "k-means"
+  ],
+  "author": "Fran Gómez",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GomSamurai/gom-picker.git"
+  },
+  "license": "MIT"
+}

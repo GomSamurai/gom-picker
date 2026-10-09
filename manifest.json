@@ -1,0 +1,54 @@
+{
+  "manifestVersion": 5,
+  "id": "com.gompicker.colorstudio",
+  "name": "GOM Color Picker Pro",
+  "version": "1.0.0",
+  "main": "index.html",
+  "host": [
+    {
+      "app": "PS",
+      "minVersion": "22.0.0"
+    }
+  ],
+  "entrypoints": [
+    {
+      "type": "panel",
+      "id": "gomColorPickerPanel",
+      "label": {
+        "default": "GOM Color Picker"
+      },
+      "minimumSize": {
+        "width": 340,
+        "height": 450
+      },
+      "maximumSize": {
+        "width": 1920,
+        "height": 1400
+      },
+      "preferredDockedSize": {
+        "width": 380,
+        "height": 720
+      },
+      "preferredFloatingSize": {
+        "width": 960,
+        "height": 680
+      },
+      "icons": [
+        {
+          "width": 23,
+          "height": 23,
+          "path": "assets/icon_dark.png",
+          "scale": [1, 2],
+          "theme": ["dark", "darkest"]
+        }
+      ]
+    }
+  ],
+  "requiredPermissions": {
+    "localFileSystem": "fullAccess",
+    "clipboard": "readAndWrite",
+    "network": {
+      "domains": "all"
+    }
+  }
+}

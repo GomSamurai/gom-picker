@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GOM Color Picker — Panel Flotante Independiente</title>
+  <link rel="stylesheet" href="styles/main.css">
+  <style>
+    body {
+      padding: 10px;
+      margin: 0;
+      background: #090A0F;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+    }
+    .popup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.03);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+    }
+    .popup-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .popup-wheel-container {
+      display: flex;
+      justify-content: center;
+      padding: 8px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating Window Header -->
+  <div class="popup-header">
+    <div class="popup-title">
+      <span>🎨</span> GOM PICKER MINI
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <select id="wheelModeSelectMini" class="chip-select" style="padding: 2px 6px; font-size: 0.7rem;">
+        <option value="triangle">Triángulo (Coolorus)</option>
+        <option value="square">Caja / Cuadrado</option>
+        <option value="florent">Rueda Farges</option>
+        <option value="ryb">Rueda Pintor (RYB)</option>
+        <option value="oklch">OKLCH</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Color Wheel Canvas -->
+  <div class="popup-wheel-container">
+    <canvas id="colorWheelCanvasMini" width="280" height="280"></canvas>
+  </div>
+
+  <!-- Large Hero Color Swatch & Companion Bands -->
+  <div class="hero-well-container">
+    <div class="hero-dual-well">
+      <div id="fgWellMini" class="hero-well active-well" title="Color Frontal (FG) - Click para activar">
+        <span class="well-indicator">FG</span>
+      </div>
+      <div id="bgWellMini" class="hero-well" title="Color de Fondo (BG) - Click para activar">
+        <span class="well-indicator">BG</span>
+      </div>
+    </div>
+
+    <div class="hero-color-details">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span id="displayHexMini" class="hero-hex copyable-hex" title="Click para copiar HEX">#6366F1</span>
+        <button id="btnSwapWellsMini" class="action-icon-btn" title="Intercambiar FG/BG (Tecla X)">⇄</button>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.68rem; color: var(--text-muted);">
+        <span id="displayMunsellMini" style="color: #FBBF24; font-family: var(--font-mono); font-weight: 700;">5PB 4.2/10</span>
+        <span id="displayGamutMini" style="color: var(--accent-emerald);">● CMYK OK</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Companion Bands -->
+  <div style="background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+      <span style="font-size: 0.68rem; font-weight: 600; color: var(--text-muted);">BANDAS COMPAÑERAS:</span>
+      <select id="companionAlgoSelectMini" class="chip-select" style="font-size: 0.65rem; padding: 1px 4px;">
+        <option value="shades_tints">Tonal (Luces & Sombras)</option>
+        <option value="analogous">Análogos Próximos</option>
+        <option value="temperature">Temperatura Cálido/Frío</option>
+        <option value="complementary">Complementarios & Neutros</option>
+        <option value="saturation">Rampa de Saturación</option>
+      </select>
+    </div>
+    <div id="companionBandsListMini" style="display: flex; gap: 4px; height: 26px; border-radius: 4px; overflow: hidden;">
+      <!-- Companion swatches -->
+    </div>
+  </div>
+
+  <!-- Numerical RGB / CMYK Sliders -->
+  <div style="background: rgba(0,0,0,0.25); padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+      <span style="font-size: 0.68rem; font-weight: 600; color: var(--text-muted);">CONTROL NUMÉRICO:</span>
+      <div style="display: flex; gap: 4px;">
+        <button class="space-tab active-space" data-space="rgb" style="padding: 1px 6px; font-size: 0.65rem;">RGB</button>
+        <button class="space-tab" data-space="cmyk" style="padding: 1px 6px; font-size: 0.65rem;">CMYK</button>
+        <button class="space-tab" data-space="hsl" style="padding: 1px 6px; font-size: 0.65rem;">HSL</button>
+      </div>
+    </div>
+    <div id="slidersContainerMini" class="sliders-container">
+      <!-- Sliders rendered by script -->
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="scripts/popupApp.js"></script>
+</body>
+</html>
