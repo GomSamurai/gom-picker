@@ -265,78 +265,154 @@ export class ImageExtractor {
     })).filter(c => c.count > 0);
   }
 
-  // Process a batch of image files or folder
-  async processBatch(files, count = this.options.colorCount, filterMode = this.options.filterMode, onProgress = null) {
-    const validFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-    if (validFiles.length === 0) return { items: [], masterPalette: [] };
+  // Analyze single image data and extract palette + metrics
+  async processSingleImageFile(file, count = this.options.colorCount, filterMode = this.options.filterMode) {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
-    const items = [];
-    const aggregatedPixels = [];
+    const img = await new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = dataUrl;
+    });
 
-    for (let i = 0; i < validFiles.length; i++) {
-      const file = validFiles[i];
-      if (onProgress) onProgress(i + 1, validFiles.length, file.name);
+    const offCanvas = document.createElement('canvas');
+    const offCtx = offCanvas.getContext('2d');
+    const maxDim = 180;
+    const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+    offCanvas.width = Math.max(1, Math.round(img.width * scale));
+    offCanvas.height = Math.max(1, Math.round(img.height * scale));
+    offCtx.drawImage(img, 0, 0, offCanvas.width, offCanvas.height);
 
-      try {
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = e => resolve(e.target.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+    const imgData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height).data;
+    const filePixels = [];
+    const step = 2;
+    let lumSum = 0;
+    let satSum = 0;
+    let warmCount = 0;
+    let coolCount = 0;
+    let minLum = 1;
+    let maxLum = 0;
 
-        const img = await new Promise((resolve, reject) => {
-          const image = new Image();
-          image.onload = () => resolve(image);
-          image.onerror = reject;
-          image.src = dataUrl;
-        });
+    for (let y = 0; y < offCanvas.height; y += step) {
+      for (let x = 0; x < offCanvas.width; x += step) {
+        const idx = (y * offCanvas.width + x) * 4;
+        if (imgData[idx + 3] < 128) continue;
+        const r = imgData[idx];
+        const g = imgData[idx + 1];
+        const b = imgData[idx + 2];
+        const p = [r, g, b];
+        filePixels.push(p);
 
-        // Offscreen sampling canvas
-        const offCanvas = document.createElement('canvas');
-        const offCtx = offCanvas.getContext('2d');
-        const maxDim = 150;
-        const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
-        offCanvas.width = Math.round(img.width * scale);
-        offCanvas.height = Math.round(img.height * scale);
-        offCtx.drawImage(img, 0, 0, offCanvas.width, offCanvas.height);
+        const lum = ColorMath.getLuminance(r, g, b);
+        const hsv = ColorMath.rgbToHsv(r, g, b);
+        lumSum += lum;
+        satSum += hsv.s;
+        if (lum < minLum) minLum = lum;
+        if (lum > maxLum) maxLum = lum;
 
-        const imgData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height).data;
-        const filePixels = [];
-        const step = 3;
-
-        for (let y = 0; y < offCanvas.height; y += step) {
-          for (let x = 0; x < offCanvas.width; x += step) {
-            const idx = (y * offCanvas.width + x) * 4;
-            if (imgData[idx + 3] < 128) continue;
-            const p = [imgData[idx], imgData[idx + 1], imgData[idx + 2]];
-            filePixels.push(p);
-            if (aggregatedPixels.length < 15000) aggregatedPixels.push(p);
-          }
-        }
-
-        const clusters = this._runKMeans(filePixels, Math.min(count, 8), 8);
-        const palette = clusters.map(c => {
-          const r = Math.round(c.centroid[0]);
-          const g = Math.round(c.centroid[1]);
-          const b = Math.round(c.centroid[2]);
-          return {
-            rgb: { r, g, b },
-            hex: ColorMath.rgbToHex(r, g, b)
-          };
-        });
-
-        items.push({
-          name: file.name,
-          dataUrl,
-          palette
-        });
-      } catch (err) {
-        console.warn(`Error processing ${file.name}`, err);
+        // Thermal evaluation
+        if ((hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320) warmCount++;
+        else if (hsv.h >= 150 && hsv.h <= 270) coolCount++;
       }
     }
 
-    // Compute master fused palette across all batch images
+    const totalValid = filePixels.length || 1;
+    const avgLum = lumSum / totalValid;
+    const avgSat = satSum / totalValid;
+    const warmPct = Math.round((warmCount / totalValid) * 100);
+    const coolPct = Math.round((coolCount / totalValid) * 100);
+
+    const clusters = this._runKMeans(filePixels, Math.min(count * 2, 12), 8);
+    const palette = clusters.map(c => {
+      const r = Math.round(c.centroid[0]);
+      const g = Math.round(c.centroid[1]);
+      const b = Math.round(c.centroid[2]);
+      return {
+        rgb: { r, g, b },
+        hex: ColorMath.rgbToHex(r, g, b),
+        hsv: ColorMath.rgbToHsv(r, g, b),
+        luminance: ColorMath.getLuminance(r, g, b),
+        weight: Math.round((c.count / totalValid) * 100)
+      };
+    }).slice(0, count);
+
+    return {
+      id: 'img_' + Math.random().toString(36).substring(2, 9),
+      file,
+      name: file.name,
+      width: img.width,
+      height: img.height,
+      dataUrl,
+      palette,
+      pixels: filePixels,
+      selected: true,
+      stats: {
+        avgLum: Math.round(avgLum * 100),
+        avgSat: Math.round(avgSat * 100),
+        warmPct,
+        coolPct,
+        dynamicRange: Math.round((maxLum - minLum) * 100),
+        keyType: avgLum > 0.6 ? 'High-Key' : (avgLum < 0.35 ? 'Low-Key' : 'Mid-Key')
+      }
+    };
+  }
+
+  // Calculate aggregated batch statistics across selected items
+  calculateBatchMetrics(items, count = this.options.colorCount) {
+    const selectedItems = items.filter(it => it.selected !== false);
+    if (selectedItems.length === 0) {
+      return {
+        selectedCount: 0,
+        totalCount: items.length,
+        avgLum: 0,
+        avgSat: 0,
+        warmPct: 0,
+        coolPct: 0,
+        highKeyPct: 0,
+        midKeyPct: 0,
+        lowKeyPct: 0,
+        dynamicRange: 0,
+        masterPalette: []
+      };
+    }
+
+    let sumLum = 0;
+    let sumSat = 0;
+    let sumWarm = 0;
+    let sumCool = 0;
+    let sumDR = 0;
+    let countHighKey = 0;
+    let countMidKey = 0;
+    let countLowKey = 0;
+    const aggregatedPixels = [];
+
+    selectedItems.forEach(it => {
+      sumLum += it.stats.avgLum;
+      sumSat += it.stats.avgSat;
+      sumWarm += it.stats.warmPct;
+      sumCool += it.stats.coolPct;
+      sumDR += it.stats.dynamicRange;
+
+      if (it.stats.keyType === 'High-Key') countHighKey++;
+      else if (it.stats.keyType === 'Low-Key') countLowKey++;
+      else countMidKey++;
+
+      if (it.pixels) {
+        // Sample subset into aggregated pool
+        const step = Math.max(1, Math.floor(it.pixels.length / 500));
+        for (let i = 0; i < it.pixels.length && aggregatedPixels.length < 16000; i += step) {
+          aggregatedPixels.push(it.pixels[i]);
+        }
+      }
+    });
+
+    const len = selectedItems.length;
     let masterPalette = [];
     if (aggregatedPixels.length > 0) {
       const masterClusters = this._runKMeans(aggregatedPixels, count * 2, 10);
@@ -346,14 +422,51 @@ export class ImageExtractor {
           rgb,
           hex: ColorMath.rgbToHex(rgb.r, rgb.g, rgb.b),
           hsv: ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b),
-          luminance: ColorMath.getLuminance(rgb.r, rgb.g, rgb.b)
+          luminance: ColorMath.getLuminance(rgb.r, rgb.g, rgb.b),
+          weight: Math.round((c.count / aggregatedPixels.length) * 100)
         };
       }).slice(0, count);
     }
 
     return {
-      items,
+      selectedCount: len,
+      totalCount: items.length,
+      avgLum: Math.round(sumLum / len),
+      avgSat: Math.round(sumSat / len),
+      warmPct: Math.round(sumWarm / len),
+      coolPct: Math.round(sumCool / len),
+      highKeyPct: Math.round((countHighKey / len) * 100),
+      midKeyPct: Math.round((countMidKey / len) * 100),
+      lowKeyPct: Math.round((countLowKey / len) * 100),
+      dynamicRange: Math.round(sumDR / len),
       masterPalette
+    };
+  }
+
+  // Process a batch of image files or folder
+  async processBatch(files, count = this.options.colorCount, filterMode = this.options.filterMode, onProgress = null) {
+    const validFiles = Array.from(files).filter(f => f.type ? f.type.startsWith('image/') : /\.(jpe?g|png|webp|svg|bmp|gif)$/i.test(f.name));
+    if (validFiles.length === 0) return { items: [], metrics: null, masterPalette: [] };
+
+    const items = [];
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      if (onProgress) onProgress(i + 1, validFiles.length, file.name);
+
+      try {
+        const item = await this.processSingleImageFile(file, count, filterMode);
+        items.push(item);
+      } catch (err) {
+        console.warn(`Error processing ${file.name}`, err);
+      }
+    }
+
+    const metrics = this.calculateBatchMetrics(items, count);
+
+    return {
+      items,
+      metrics,
+      masterPalette: metrics.masterPalette
     };
   }
 }

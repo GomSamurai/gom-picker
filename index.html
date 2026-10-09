@@ -641,6 +641,19 @@
               <option value="primary_triad">Tríada Primaria Clásica (Cyan, Magenta, Amarillo)</option>
               <option value="renaissance_earth">Paleta Tierra Renacentista (Ocre, Sombra, Almagre)</option>
               <option value="split_primary">Split-Primary (6 Primarios Cálidos & Fríos)</option>
+              <option value="apelles_tetrachrome">Tetracromatismo de Apeles (Grecia Clásica)</option>
+              <option value="caravaggio_tenebrism">Tenebrismo Caravaggesco (Chiaroscuro Extremo)</option>
+              <option value="velazquez_court">Paleta Regia de Velázquez (Siglo de Oro Español)</option>
+              <option value="rembrandt_chiaroscuro">Claro-Oscuro y Glaseados de Rembrandt</option>
+              <option value="monet_impressionist">Paleta Impresionista de Claude Monet (Sin Negro)</option>
+              <option value="sorolla_luminism">Luminismo Mediterráneo de Joaquín Sorolla</option>
+              <option value="farges_academic_portrait">Paleta Académica de Retrato (Florent Farges)</option>
+              <option value="grisaille_verdaccio">Grisalla y Verdaccio Florentino (Quintoceño)</option>
+              <option value="turner_atmospheric">Atmósferas y Tormentas de J.M.W. Turner</option>
+              <option value="hokusai_ukiyo_e">Grabado Ukiyo-e Tradicional (Katsushika Hokusai)</option>
+              <option value="gurney_triad_mask">Gamut Mask Triádico Armónico (James Gurney)</option>
+              <option value="matisse_fauve">Fauvismo Expresivo Puro (Henri Matisse)</option>
+              <option value="cyberpunk_neo_limited">Sci-Fi Neón Synth (Digital Concept Art)</option>
             </select>
           </div>
 
@@ -895,26 +908,165 @@
 
       </div>
 
-      <!-- TAB 6: MASTER PAINTERS GALLERY (FIXED CUTOFF & JITTER-FREE) -->
+      <!-- TAB 6: MASTER PAINTERS GALLERY & MULTI-CATALOG STUDIO -->
       <div id="viewMasters" class="tab-view" style="display: none;">
         <div class="glass-panel">
-          <div class="panel-header">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
             <div class="panel-title">
-              <span>🏛️</span> Paletas Legendarias de Grandes Maestros del Arte
+              <span>🏛️</span> Galería & Catálogos de Grandes Maestros
             </div>
-            <span style="font-size: 0.72rem; color: var(--text-muted);">Inspiración Histórica Directa (Monet, Van Gogh, Rembrandt, Sorolla, Sargent, Vermeer, Mucha, Klimt)</span>
+            
+            <!-- Multi-Catalog Selector & Management Actions -->
+            <div class="master-catalog-controls" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <select id="masterCatalogSelect" class="chip-select" style="font-weight: 600; padding: 4px 10px;" title="Seleccionar catálogo de maestros u obras personales">
+                <!-- Populated dynamically by masterPalettes.js / app.js -->
+              </select>
+              <button id="btnNewCatalog" class="tool-action-btn" style="padding: 4px 10px; font-size: 0.73rem;" title="Crear un nuevo catálogo personalizado">
+                <span>➕</span> Nuevo Catálogo
+              </button>
+              <button id="btnDeleteCatalog" class="tool-action-btn danger" style="padding: 4px 10px; font-size: 0.73rem; display: none;" title="Eliminar el catálogo personalizado activo">
+                <span>🗑️</span> Eliminar
+              </button>
+              <button id="btnAddArtworkTrigger" class="tool-action-btn active-toggle" style="padding: 4px 10px; font-size: 0.73rem;" title="Añadir una obra propia a un catálogo">
+                <span>🖼️</span> Añadir Obra
+              </button>
+            </div>
           </div>
           
           <div class="pedagogical-banner">
-            <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4;">
-              Haz clic en cualquier muestra de una obra histórica para cargarla inmediatamente en tu rueda cromática, o usa la tecla <strong>P</strong> sobre cualquier tono para anclar su fórmula analítica.
+            <p id="masterCatalogDescription" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+              Explora las paletas legendarias de la historia del arte. <strong>Haz clic en cualquier obra para abrir el Visor a Pantalla Completa con cuentagotas en vivo</strong>, o haz clic en cualquier muestra para transferirla inmediatamente a tu rueda cromática.
             </p>
           </div>
 
+          <!-- Master Artworks Grid (Clicking any card opens Full-Screen Lightbox) -->
           <div id="paintersGrid" class="painters-grid">
-            <!-- Rendered by masterPalettes.js without vertical cutoff -->
+            <!-- Rendered by masterPalettes.js & app.js -->
           </div>
         </div>
+
+        <!-- SPECIALIZED MASTER TECHNIQUES & HISTORICAL METHODS DEEP-DIVE -->
+        <div class="glass-panel" style="margin-top: 16px;">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🎓</span> Estudio Especializado: Secretos y Métodos de Color de los Grandes Maestros
+            </div>
+            <span style="font-size: 0.72rem; color: var(--accent-amber); font-weight: 600; background: rgba(245,158,11,0.12); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(245,158,11,0.25);">Guía Didáctica de Taller</span>
+          </div>
+
+          <p style="font-size: 0.77rem; color: var(--text-secondary); line-height: 1.45; margin-bottom: 14px;">
+            Comprender cómo mezclaban y pensaban la luz los maestros te permite aplicar sus principios en pintura digital y tradicional sin depender de algoritmos ciegos.
+          </p>
+
+          <div class="master-techniques-grid">
+            
+            <div class="master-technique-card">
+              <div class="technique-card-header">
+                <span class="technique-artist-pill">Caravaggio & Rembrandt</span>
+                <span class="technique-title">Tenebrismo & Imprimatura de Bol</span>
+              </div>
+              <p class="technique-desc">
+                Pintaban sobre una base cálida oscura (tierra de Sevilla o bol rojo oscuro). En lugar de pintar las sombras, <em>dejaban respirar el fondo</em> y sólo esculpían con blanco de plomo y ocres las zonas donde la luz incide directamente.
+              </p>
+              <div class="technique-takeaway">
+                💡 <strong>Consejo Digital:</strong> Comienza tu lienzo con un tono café o terracota oscuro en vez de blanco; tus tonos medios y altas luces se integrarán con calidez armónica instantánea.
+              </div>
+            </div>
+
+            <div class="master-technique-card">
+              <div class="technique-card-header">
+                <span class="technique-artist-pill">Anders Zorn</span>
+                <span class="technique-title">El Negro Marfil como Azul Frío</span>
+              </div>
+              <p class="technique-desc">
+                Zorn prescindía del azul en su paleta de 4 tubos. El negro de marfil (hueso calcinado), al diluirse con blanco de plomo, genera un gris azulado frío ópticamente perfecto. Mezclado con ocre amarillo produce verdes oliva naturales.
+              </p>
+              <div class="technique-takeaway">
+                💡 <strong>Consejo Digital:</strong> La relatividad cromática engaña al ojo. No necesitas colores ultrapuros si el contraste térmico frío/cálido entre tus tonos está bien balanceado.
+              </div>
+            </div>
+
+            <div class="master-technique-card">
+              <div class="technique-card-header">
+                <span class="technique-artist-pill">Claude Monet & Impresionismo</span>
+                <span class="technique-title">Sombras Cromáticas sin Negro</span>
+              </div>
+              <p class="technique-desc">
+                Los impresionistas descubrieron que en la naturaleza ninguna sombra es gris o negra: la sombra siempre está iluminada por la luz difusa del cielo (azul/violeta) o por la luz rebotada de objetos colindantes (complementarios).
+              </p>
+              <div class="technique-takeaway">
+                💡 <strong>Consejo Digital:</strong> Sombrea la piel o el follaje con azul ultramar, violeta cobalto o viridian; nunca bajes el valor arrastrando el selector hacia el negro absoluto.
+              </div>
+            </div>
+
+            <div class="master-technique-card">
+              <div class="technique-card-header">
+                <span class="technique-artist-pill">Joaquín Sorolla</span>
+                <span class="technique-title">Luminismo & Rebote Solar Mediterráneo</span>
+              </div>
+              <p class="technique-desc">
+                Sorolla dominó la energía de la luz solar directa. Para transmitir el deslumbramiento de la arena levantina, empastaba blancos matizados con amarillos de cromo y reflejaba en los vestidos blancos sombras violetas luminosas.
+              </p>
+              <div class="technique-takeaway">
+                💡 <strong>Consejo Digital:</strong> La luz de sol no es blanca, es cálida dorada; y sus sombras al aire libre están teñidas por el azul del domo celeste.
+              </div>
+            </div>
+
+            <div class="master-technique-card">
+              <div class="technique-card-header">
+                <span class="technique-artist-pill">Leonardo da Vinci</span>
+                <span class="technique-title">Sfumato & Veladuras Ópticas</span>
+              </div>
+              <p class="technique-desc">
+                "Sin líneas ni bordes, a la manera del humo". Leonardo aplicaba decenas de veladuras microscópicas translúcidas superpuestas. La luz atraviesa las capas y rebota en el fondo creando una sensación tridimensional de atmósfera viva.
+              </p>
+              <div class="technique-takeaway">
+                💡 <strong>Consejo Digital:</strong> Usa modos de fusión como <em>Multiply</em> o <em>Overlay</em> con opacidades del 5-10% y pinceles texturizados suaves para modelar transiciones faciales orgánicas.
+              </div>
+            </div>
+
+            <div class="master-technique-card">
+              <div class="technique-card-header">
+                <span class="technique-artist-pill">Diego Velázquez</span>
+                <span class="technique-title">Grises Plateados & Esmalte de Vidrio</span>
+              </div>
+              <p class="technique-desc">
+                Pintor del aire y la distancia. Utilizaba <em>Smalt</em> (vidrio azul molido con óxido de cobalto) y tierras de Sevilla para crear grises perlados que capturaban el polvo suspendido y la atmósfera del Alcázar de Madrid.
+              </p>
+              <div class="technique-takeaway">
+                💡 <strong>Consejo Digital:</strong> Reduce la saturación a medida que los objetos se alejan en el plano z; la atmósfera desatura los tonos antes de enfriarlos.
+              </div>
+            </div>
+
+            <div class="master-technique-card">
+              <div class="technique-card-header">
+                <span class="technique-artist-pill">Gustav Klimt</span>
+                <span class="technique-title">Dorado Ornamental & Mosaico Bizantino</span>
+              </div>
+              <p class="technique-desc">
+                Klimt fusionaba retratos figurativos de carnación realista con fondos decorativos planos dorados. El pan de oro actúa como un espejo reflector de luz real, contrastando con la suavidad íntima de los rostros.
+              </p>
+              <div class="technique-takeaway">
+                💡 <strong>Consejo Digital:</strong> El contraste entre elementos altamente modelados y patrones gráficos planos crea un impacto visual y jerarquía compositiva inmediata.
+              </div>
+            </div>
+
+            <div class="master-technique-card">
+              <div class="technique-card-header">
+                <span class="technique-artist-pill">Katsushika Hokusai</span>
+                <span class="technique-title">Azul de Prusia (Aizuri-e) & Grabado</span>
+              </div>
+              <p class="technique-desc">
+                La revolución del azul sintético importado en Japón permitió gradaciones tonales (bokashi) profundas imposibles con tintas vegetales. Con solo azul de Berlín, bermellón y ocre creó el ícono marino definitivo.
+              </p>
+              <div class="technique-takeaway">
+                💡 <strong>Consejo Digital:</strong> La economía de medios produce fuerza expresiva. Tres colores bien contrastados en valor superan a una paleta caótica de veinte tonos.
+              </div>
+            </div>
+
+          </div>
+        </div>
+
       </div>
 
       <!-- TAB 7: EXTRACTOR CROMÁTICO INTELIGENTE (ALGORITMO K-MEANS & PROCESAMIENTO EN LOTE) -->
@@ -933,9 +1085,8 @@
 
           <div class="pedagogical-banner">
             <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
-              <strong>¿Qué es la Extracción K-Means?</strong> Es un algoritmo de <em>Machine Learning</em> y cuantización vectorial que agrupa millones de píxeles 
-              en <em>clusters</em> tridimensionales basados en la proximidad cromática Euclidiana en espacio Lab/RGB. Ahora soporta 
-              <strong>carga de múltiples imágenes o carpetas completas</strong> para sintetizar la paleta unificada de toda una sesión de concept art o fotografía.
+              <strong>¿Qué es la Extracción K-Means?</strong> Cuantización vectorial inteligente en espacio Lab/RGB para sintetizar la esencia cromática de una o cientos de imágenes. 
+              Soporta <strong>carga de carpetas completas y gestión multi-imagen</strong> con estadísticas comparativas avanzadas (temperatura, clave tonal, rango dinámico y paleta consolidada).
             </p>
           </div>
 
@@ -944,33 +1095,126 @@
             <input type="file" id="imageFileInput" accept="image/*" multiple style="display: none;">
             <input type="file" id="batchFolderInput" webkitdirectory directory multiple style="display: none;">
             
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
               <circle cx="8.5" cy="8.5" r="1.5"/>
               <polyline points="21 15 16 10 5 21"/>
             </svg>
-            <div style="font-size: 0.88rem; font-weight: 600; color: #FFFFFF;">Arrastra aquí una o varias imágenes, o haz clic para subir</div>
-            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">PNG, JPG, WEBP, SVG • Soporta selección múltiple de archivos</div>
+            <div style="font-size: 0.9rem; font-weight: 600; color: #FFFFFF; margin-top: 4px;">Arrastra aquí una o varias imágenes o una carpeta completa</div>
+            <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 4px;">PNG, JPG, WEBP, SVG • Procesamiento 100% local en tu dispositivo</div>
             
-            <div style="display: flex; gap: 8px; margin-top: 10px;">
-              <button id="btnSelectBatchFiles" class="chip-select" style="padding: 4px 10px;">Cargar Varios Archivos</button>
-              <button id="btnSelectFolder" class="chip-select" style="padding: 4px 10px;">Cargar Carpeta Completa</button>
+            <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; justify-content: center;">
+              <button id="btnSelectBatchFiles" class="chip-select" style="padding: 5px 12px;">📁 Cargar Varios Archivos</button>
+              <button id="btnSelectFolder" class="chip-select" style="padding: 5px 12px; font-weight: 600; border-color: var(--accent-primary);">📂 Cargar Carpeta Completa</button>
             </div>
           </div>
 
-          <!-- Live Image Canvas Preview -->
+          <!-- Main Live Canvas Viewport (click for eyedropper) -->
           <div class="image-canvas-container" style="margin-top: 14px;">
             <canvas id="extractCanvas"></canvas>
           </div>
 
-          <!-- Batch Thumbnails Gallery Strip (when multiple images are loaded) -->
-          <div id="batchThumbnailsStrip" style="display: none; margin-top: 12px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; border: 1px solid var(--border-subtle);">
-            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between;">
-              <span>IMÁGENES EN EL LOTE:</span>
-              <span id="batchCountBadge" style="color: var(--accent-cyan); font-weight: 600;">0 imágenes</span>
+          <!-- MULTI-IMAGE BATCH MANAGEMENT SECTION -->
+          <div id="batchManagementSection" style="display: none; margin-top: 14px;">
+            
+            <!-- Batch Toolbar Actions -->
+            <div class="batch-toolbar" style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.35); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 0.76rem; font-weight: 700; color: #FFFFFF;">🖼️ IMÁGENES EN EL LOTE:</span>
+                <span id="batchCountBadge" class="batch-count-pill">0 seleccionadas de 0</span>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                <button id="btnBatchSelectAll" class="history-btn-action" style="font-size: 0.7rem; padding: 3px 8px; border-radius: 4px;" title="Seleccionar todas las imágenes del lote">
+                  ✓ Todas
+                </button>
+                <button id="btnBatchDeselectAll" class="history-btn-action" style="font-size: 0.7rem; padding: 3px 8px; border-radius: 4px;" title="Deseleccionar todas las imágenes">
+                  ✕ Ninguna
+                </button>
+                <button id="btnBatchAddMore" class="history-btn-action" style="font-size: 0.7rem; padding: 3px 8px; border-radius: 4px; color: var(--accent-cyan);" title="Añadir más imágenes al lote actual">
+                  ➕ Añadir Más
+                </button>
+                <button id="btnBatchClear" class="history-btn-action danger" style="font-size: 0.7rem; padding: 3px 8px; border-radius: 4px;" title="Limpiar todas las imágenes del lote">
+                  🗑️ Limpiar
+                </button>
+              </div>
             </div>
-            <div id="batchThumbnailsList" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;">
-              <!-- Thumbnails rendered by script -->
+
+            <!-- Scrollable Multi-Image Thumbnails & Selector Strip -->
+            <div id="batchThumbnailsStrip" style="margin-top: 8px; background: rgba(0,0,0,0.25); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <div id="batchThumbnailsList" class="batch-cards-grid">
+                <!-- Rendered dynamically by app.js with checkboxes, individual stats and delete buttons -->
+              </div>
+            </div>
+
+            <!-- COMPARATIVE BATCH STATISTICS PANEL -->
+            <div id="batchStatsPanel" class="batch-stats-box" style="margin-top: 12px; background: rgba(0,0,0,0.35); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border-accent);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 6px;">
+                <span style="font-size: 0.8rem; font-weight: 700; color: #FFFFFF;">📊 Estadísticas Comparativas del Lote Seleccionado:</span>
+                <span id="batchMetricsSelectionLabel" style="font-size: 0.72rem; color: var(--accent-cyan);">Basado en imágenes activas</span>
+              </div>
+
+              <!-- Metrics Summary Grid -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 12px;">
+                
+                <!-- Thermal Balance Bar -->
+                <div class="stat-metric-card">
+                  <div style="display: flex; justify-content: space-between; font-size: 0.72rem; margin-bottom: 4px;">
+                    <span style="color: #F87171;">☀️ Cálido: <strong id="statWarmPct">0%</strong></span>
+                    <span style="color: #60A5FA;">❄️ Frío: <strong id="statCoolPct">0%</strong></span>
+                  </div>
+                  <div class="stat-progress-bar" style="height: 10px; border-radius: 5px; overflow: hidden; display: flex; background: rgba(255,255,255,0.1);">
+                    <div id="barWarm" style="width: 50%; background: linear-gradient(90deg, #EF4444, #F59E0B); transition: width 0.3s;"></div>
+                    <div id="barCool" style="width: 50%; background: linear-gradient(90deg, #3B82F6, #06B6D4); transition: width 0.3s;"></div>
+                  </div>
+                  <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px; text-align: center;">Balance Térmico Global</div>
+                </div>
+
+                <!-- Tonal Key Distribution -->
+                <div class="stat-metric-card">
+                  <div style="display: flex; justify-content: space-between; font-size: 0.7rem; margin-bottom: 4px;">
+                    <span>High: <strong id="statHighKey">0%</strong></span>
+                    <span>Mid: <strong id="statMidKey">0%</strong></span>
+                    <span>Low: <strong id="statLowKey">0%</strong></span>
+                  </div>
+                  <div class="stat-progress-bar" style="height: 10px; border-radius: 5px; overflow: hidden; display: flex; background: rgba(255,255,255,0.1);">
+                    <div id="barHighKey" style="width: 33%; background: #F3F4F6; transition: width 0.3s;"></div>
+                    <div id="barMidKey" style="width: 34%; background: #9CA3AF; transition: width 0.3s;"></div>
+                    <div id="barLowKey" style="width: 33%; background: #1F2937; transition: width 0.3s;"></div>
+                  </div>
+                  <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px; text-align: center;">Distribución de Claves Tonales</div>
+                </div>
+
+                <!-- Saturation & Dynamic Range Averages -->
+                <div class="stat-metric-card" style="display: flex; justify-content: space-around; align-items: center;">
+                  <div style="text-align: center;">
+                    <div id="statAvgLum" style="font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; color: #FBBF24;">0%</div>
+                    <div style="font-size: 0.68rem; color: var(--text-muted);">Luminosidad Media</div>
+                  </div>
+                  <div style="text-align: center;">
+                    <div id="statAvgSat" style="font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; color: #A78BFA;">0%</div>
+                    <div style="font-size: 0.68rem; color: var(--text-muted);">Saturación Media</div>
+                  </div>
+                  <div style="text-align: center;">
+                    <div id="statDynamicRange" style="font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; color: #34D399;">0%</div>
+                    <div style="font-size: 0.68rem; color: var(--text-muted);">Rango Dinámico</div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Master Consolidated Palette extracted from all selected images -->
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <span style="font-size: 0.75rem; font-weight: 600; color: #E0E7FF;">⚡ Paleta Maestra Consolidada (Síntesis del Lote Completo):</span>
+                  <button id="btnSaveMasterBatchPalette" class="tool-action-btn" style="padding: 2px 8px; font-size: 0.7rem;">
+                    <span>📥</span> Guardar Paleta Consolidada
+                  </button>
+                </div>
+                <div id="masterBatchPaletteStrip" style="display: flex; gap: 4px; height: 38px; border-radius: 6px; overflow: hidden;">
+                  <!-- Rendered dynamically -->
+                </div>
+              </div>
+
             </div>
           </div>
 
@@ -1015,7 +1259,7 @@
           <!-- Extracted Palette Results -->
           <div style="margin-top: 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 0.8rem; font-weight: 600;">Paleta Resultante (Click en muestra para seleccionar • Arrastra para guardar):</span>
+              <span style="font-size: 0.8rem; font-weight: 600;">Paleta Resultante de la Imagen Activa (Click en muestra para seleccionar • Arrastra para guardar):</span>
               <button id="btnSaveExtracted" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem;">
                 <span>💾</span> Guardar en Biblioteca
               </button>
@@ -1244,6 +1488,184 @@
   </main>
   </div> <!-- /app-content-wrapper -->
 </div> <!-- /app-shell -->
+
+  <!-- FULL-SCREEN MASTER ARTWORK VIEWER & LIVE EYEDROPPER LIGHTBOX MODAL -->
+  <div id="masterViewerModal" class="master-modal-backdrop" style="display: none;">
+    <div class="master-modal-container">
+      
+      <!-- Modal Top Bar -->
+      <div class="master-modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="master-modal-badge">🏛️ Obra Maestra Histórica</span>
+          <span id="modalArtworkTitleHeader" style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Visor de Alta Resolución</span>
+        </div>
+        <button id="btnCloseMasterModal" class="modal-close-btn" title="Cerrar visor a pantalla completa (Esc)">✕</button>
+      </div>
+
+      <!-- Modal Body Columns -->
+      <div class="master-modal-body">
+        
+        <!-- Left: Full Image Viewport with Live Canvas Eyedropper -->
+        <div class="master-modal-image-col">
+          <div class="modal-canvas-wrapper">
+            <canvas id="modalArtworkCanvas"></canvas>
+            <div id="modalEyedropperBadge" class="modal-eyedropper-badge">
+              <span id="modalEyedropperDot" class="eyedropper-dot"></span>
+              <span id="modalEyedropperHex">#FFFFFF</span>
+              <span style="font-size: 0.65rem; color: var(--text-muted);">(Click para seleccionar)</span>
+            </div>
+          </div>
+          <div class="modal-image-hint">
+            💡 Mueve el cursor sobre la obra para activar el cuentagotas en tiempo real. Haz clic en cualquier píxel para seleccionarlo en la suite.
+          </div>
+        </div>
+
+        <!-- Right: Analytical Master Details & Palette Strip -->
+        <div class="master-modal-info-col">
+          
+          <div class="modal-artist-header">
+            <h2 id="modalArtworkTitle" class="modal-art-title">Título de la Obra</h2>
+            <div class="modal-art-artist-row">
+              <span id="modalArtworkArtist" class="modal-art-artist">Pintor</span>
+              <span id="modalArtworkYear" class="modal-art-year">Año</span>
+              <span id="modalArtworkMovement" class="modal-art-movement">Movimiento</span>
+            </div>
+          </div>
+
+          <div class="modal-section-box">
+            <span class="modal-section-title">DESCRIPCIÓN & CLAVE VISUAL:</span>
+            <p id="modalArtworkDesc" class="modal-art-desc">Descripción detallada de la obra y su armonía.</p>
+          </div>
+
+          <div class="modal-section-box">
+            <span class="modal-section-title">🧪 PIGMENTOS HISTÓRICOS IDENTIFICADOS:</span>
+            <div id="modalArtworkPigments" class="modal-pigments-text">Pigmentos utilizados.</div>
+          </div>
+
+          <div class="modal-section-box highlight">
+            <span class="modal-section-title">🎨 TÉCNICA MAESTRA & MÉTODO DE MEZCLA:</span>
+            <p id="modalArtworkTechnique" class="modal-art-technique">Explicación técnica del método.</p>
+          </div>
+
+          <div class="modal-section-box tip">
+            <span class="modal-section-title">💡 CONSEJO PARA PINTURA DIGITAL & ILUSTRACIÓN:</span>
+            <p id="modalArtworkTip" class="modal-art-tip">Consejo práctico de aplicación contemporánea.</p>
+          </div>
+
+          <!-- Extracted Color Palette -->
+          <div class="modal-palette-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span class="modal-section-title" style="margin-bottom: 0;">PALETA CANÓNICA EXTRAÍDA:</span>
+              <button id="btnModalSavePalette" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.7rem;">
+                <span>📥</span> Guardar en Biblioteca
+              </button>
+            </div>
+            <div id="modalPaletteGrid" class="modal-swatches-grid">
+              <!-- Swatches generated by script -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ADD CUSTOM ARTWORK MODAL -->
+  <div id="addArtworkModal" class="master-modal-backdrop" style="display: none;">
+    <div class="master-modal-container compact">
+      <div class="master-modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="master-modal-badge">➕ Catálogo Personal</span>
+          <span style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Añadir Nueva Obra al Catálogo</span>
+        </div>
+        <button id="btnCloseAddArtModal" class="modal-close-btn" title="Cerrar modal (Esc)">✕</button>
+      </div>
+
+      <div style="padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Título de la Obra *</label>
+            <input type="text" id="addArtTitleInput" class="ai-prompt-input" placeholder="Ej. El Alquimista en su Taller" style="width: 100%;">
+          </div>
+          <div>
+            <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Artista / Autor *</label>
+            <input type="text" id="addArtArtistInput" class="ai-prompt-input" placeholder="Ej. Rembrandt / Mi Nombre" style="width: 100%;">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Año o Época</label>
+            <input type="text" id="addArtYearInput" class="ai-prompt-input" placeholder="Ej. 1650 / 2026" style="width: 100%;">
+          </div>
+          <div>
+            <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Estilo / Movimiento</label>
+            <input type="text" id="addArtMovementInput" class="ai-prompt-input" placeholder="Ej. Concept Art / Barroco" style="width: 100%;">
+          </div>
+        </div>
+
+        <!-- Image Selection / Drop -->
+        <div>
+          <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Imagen de la Obra *</label>
+          <div id="addArtDropZone" class="image-drop-area" style="padding: 16px; border-style: dashed;">
+            <input type="file" id="addArtFileInput" accept="image/*" style="display: none;">
+            <span style="font-size: 0.8rem; color: #FFFFFF;">Haz clic o arrastra aquí la imagen de la obra</span>
+            <span style="font-size: 0.68rem; color: var(--text-muted); margin-top: 3px;">Se generará automáticamente la paleta K-Means de 6 colores</span>
+          </div>
+          <div id="addArtPreviewContainer" style="display: none; margin-top: 8px; text-align: center;">
+            <img id="addArtPreviewImg" src="" alt="Preview" style="max-height: 140px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+            <div id="addArtPalettePreviewStrip" style="display: flex; gap: 4px; height: 24px; margin-top: 6px; border-radius: 4px; overflow: hidden;"></div>
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Descripción o Notas de Color</label>
+          <textarea id="addArtDescInput" class="ai-prompt-input" rows="2" placeholder="Notas sobre la atmósfera, armonía cromática y composición..." style="width: 100%; resize: none;"></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+          <button id="btnCancelAddArt" class="tool-action-btn" style="padding: 6px 14px;">Cancelar</button>
+          <button id="btnSaveAddArt" class="tool-action-btn active-toggle" style="padding: 6px 16px;">
+            <span>💾</span> Guardar en Catálogo
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE NEW CATALOG MODAL -->
+  <div id="newCatalogModal" class="master-modal-backdrop" style="display: none;">
+    <div class="master-modal-container compact" style="max-width: 480px;">
+      <div class="master-modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="master-modal-badge">📁 Catálogo</span>
+          <span style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Crear Nuevo Catálogo</span>
+        </div>
+        <button id="btnCloseNewCatModal" class="modal-close-btn" title="Cerrar modal (Esc)">✕</button>
+      </div>
+
+      <div style="padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+        <div>
+          <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Nombre del Catálogo *</label>
+          <input type="text" id="newCatNameInput" class="ai-prompt-input" placeholder="Ej. Mis Referencias de Iluminación Sci-Fi" style="width: 100%;">
+        </div>
+        <div>
+          <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Descripción o Enfoque</label>
+          <input type="text" id="newCatDescInput" class="ai-prompt-input" placeholder="Ej. Estudios de luz volumétrica y niebla para mi proyecto..." style="width: 100%;">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+          <button id="btnCancelNewCat" class="tool-action-btn" style="padding: 6px 14px;">Cancelar</button>
+          <button id="btnConfirmCreateCat" class="tool-action-btn active-toggle" style="padding: 6px 16px;">
+            <span>➕</span> Crear Catálogo
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container"></div>

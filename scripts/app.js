@@ -14,7 +14,7 @@ import { MunsellSystem } from './munsellSystem.js';
 import { GamutMaskEngine } from './gamutMask.js';
 import { ChromillaMixer } from './paintMixerChromilla.js';
 import { LimitedPalettes } from './limitedPalettes.js';
-import { MASTER_PALETTES } from './masterPalettes.js';
+import { MasterCatalogManager, MASTER_PALETTES, DEFAULT_CATALOGS } from './masterPalettes.js';
 import { ImageExtractor } from './imageExtractor.js';
 import { AIAssistant } from './aiAssistant.js';
 import { SwatchManager } from './swatches.js';
@@ -44,6 +44,11 @@ class GomPickerApp {
     this.activeCatalogFilter = 'all';
     this.broadcastChannel = null;
     this.batchResults = null;
+
+    this.masterCatalogManager = new MasterCatalogManager();
+    this.activeMasterCatalog = 'all';
+    this.batchItems = [];
+    this.isAppendBatchMode = false;
   }
 
   init() {
@@ -1750,6 +1755,15 @@ class GomPickerApp {
   _bindLimitedPalettesControls() {
     const select = document.getElementById('limitedPaletteSelect');
     if (select) {
+      select.innerHTML = '';
+      LimitedPalettes.PALETTES.forEach(pal => {
+        const opt = document.createElement('option');
+        opt.value = pal.id;
+        opt.textContent = pal.name;
+        if (pal.id === 'zorn') opt.selected = true;
+        select.appendChild(opt);
+      });
+
       select.addEventListener('change', (e) => {
         this.renderLimitedPalettes(e.target.value);
       });
@@ -2007,17 +2021,143 @@ class GomPickerApp {
     if (behNote) behNote.textContent = solver.behaviorNote;
   }
 
-  // --- MASTER PAINTERS ---
+  // --- MASTER PAINTERS GALLERY & MULTI-CATALOG STUDIO ---
 
   _bindMasterPainters() {
+    this._initMasterCatalogs();
+    this._bindMasterLightboxModal();
+    this._bindAddArtworkModal();
+    this.renderMasterPainters();
+  }
+
+  _initMasterCatalogs() {
+    const catalogSelect = document.getElementById('masterCatalogSelect');
+    const btnNewCatalog = document.getElementById('btnNewCatalog');
+    const btnDeleteCatalog = document.getElementById('btnDeleteCatalog');
+    const btnAddArtwork = document.getElementById('btnAddArtworkTrigger');
+
+    if (!catalogSelect) return;
+
+    // Populate catalog options
+    const catalogs = this.masterCatalogManager.getCatalogs();
+    catalogSelect.innerHTML = '';
+    catalogs.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.id;
+      opt.textContent = `${cat.icon || '📁'} ${cat.name}`;
+      if (cat.id === this.activeMasterCatalog) opt.selected = true;
+      catalogSelect.appendChild(opt);
+    });
+
+    catalogSelect.onchange = (e) => {
+      this.activeMasterCatalog = e.target.value;
+      this.renderMasterPainters();
+    };
+
+    if (btnNewCatalog) {
+      btnNewCatalog.onclick = () => {
+        const modal = document.getElementById('newCatalogModal');
+        if (modal) modal.style.display = 'flex';
+      };
+    }
+
+    if (btnDeleteCatalog) {
+      btnDeleteCatalog.onclick = () => {
+        if (confirm('¿Estás seguro de que deseas eliminar este catálogo personalizado y sus obras?')) {
+          this.masterCatalogManager.deleteCatalog(this.activeMasterCatalog);
+          this.activeMasterCatalog = 'all';
+          this._initMasterCatalogs();
+          this.renderMasterPainters();
+          this.showToast('Catálogo eliminado correctamente');
+        }
+      };
+    }
+
+    if (btnAddArtwork) {
+      btnAddArtwork.onclick = () => {
+        const modal = document.getElementById('addArtworkModal');
+        if (modal) modal.style.display = 'flex';
+      };
+    }
+
+    // Bind New Catalog Modal Buttons
+    const btnCloseNewCat = document.getElementById('btnCloseNewCatModal');
+    const btnCancelNewCat = document.getElementById('btnCancelNewCat');
+    const btnConfirmCreateCat = document.getElementById('btnConfirmCreateCat');
+    const newCatModal = document.getElementById('newCatalogModal');
+
+    const closeNewCat = () => { if (newCatModal) newCatModal.style.display = 'none'; };
+    if (btnCloseNewCat) btnCloseNewCat.onclick = closeNewCat;
+    if (btnCancelNewCat) btnCancelNewCat.onclick = closeNewCat;
+
+    if (btnConfirmCreateCat) {
+      btnConfirmCreateCat.onclick = () => {
+        const nameInput = document.getElementById('newCatNameInput');
+        const descInput = document.getElementById('newCatDescInput');
+        const name = (nameInput?.value || '').trim();
+        const desc = (descInput?.value || '').trim();
+
+        if (!name) {
+          this.showToast('Por favor introduce un nombre para el catálogo', 'warn');
+          return;
+        }
+
+        const newCat = this.masterCatalogManager.createCatalog(name, desc);
+        this.activeMasterCatalog = newCat.id;
+        if (nameInput) nameInput.value = '';
+        if (descInput) descInput.value = '';
+        closeNewCat();
+        this._initMasterCatalogs();
+        this.renderMasterPainters();
+        this.showToast(`Catálogo '${name}' creado con éxito`);
+      };
+    }
+  }
+
+  renderMasterPainters() {
     const container = document.getElementById('paintersGrid');
+    const descEl = document.getElementById('masterCatalogDescription');
+    const btnDelete = document.getElementById('btnDeleteCatalog');
     if (!container) return;
     container.innerHTML = '';
 
-    MASTER_PALETTES.forEach(p => {
+    const catalogs = this.masterCatalogManager.getCatalogs();
+    const activeCat = catalogs.find(c => c.id === this.activeMasterCatalog) || catalogs[0];
+
+    if (descEl && activeCat) {
+      descEl.innerHTML = `<strong>${activeCat.name}:</strong> ${activeCat.description} • <em>Haz clic en cualquier obra para abrir el Visor a Pantalla Completa con cuentagotas en tiempo real.</em>`;
+    }
+
+    // Only allow deletion for custom user catalogs (not built-in ones)
+    const isCustom = this.masterCatalogManager.customCatalogs.some(c => c.id === this.activeMasterCatalog);
+    if (btnDelete) {
+      btnDelete.style.display = isCustom ? 'inline-flex' : 'none';
+    }
+
+    const artworks = this.masterCatalogManager.getArtworksByCatalog(this.activeMasterCatalog);
+
+    if (artworks.length === 0) {
+      const emptyBox = document.createElement('div');
+      emptyBox.style.gridColumn = '1 / -1';
+      emptyBox.style.padding = '40px 20px';
+      emptyBox.style.textAlign = 'center';
+      emptyBox.style.background = 'rgba(0,0,0,0.2)';
+      emptyBox.style.borderRadius = '8px';
+      emptyBox.style.border = '1px dashed var(--border-subtle)';
+      emptyBox.innerHTML = `
+        <div style="font-size: 2rem; margin-bottom: 8px;">🎨</div>
+        <div style="font-size: 0.9rem; font-weight: 600; color: #FFFFFF;">Este catálogo está vacío</div>
+        <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 4px;">Usa el botón "Añadir Obra" para incluir tus propias pinturas o referencias de color.</div>
+      `;
+      container.appendChild(emptyBox);
+      return;
+    }
+
+    artworks.forEach(p => {
       const card = document.createElement('div');
       card.className = 'painter-card';
 
+      // Header with visual preview image and full-screen hint
       const header = document.createElement('div');
       header.className = 'painter-artwork-header';
       if (p.image) {
@@ -2025,16 +2165,37 @@ class GomPickerApp {
       } else {
         header.style.background = `linear-gradient(135deg, ${p.colors[0]?.hex || '#1a1a24'}, ${p.colors[1]?.hex || '#333'})`;
       }
+      
       const overlay = document.createElement('div');
       overlay.className = 'painter-artwork-overlay';
+      overlay.innerHTML = `
+        <span class="painter-overlay-hint">
+          <span>🔍</span> Pantalla Completa & Cuentagotas
+        </span>
+      `;
       header.appendChild(overlay);
+
+      // Clicking artwork header opens full-screen lightbox modal
+      header.addEventListener('click', () => {
+        this.openMasterViewerModal(p);
+      });
 
       const meta = document.createElement('div');
       meta.className = 'painter-meta';
 
+      const headerRow = document.createElement('div');
+      headerRow.className = 'painter-header-row';
+
       const name = document.createElement('div');
       name.className = 'painter-name';
       name.textContent = p.artist;
+
+      const tag = document.createElement('span');
+      tag.className = 'painter-movement-tag';
+      tag.textContent = p.movement || 'Maestro Clásico';
+
+      headerRow.appendChild(name);
+      headerRow.appendChild(tag);
 
       const title = document.createElement('div');
       title.className = 'painter-artwork-title';
@@ -2057,31 +2218,61 @@ class GomPickerApp {
         sw.className = 'painter-swatch';
         sw.style.backgroundColor = dispHex;
         sw.dataset.swatchHex = dispHex;
-        sw.dataset.swatchLabel = `${col.name} (${col.role})`;
+        sw.dataset.swatchLabel = `${col.name} (${col.role || ''})`;
         sw.draggable = true;
-        sw.addEventListener('click', () => {
+        sw.title = `${col.name} (${col.hex}) • Click para seleccionar`;
+        sw.addEventListener('click', (e) => {
+          e.stopPropagation();
           this.setColorDirectly(baseRgb);
+          this.showToast(`Color seleccionado: ${col.name} (${dispHex})`);
         });
         strip.appendChild(sw);
       });
 
+      // Actions row
+      const actionsRow = document.createElement('div');
+      actionsRow.style.display = 'flex';
+      actionsRow.style.justifyContent = 'space-between';
+      actionsRow.style.alignItems = 'center';
+      actionsRow.style.marginTop = '8px';
+
       const btnSave = document.createElement('button');
       btnSave.className = 'tool-action-btn';
-      btnSave.style.marginTop = '8px';
       btnSave.style.padding = '4px 8px';
       btnSave.style.fontSize = '0.72rem';
       btnSave.innerHTML = `<span>📥</span> Guardar Muestras`;
-      btnSave.addEventListener('click', () => {
+      btnSave.addEventListener('click', (e) => {
+        e.stopPropagation();
         this.swatchManager.addPalette(p.title, p.colors.map(c => c.hex));
         this.renderSwatchesCollection();
-        this.showToast(`Paleta '${p.title}' añadida a tu biblioteca`);
+        this.showToast(`Paleta '${p.title}' guardada en tu biblioteca`);
       });
+      actionsRow.appendChild(btnSave);
 
-      meta.appendChild(name);
+      // If custom artwork, allow deletion
+      if (p.isCustom) {
+        const btnDelArt = document.createElement('button');
+        btnDelArt.className = 'history-btn-action danger';
+        btnDelArt.style.fontSize = '0.7rem';
+        btnDelArt.style.padding = '3px 6px';
+        btnDelArt.title = 'Eliminar esta obra del catálogo';
+        btnDelArt.innerHTML = `<span>🗑️</span>`;
+        btnDelArt.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (confirm(`¿Eliminar obra "${p.title}"?`)) {
+            this.masterCatalogManager.deleteArtwork(p.id);
+            this.renderMasterPainters();
+            this.showToast('Obra eliminada del catálogo');
+          }
+        });
+        actionsRow.appendChild(btnDelArt);
+      }
+
+      meta.appendChild(headerRow);
       meta.appendChild(title);
       meta.appendChild(desc);
       meta.appendChild(strip);
-      meta.appendChild(btnSave);
+      meta.appendChild(actionsRow);
 
       card.appendChild(header);
       card.appendChild(meta);
@@ -2089,7 +2280,284 @@ class GomPickerApp {
     });
   }
 
-  // --- EXTRACTOR K-MEANS EN LOTE ---
+  // --- FULL-SCREEN MASTER VIEWER LIGHTBOX MODAL ---
+
+  _bindMasterLightboxModal() {
+    const modal = document.getElementById('masterViewerModal');
+    const btnClose = document.getElementById('btnCloseMasterModal');
+
+    if (!modal) return;
+
+    const closeModal = () => {
+      modal.style.display = 'none';
+    };
+
+    if (btnClose) btnClose.onclick = closeModal;
+
+    modal.onclick = (e) => {
+      if (e.target === modal) closeModal();
+    };
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.style.display === 'flex') {
+        closeModal();
+      }
+    });
+  }
+
+  openMasterViewerModal(artwork) {
+    const modal = document.getElementById('masterViewerModal');
+    if (!modal) return;
+
+    // Fill textual metadata
+    const titleHeader = document.getElementById('modalArtworkTitleHeader');
+    const titleEl = document.getElementById('modalArtworkTitle');
+    const artistEl = document.getElementById('modalArtworkArtist');
+    const yearEl = document.getElementById('modalArtworkYear');
+    const movementEl = document.getElementById('modalArtworkMovement');
+    const descEl = document.getElementById('modalArtworkDesc');
+    const pigmentsEl = document.getElementById('modalArtworkPigments');
+    const techniqueEl = document.getElementById('modalArtworkTechnique');
+    const tipEl = document.getElementById('modalArtworkTip');
+
+    if (titleHeader) titleHeader.textContent = artwork.title;
+    if (titleEl) titleEl.textContent = artwork.title;
+    if (artistEl) artistEl.textContent = artwork.artist;
+    if (yearEl) yearEl.textContent = artwork.year ? `(${artwork.year})` : '';
+    if (movementEl) movementEl.textContent = artwork.movement || 'Arte Histórico';
+    if (descEl) descEl.textContent = artwork.description || '';
+    if (pigmentsEl) pigmentsEl.textContent = artwork.pigmentsUsed || 'Pigmentos tradicionales de caballete.';
+    if (techniqueEl) techniqueEl.textContent = artwork.technique || 'Estudio de armonía y claroscuro.';
+    if (tipEl) tipEl.textContent = artwork.digitalTip || 'Aplica estos valores cromáticos en tus composiciones.';
+
+    // Render palette swatches
+    const grid = document.getElementById('modalPaletteGrid');
+    if (grid) {
+      grid.innerHTML = '';
+      artwork.colors.forEach(col => {
+        const baseRgb = ColorMath.hexToRgb(col.hex);
+        const cell = document.createElement('div');
+        cell.className = 'modal-swatch-cell';
+        cell.style.backgroundColor = col.hex;
+        cell.title = `${col.name} (${col.hex}) • Click para seleccionar`;
+        cell.innerHTML = `<span class="modal-swatch-hex">${col.hex}</span>`;
+        cell.onclick = () => {
+          this.setColorDirectly(baseRgb);
+          this.showToast(`Muestra seleccionada: ${col.name} (${col.hex})`);
+        };
+        grid.appendChild(cell);
+      });
+    }
+
+    const btnSaveModal = document.getElementById('btnModalSavePalette');
+    if (btnSaveModal) {
+      btnSaveModal.onclick = () => {
+        this.swatchManager.addPalette(artwork.title, artwork.colors.map(c => c.hex));
+        this.renderSwatchesCollection();
+        this.showToast(`Paleta de '${artwork.title}' guardada en Bibliotecas`);
+      };
+    }
+
+    // Draw high-resolution canvas with live eyedropper
+    const canvas = document.getElementById('modalArtworkCanvas');
+    const badge = document.getElementById('modalEyedropperBadge');
+    const badgeDot = document.getElementById('modalEyedropperDot');
+    const badgeHex = document.getElementById('modalEyedropperHex');
+
+    if (canvas && artwork.image) {
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const maxW = 560;
+        const maxH = 460;
+        const ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
+        canvas.width = Math.round(img.naturalWidth * ratio);
+        canvas.height = Math.round(img.naturalHeight * ratio);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      };
+      img.src = artwork.image;
+
+      // Eyedropper on hover
+      canvas.onmousemove = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = Math.floor((e.clientX - rect.left) * scaleX);
+        const y = Math.floor((e.clientY - rect.top) * scaleY);
+
+        if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+          const pixel = ctx.getImageData(x, y, 1, 1).data;
+          const hex = ColorMath.rgbToHex(pixel[0], pixel[1], pixel[2]);
+          if (badgeHex) badgeHex.textContent = hex;
+          if (badgeDot) badgeDot.style.backgroundColor = hex;
+          if (badge) badge.style.display = 'flex';
+        }
+      };
+
+      canvas.onmouseleave = () => {
+        if (badge) badge.style.display = 'none';
+      };
+
+      // Eyedropper on click
+      canvas.onclick = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = Math.floor((e.clientX - rect.left) * scaleX);
+        const y = Math.floor((e.clientY - rect.top) * scaleY);
+
+        if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+          const pixel = ctx.getImageData(x, y, 1, 1).data;
+          const rgb = { r: pixel[0], g: pixel[1], b: pixel[2] };
+          this.setColorDirectly(rgb);
+          this.showToast(`Cuentagotas: ${ColorMath.rgbToHex(rgb.r, rgb.g, rgb.b)}`);
+        }
+      };
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  // --- ADD CUSTOM ARTWORK MODAL ---
+
+  _bindAddArtworkModal() {
+    const modal = document.getElementById('addArtworkModal');
+    const btnClose = document.getElementById('btnCloseAddArtModal');
+    const btnCancel = document.getElementById('btnCancelAddArt');
+    const btnSave = document.getElementById('btnSaveAddArt');
+    const dropZone = document.getElementById('addArtDropZone');
+    const fileInput = document.getElementById('addArtFileInput');
+    const previewContainer = document.getElementById('addArtPreviewContainer');
+    const previewImg = document.getElementById('addArtPreviewImg');
+    const strip = document.getElementById('addArtPalettePreviewStrip');
+
+    if (!modal) return;
+
+    let pendingArtworkData = {
+      image: '',
+      colors: []
+    };
+
+    const closeModal = () => {
+      modal.style.display = 'none';
+    };
+
+    if (btnClose) btnClose.onclick = closeModal;
+    if (btnCancel) btnCancel.onclick = closeModal;
+
+    const processFile = (file) => {
+      if (!file || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const dataUrl = e.target.result;
+        pendingArtworkData.image = dataUrl;
+        if (previewImg) previewImg.src = dataUrl;
+        if (previewContainer) previewContainer.style.display = 'block';
+
+        // Auto extract 6 colors with K-Means
+        try {
+          const item = await this.imageExtractor.processSingleImageFile(file, 6, 'dominant');
+          pendingArtworkData.colors = item.palette.map((p, idx) => ({
+            hex: p.hex,
+            name: `Color ${idx + 1}`,
+            role: 'Extracción K-Means'
+          }));
+
+          if (strip) {
+            strip.innerHTML = '';
+            pendingArtworkData.colors.forEach(c => {
+              const d = document.createElement('div');
+              d.style.flex = '1';
+              d.style.backgroundColor = c.hex;
+              strip.appendChild(d);
+            });
+          }
+        } catch (err) {
+          console.warn('Auto extraction error', err);
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+
+    if (dropZone && fileInput) {
+      dropZone.onclick = () => fileInput.click();
+      fileInput.onchange = (e) => {
+        if (e.target.files && e.target.files[0]) processFile(e.target.files[0]);
+      };
+      dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); };
+      dropZone.ondragleave = () => dropZone.classList.remove('drag-over');
+      dropZone.ondrop = (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+      };
+    }
+
+    if (btnSave) {
+      btnSave.onclick = () => {
+        const title = (document.getElementById('addArtTitleInput')?.value || '').trim();
+        const artist = (document.getElementById('addArtArtistInput')?.value || '').trim();
+        const year = (document.getElementById('addArtYearInput')?.value || '').trim();
+        const movement = (document.getElementById('addArtMovementInput')?.value || '').trim();
+        const desc = (document.getElementById('addArtDescInput')?.value || '').trim();
+
+        if (!title || !artist) {
+          this.showToast('Por favor introduce Título y Artista', 'warn');
+          return;
+        }
+
+        if (!pendingArtworkData.image) {
+          this.showToast('Por favor selecciona una imagen para la obra', 'warn');
+          return;
+        }
+
+        // Determine destination catalog: if current is custom use it, otherwise find or create custom catalog
+        let targetCatId = this.activeMasterCatalog;
+        const isCustomCat = this.masterCatalogManager.customCatalogs.some(c => c.id === targetCatId);
+        if (!isCustomCat) {
+          // If in built-in catalog, assign to first custom or create one
+          if (this.masterCatalogManager.customCatalogs.length === 0) {
+            const newCat = this.masterCatalogManager.createCatalog('Mis Obras & Referencias', 'Catálogo personal de usuario.');
+            targetCatId = newCat.id;
+          } else {
+            targetCatId = this.masterCatalogManager.customCatalogs[0].id;
+          }
+          this.activeMasterCatalog = targetCatId;
+          this._initMasterCatalogs();
+        }
+
+        this.masterCatalogManager.addArtworkToCatalog(targetCatId, {
+          title,
+          artist,
+          year,
+          movement,
+          description: desc || 'Obra añadida por el usuario.',
+          image: pendingArtworkData.image,
+          colors: pendingArtworkData.colors.length > 0 ? pendingArtworkData.colors : [
+            { hex: '#333333', name: 'Base' },
+            { hex: '#888888', name: 'Medio' },
+            { hex: '#DDDDDD', name: 'Luz' }
+          ]
+        });
+
+        // Reset form
+        document.getElementById('addArtTitleInput').value = '';
+        document.getElementById('addArtArtistInput').value = '';
+        document.getElementById('addArtYearInput').value = '';
+        document.getElementById('addArtMovementInput').value = '';
+        document.getElementById('addArtDescInput').value = '';
+        if (previewContainer) previewContainer.style.display = 'none';
+        pendingArtworkData = { image: '', colors: [] };
+
+        closeModal();
+        this.renderMasterPainters();
+        this.showToast(`Obra "${title}" guardada en tu catálogo`);
+      };
+    }
+  }
+
+  // --- EXTRACTOR K-MEANS MULTI-IMAGEN & CARPETA COMPLETA EN LOTE ---
 
   _bindImageExtractor() {
     const dropArea = document.getElementById('imageDropArea');
@@ -2101,6 +2569,12 @@ class GomPickerApp {
     const btnExtract = document.getElementById('btnExtractAction');
     const btnSaveExtracted = document.getElementById('btnSaveExtracted');
 
+    const btnBatchSelectAll = document.getElementById('btnBatchSelectAll');
+    const btnBatchDeselectAll = document.getElementById('btnBatchDeselectAll');
+    const btnBatchAddMore = document.getElementById('btnBatchAddMore');
+    const btnBatchClear = document.getElementById('btnBatchClear');
+    const btnSaveMasterPalette = document.getElementById('btnSaveMasterBatchPalette');
+
     const btnMonet = document.getElementById('btnSampleMonet');
     const btnVanGogh = document.getElementById('btnSampleVanGogh');
     const btnRembrandt = document.getElementById('btnSampleRembrandt');
@@ -2109,40 +2583,72 @@ class GomPickerApp {
     if (btnVanGogh) btnVanGogh.addEventListener('click', () => this.loadSampleImage('assets/samples/vangogh.png'));
     if (btnRembrandt) btnRembrandt.addEventListener('click', () => this.loadSampleImage('assets/samples/rembrandt.png'));
 
-    if (btnSelectBatch) {
+    if (btnSelectBatch && fileInput) {
       btnSelectBatch.addEventListener('click', (e) => {
         e.stopPropagation();
+        this.isAppendBatchMode = false;
         fileInput.click();
       });
     }
 
+    // FOLDER LOADING: Primary mechanism window.showDirectoryPicker() with recursive search, fallback to webkitdirectory
+    const pickFolderHandler = async () => {
+      this.isAppendBatchMode = false;
+      if ('showDirectoryPicker' in window) {
+        try {
+          const dirHandle = await window.showDirectoryPicker();
+          const files = [];
+
+          async function getFilesRecursively(handle) {
+            for await (const entry of handle.values()) {
+              if (entry.kind === 'file') {
+                try {
+                  const file = await entry.getFile();
+                  if (file.type ? file.type.startsWith('image/') : /\.(jpe?g|png|webp|svg|bmp|gif)$/i.test(file.name)) {
+                    files.push(file);
+                  }
+                } catch (e) {
+                  console.warn('Error reading file from dir', e);
+                }
+              } else if (entry.kind === 'directory') {
+                await getFilesRecursively(entry);
+              }
+            }
+          }
+
+          this.showToast('Explorando carpeta seleccionada...', 'info');
+          await getFilesRecursively(dirHandle);
+
+          if (files.length > 0) {
+            this.handleImageFiles(files, false);
+          } else {
+            this.showToast('No se encontraron archivos de imagen en la carpeta', 'warn');
+          }
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') return; // User closed picker
+          console.warn('showDirectoryPicker failed, falling back to input:', err);
+        }
+      }
+
+      // Fallback
+      if (folderInput) {
+        folderInput.value = '';
+        folderInput.click();
+      }
+    };
+
     if (btnSelectFolder) {
       btnSelectFolder.addEventListener('click', (e) => {
         e.stopPropagation();
-        folderInput.click();
-      });
-    }
-
-    if (dropArea) {
-      dropArea.addEventListener('click', () => fileInput.click());
-      dropArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropArea.classList.add('drag-over');
-      });
-      dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-over'));
-      dropArea.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropArea.classList.remove('drag-over');
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-          this.handleImageFiles(e.dataTransfer.files);
-        }
+        pickFolderHandler();
       });
     }
 
     if (fileInput) {
       fileInput.addEventListener('change', (e) => {
         if (e.target.files && e.target.files.length > 0) {
-          this.handleImageFiles(e.target.files);
+          this.handleImageFiles(e.target.files, this.isAppendBatchMode);
         }
       });
     }
@@ -2150,11 +2656,78 @@ class GomPickerApp {
     if (folderInput) {
       folderInput.addEventListener('change', (e) => {
         if (e.target.files && e.target.files.length > 0) {
-          this.handleImageFiles(e.target.files);
+          this.handleImageFiles(e.target.files, this.isAppendBatchMode);
         }
       });
     }
 
+    // Drag and Drop supporting both individual files and entire directories
+    if (dropArea) {
+      dropArea.addEventListener('click', () => {
+        this.isAppendBatchMode = false;
+        fileInput.click();
+      });
+      dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.classList.add('drag-over');
+      });
+      dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-over'));
+      dropArea.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('drag-over');
+
+        const items = e.dataTransfer.items;
+        if (items && items.length > 0) {
+          const files = [];
+
+          const traverseEntry = (entry) => {
+            return new Promise((resolve) => {
+              if (entry.isFile) {
+                entry.file(f => {
+                  if (f.type ? f.type.startsWith('image/') : /\.(jpe?g|png|webp|svg|bmp|gif)$/i.test(f.name)) {
+                    files.push(f);
+                  }
+                  resolve();
+                }, () => resolve());
+              } else if (entry.isDirectory) {
+                const dirReader = entry.createReader();
+                dirReader.readEntries(async (entries) => {
+                  for (const ent of entries) {
+                    await traverseEntry(ent);
+                  }
+                  resolve();
+                }, () => resolve());
+              } else {
+                resolve();
+              }
+            });
+          };
+
+          const entriesToWait = [];
+          for (let i = 0; i < items.length; i++) {
+            const entry = items[i].webkitGetAsEntry ? items[i].webkitGetAsEntry() : null;
+            if (entry) {
+              entriesToWait.push(traverseEntry(entry));
+            }
+          }
+
+          if (entriesToWait.length > 0) {
+            await Promise.all(entriesToWait);
+            if (files.length > 0) {
+              this.handleImageFiles(files, false);
+              return;
+            }
+          }
+        }
+
+        // Direct files fallback
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          this.handleImageFiles(e.dataTransfer.files, false);
+        }
+      });
+    }
+
+    // Canvas Live Eyedropper
     if (extractCanvas) {
       extractCanvas.addEventListener('click', (e) => {
         const rect = extractCanvas.getBoundingClientRect();
@@ -2184,62 +2757,258 @@ class GomPickerApp {
         }
       });
     }
+
+    // Batch Management Buttons
+    if (btnBatchSelectAll) {
+      btnBatchSelectAll.onclick = () => {
+        this.batchItems.forEach(it => { it.selected = true; });
+        this.renderBatchThumbnails();
+        this.updateBatchComparativeStats();
+      };
+    }
+
+    if (btnBatchDeselectAll) {
+      btnBatchDeselectAll.onclick = () => {
+        this.batchItems.forEach(it => { it.selected = false; });
+        this.renderBatchThumbnails();
+        this.updateBatchComparativeStats();
+      };
+    }
+
+    if (btnBatchAddMore) {
+      btnBatchAddMore.onclick = () => {
+        this.isAppendBatchMode = true;
+        if (fileInput) fileInput.click();
+      };
+    }
+
+    if (btnBatchClear) {
+      btnBatchClear.onclick = () => {
+        this.batchItems = [];
+        const batchSection = document.getElementById('batchManagementSection');
+        if (batchSection) batchSection.style.display = 'none';
+        this.showToast('Lote limpiado');
+      };
+    }
+
+    if (btnSaveMasterPalette) {
+      btnSaveMasterPalette.onclick = () => {
+        if (this.lastBatchMetrics && this.lastBatchMetrics.masterPalette && this.lastBatchMetrics.masterPalette.length > 0) {
+          const hexes = this.lastBatchMetrics.masterPalette.map(p => p.hex);
+          this.swatchManager.addPalette(`Paleta Síntesis Lote (${hexes.length} colores)`, hexes);
+          this.renderSwatchesCollection();
+          this.showToast('Paleta Maestra Consolidada guardada en Bibliotecas');
+        } else {
+          this.showToast('No hay paleta consolidada generada', 'warn');
+        }
+      };
+    }
   }
 
-  async handleImageFiles(filesList) {
-    if (filesList.length === 1) {
-      await this.imageExtractor.loadFile(filesList[0]);
-      this.runImageExtraction();
-      document.getElementById('batchThumbnailsStrip').style.display = 'none';
+  async handleImageFiles(filesList, append = false) {
+    const validFiles = Array.from(filesList).filter(f => f.type ? f.type.startsWith('image/') : /\.(jpe?g|png|webp|svg|bmp|gif)$/i.test(f.name));
+
+    if (validFiles.length === 0) {
+      this.showToast('No se encontraron imágenes válidas para procesar', 'warn');
+      return;
+    }
+
+    const count = parseInt(document.getElementById('extractCountSelect')?.value || '6', 10);
+    const filter = document.getElementById('extractFilterSelect')?.value || 'dominant';
+
+    if (!append) {
+      this.batchItems = [];
+    }
+
+    this.showToast(`Procesando ${validFiles.length} imágenes con K-Means...`, 'info');
+
+    // Process each image file
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      try {
+        const item = await this.imageExtractor.processSingleImageFile(file, count, filter);
+        this.batchItems.push(item);
+      } catch (err) {
+        console.warn(`Error processing ${file.name}`, err);
+      }
+    }
+
+    if (this.batchItems.length === 0) return;
+
+    // Load first image on active canvas
+    const firstItem = this.batchItems[0];
+    await this.imageExtractor.loadImage(firstItem.dataUrl);
+    this.runImageExtraction();
+
+    const batchSection = document.getElementById('batchManagementSection');
+
+    if (this.batchItems.length > 1) {
+      if (batchSection) batchSection.style.display = 'block';
+      this.renderBatchThumbnails();
+      this.updateBatchComparativeStats();
+      this.showToast(`Lote activo: ${this.batchItems.length} imágenes procesadas con éxito`);
     } else {
-      // Process batch
-      this.showToast(`Procesando lote de ${filesList.length} imágenes...`, 'info');
-      const count = parseInt(document.getElementById('extractCountSelect').value, 10);
-      const filter = document.getElementById('extractFilterSelect').value;
+      if (batchSection) batchSection.style.display = 'none';
+      this.showToast(`Imagen ${firstItem.name} cargada`);
+    }
+  }
 
-      const batch = await this.imageExtractor.processBatch(filesList, count, filter);
-      this.batchResults = batch;
+  renderBatchThumbnails() {
+    const list = document.getElementById('batchThumbnailsList');
+    if (!list) return;
+    list.innerHTML = '';
 
-      // Render batch strip
-      const strip = document.getElementById('batchThumbnailsStrip');
-      const list = document.getElementById('batchThumbnailsList');
-      const badge = document.getElementById('batchCountBadge');
+    this.batchItems.forEach((it, idx) => {
+      const card = document.createElement('div');
+      card.className = `batch-item-card ${it.selected ? 'selected' : ''}`;
 
-      if (strip && list) {
-        strip.style.display = 'block';
-        list.innerHTML = '';
-        if (badge) badge.textContent = `${batch.items.length} imágenes procesadas`;
+      // Top bar with checkbox, filename, and delete button
+      const topbar = document.createElement('div');
+      topbar.className = 'batch-item-topbar';
 
-        batch.items.forEach(it => {
-          const thumb = document.createElement('div');
-          thumb.style.width = '60px';
-          thumb.style.height = '60px';
-          thumb.style.borderRadius = '6px';
-          thumb.style.backgroundImage = `url(${it.dataUrl})`;
-          thumb.style.backgroundSize = 'cover';
-          thumb.style.backgroundPosition = 'center';
-          thumb.style.border = '1px solid rgba(255,255,255,0.2)';
-          thumb.style.cursor = 'pointer';
-          thumb.title = `${it.name} - Click para ver paleta individual`;
+      const leftGroup = document.createElement('div');
+      leftGroup.style.display = 'flex';
+      leftGroup.style.alignItems = 'center';
+      leftGroup.style.gap = '6px';
 
-          thumb.addEventListener('click', () => {
-            this.renderExtractedPalette(it.palette.map(p => ({
-              hex: p.hex,
-              rgb: p.rgb,
-              dominancePercent: Math.round(100 / it.palette.length),
-              luminance: ColorMath.getLuminance(p.rgb.r, p.rgb.g, p.rgb.b)
-            })));
-            this.showToast(`Paleta de: ${it.name}`);
-          });
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'batch-item-checkbox';
+      checkbox.checked = it.selected !== false;
+      checkbox.onchange = () => {
+        it.selected = checkbox.checked;
+        card.classList.toggle('selected', it.selected);
+        this.updateBatchComparativeStats();
+      };
 
-          list.appendChild(thumb);
+      const name = document.createElement('span');
+      name.className = 'batch-item-name';
+      name.textContent = it.name;
+      name.title = it.name;
+
+      leftGroup.appendChild(checkbox);
+      leftGroup.appendChild(name);
+
+      const btnDelete = document.createElement('button');
+      btnDelete.className = 'batch-item-delete';
+      btnDelete.innerHTML = '✕';
+      btnDelete.title = 'Eliminar del lote';
+      btnDelete.onclick = (e) => {
+        e.stopPropagation();
+        this.batchItems.splice(idx, 1);
+        if (this.batchItems.length <= 1) {
+          const batchSection = document.getElementById('batchManagementSection');
+          if (batchSection) batchSection.style.display = 'none';
+        }
+        this.renderBatchThumbnails();
+        this.updateBatchComparativeStats();
+      };
+
+      topbar.appendChild(leftGroup);
+      topbar.appendChild(btnDelete);
+
+      // Thumbnail preview - clicking loads onto canvas
+      const thumb = document.createElement('div');
+      thumb.className = 'batch-item-thumb';
+      thumb.style.backgroundImage = `url(${it.dataUrl})`;
+      thumb.title = `Click para ver y muestrear: ${it.name}`;
+      thumb.onclick = async () => {
+        await this.imageExtractor.loadImage(it.dataUrl);
+        this.runImageExtraction();
+        this.showToast(`Cargada en lienzo: ${it.name}`);
+      };
+
+      // Mini Palette strip
+      const strip = document.createElement('div');
+      strip.className = 'batch-item-strip';
+      if (it.palette) {
+        it.palette.forEach(p => {
+          const sw = document.createElement('div');
+          sw.style.flex = '1';
+          sw.style.backgroundColor = p.hex;
+          strip.appendChild(sw);
         });
       }
 
-      // Show unified master palette
-      if (batch.masterPalette.length > 0) {
-        this.renderExtractedPalette(batch.masterPalette);
-        this.showToast(`Sintetizada Paleta Maestra Unificada de ${batch.items.length} imágenes`);
+      // Stats row
+      const statsRow = document.createElement('div');
+      statsRow.className = 'batch-item-stats-row';
+      statsRow.innerHTML = `
+        <span>${it.stats.keyType}</span>
+        <span>☀️${it.stats.warmPct}% • ❄️${it.stats.coolPct}%</span>
+      `;
+
+      card.appendChild(topbar);
+      card.appendChild(thumb);
+      card.appendChild(strip);
+      card.appendChild(statsRow);
+      list.appendChild(card);
+    });
+  }
+
+  updateBatchComparativeStats() {
+    const count = parseInt(document.getElementById('extractCountSelect')?.value || '6', 10);
+    const metrics = this.imageExtractor.calculateBatchMetrics(this.batchItems, count);
+    this.lastBatchMetrics = metrics;
+
+    const badge = document.getElementById('batchCountBadge');
+    if (badge) badge.textContent = `${metrics.selectedCount} seleccionadas de ${metrics.totalCount}`;
+
+    const label = document.getElementById('batchMetricsSelectionLabel');
+    if (label) label.textContent = `${metrics.selectedCount} imágenes activas en el cálculo`;
+
+    // Thermal balance
+    const statWarm = document.getElementById('statWarmPct');
+    const statCool = document.getElementById('statCoolPct');
+    const barWarm = document.getElementById('barWarm');
+    const barCool = document.getElementById('barCool');
+
+    if (statWarm) statWarm.textContent = `${metrics.warmPct}%`;
+    if (statCool) statCool.textContent = `${metrics.coolPct}%`;
+    if (barWarm) barWarm.style.width = `${metrics.warmPct}%`;
+    if (barCool) barCool.style.width = `${metrics.coolPct}%`;
+
+    // Tonal keys
+    const statHigh = document.getElementById('statHighKey');
+    const statMid = document.getElementById('statMidKey');
+    const statLow = document.getElementById('statLowKey');
+    const barHigh = document.getElementById('barHighKey');
+    const barMid = document.getElementById('barMidKey');
+    const barLow = document.getElementById('barLowKey');
+
+    if (statHigh) statHigh.textContent = `${metrics.highKeyPct}%`;
+    if (statMid) statMid.textContent = `${metrics.midKeyPct}%`;
+    if (statLow) statLow.textContent = `${metrics.lowKeyPct}%`;
+    if (barHigh) barHigh.style.width = `${metrics.highKeyPct}%`;
+    if (barMid) barMid.style.width = `${metrics.midKeyPct}%`;
+    if (barLow) barLow.style.width = `${metrics.lowKeyPct}%`;
+
+    // Averages
+    const statAvgLum = document.getElementById('statAvgLum');
+    const statAvgSat = document.getElementById('statAvgSat');
+    const statDynamicRange = document.getElementById('statDynamicRange');
+
+    if (statAvgLum) statAvgLum.textContent = `${metrics.avgLum}%`;
+    if (statAvgSat) statAvgSat.textContent = `${metrics.avgSat}%`;
+    if (statDynamicRange) statDynamicRange.textContent = `${metrics.dynamicRange}%`;
+
+    // Master consolidated palette
+    const masterStrip = document.getElementById('masterBatchPaletteStrip');
+    if (masterStrip) {
+      masterStrip.innerHTML = '';
+      if (metrics.masterPalette && metrics.masterPalette.length > 0) {
+        metrics.masterPalette.forEach(p => {
+          const sw = document.createElement('div');
+          sw.style.flex = '1';
+          sw.style.backgroundColor = p.hex;
+          sw.style.cursor = 'pointer';
+          sw.title = `${p.hex} (${p.weight || ''}%) - Click para seleccionar`;
+          sw.onclick = () => {
+            this.setColorDirectly(p.rgb);
+            this.showToast(`Color de paleta maestra: ${p.hex}`);
+          };
+          masterStrip.appendChild(sw);
+        });
       }
     }
   }
@@ -2247,15 +3016,18 @@ class GomPickerApp {
   loadSampleImage(path) {
     this.imageExtractor.loadImage(path).then(() => {
       this.runImageExtraction();
+      const batchSection = document.getElementById('batchManagementSection');
+      if (batchSection) batchSection.style.display = 'none';
+      this.showToast(`Muestra cargada: ${path.split('/').pop()}`);
     }).catch(err => {
       console.warn('Could not load sample image', err);
     });
   }
 
   runImageExtraction() {
-    const count = parseInt(document.getElementById('extractCountSelect').value, 10);
-    const filter = document.getElementById('extractFilterSelect').value;
-    const sort = document.getElementById('extractSortSelect').value;
+    const count = parseInt(document.getElementById('extractCountSelect')?.value || '6', 10);
+    const filter = document.getElementById('extractFilterSelect')?.value || 'dominant';
+    const sort = document.getElementById('extractSortSelect')?.value || 'dominance';
 
     this.imageExtractor.options.colorCount = count;
     this.imageExtractor.options.filterMode = filter;
