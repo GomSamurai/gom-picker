@@ -189,6 +189,86 @@ export const AIAssistant = {
     `;
 
     switch (sceneType) {
+      // 0. BOTANICAL & FLORAL BOUQUET (FLORES, ROSAS Y RAMILLETES)
+      case 'botanical': {
+        return `
+          <svg viewBox="0 0 400 240" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="border-radius: 8px; overflow: hidden;">
+            <defs>
+              <radialGradient id="floralBackdropGlow" cx="50%" cy="50%" r="70%">
+                <stop offset="0%" stop-color="${c4}" stop-opacity="0.28" />
+                <stop offset="60%" stop-color="${c1}" stop-opacity="0.14" />
+                <stop offset="100%" stop-color="${c0}" stop-opacity="0" />
+              </radialGradient>
+              <filter id="petalGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="rgba(0,0,0,0.6)" />
+              </filter>
+            </defs>
+
+            <!-- 60% Dominante: Fondo atmosférico de penumbra / tela de terciopelo -->
+            <rect width="400" height="240" fill="${c0}" />
+            <rect width="400" height="240" fill="url(#floralBackdropGlow)" />
+
+            <!-- Lazo / Silueta de base del ramo -->
+            <ellipse cx="200" cy="225" rx="55" ry="12" fill="${c0}" stroke="${c1}" stroke-width="1.5" opacity="0.85" />
+
+            <!-- 30% Secundario: Tallos florales y follaje esmeralda botánico -->
+            <g stroke="${c1}" stroke-width="3" stroke-linecap="round" fill="none">
+              <path d="M195 235 Q198 185 200 145" />
+              <path d="M175 235 Q180 195 155 140" />
+              <path d="M215 235 Q210 195 245 145" />
+              <path d="M150 235 Q170 195 115 155" />
+              <path d="M245 235 Q225 195 285 160" />
+            </g>
+            <!-- Hojas de follaje envolventes (30% Secundario) -->
+            <path d="M165 195 Q125 185 110 205 Q140 215 165 195 Z" fill="${c1}" opacity="0.9" />
+            <path d="M230 195 Q270 185 285 205 Q255 215 230 195 Z" fill="${c1}" opacity="0.9" />
+            <path d="M175 165 Q140 145 125 165 Q150 175 175 165 Z" fill="${c1}" />
+            <path d="M225 165 Q260 145 275 165 Q250 175 225 165 Z" fill="${c1}" />
+            <path d="M185 130 Q160 110 145 130 Q165 140 185 130 Z" fill="${c1}" opacity="0.85" />
+            <path d="M215 130 Q240 110 255 130 Q235 140 215 130 Z" fill="${c1}" opacity="0.85" />
+
+            <!-- Rosas secundarias en penumbra (30% Secundario / Transición c4) -->
+            <g transform="translate(140, 115)" opacity="0.85">
+              <circle cx="0" cy="0" r="22" fill="${c4}" />
+              <circle cx="0" cy="0" r="14" fill="${c0}" opacity="0.5" />
+              <path d="M-10 -4 Q0 -14 10 -4 Q0 10 -10 -4 Z" fill="${c1}" opacity="0.7" />
+            </g>
+            <g transform="translate(260, 125)" opacity="0.85">
+              <circle cx="0" cy="0" r="20" fill="${c4}" />
+              <circle cx="0" cy="0" r="12" fill="${c0}" opacity="0.5" />
+              <path d="M-8 -3 Q0 -12 8 -3 Q0 8 -8 -3 Z" fill="${c1}" opacity="0.7" />
+            </g>
+            <g transform="translate(195, 65)" opacity="0.75">
+              <circle cx="0" cy="0" r="16" fill="${c4}" />
+              <circle cx="0" cy="0" r="9" fill="${c0}" opacity="0.5" />
+            </g>
+
+            <!-- 10% Acento Focal: Gran Rosa Roja Central en Plena Floración -->
+            <g transform="translate(200, 120)" filter="url(#petalGlow)">
+              <!-- Capa de pétalos exteriores -->
+              <ellipse cx="0" cy="0" rx="36" ry="32" fill="${c2}" />
+              <path d="M-32 -6 C-38 18 -12 36 0 36 C12 36 38 18 32 -6 C26 -28 -26 -28 -32 -6 Z" fill="${c2}" />
+              
+              <!-- Pétalos medios envolventes aterciopelados -->
+              <path d="M-24 -4 C-28 14 -8 24 0 24 C8 24 28 14 24 -4 C20 -18 -20 -18 -24 -4 Z" fill="${c4}" opacity="0.7" />
+              
+              <!-- Pétalos interiores y corazón en espiral de rosa -->
+              <ellipse cx="1" cy="-2" rx="15" ry="13" fill="${c2}" />
+              <path d="M-7 -4 Q1 -12 9 -4 Q2 5 -7 -4 Z" fill="${c0}" opacity="0.75" />
+              <path d="M-4 -2 Q1 -7 6 -2" stroke="${c3}" stroke-width="1.2" fill="none" opacity="0.6" />
+
+              <!-- Gotas de rocío / Brillos especulares (Luz de Recorte c3) -->
+              <circle cx="-14" cy="-8" r="3.2" fill="${c3}" opacity="0.95" />
+              <circle cx="-13" cy="-9" r="1.2" fill="#FFFFFF" />
+              <circle cx="16" cy="10" r="2.2" fill="${c3}" opacity="0.9" />
+              <circle cx="8" cy="-14" r="1.8" fill="${c3}" opacity="0.8" />
+            </g>
+
+            ${legendPill}
+          </svg>
+        `;
+      }
+
       // 1. CREATURE & DRAGON IN OBSIDIAN CAVERN
       case 'creature': {
         return `

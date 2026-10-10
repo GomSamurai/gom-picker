@@ -3166,7 +3166,10 @@ class GomPickerApp {
       // Auto-scene detection based on keywords
       const pLower = p.toLowerCase();
       if (sceneSelect) {
-        if (/drag[oó]n|criatura|monstruo|bestia|reptil|volc[aá]n|cueva|obsidiana/.test(pLower)) {
+        if (/rosa|rosas|flor|flores|ramo|ramillete|bouquet|bot[aá]nic|jard[ií]n|p[eé]talo|planta|tulip[aá]n|margarita|orqu[ií]dea|girasol|lavanda/.test(pLower)) {
+          sceneSelect.value = 'botanical';
+          AIAssistant.activeSceneType = 'botanical';
+        } else if (/drag[oó]n|criatura|monstruo|bestia|reptil|volc[aá]n|cueva|obsidiana/.test(pLower)) {
           sceneSelect.value = 'creature';
           AIAssistant.activeSceneType = 'creature';
         } else if (/retrato|rostro|persona|mujer|hombre|cara|humano/.test(pLower)) {
@@ -3188,6 +3191,10 @@ class GomPickerApp {
       }
 
       this.currentAiPalette = AIAdvisor.synthesizePalette(p);
+      if (this.currentAiPalette && this.currentAiPalette.sceneType && sceneSelect) {
+        sceneSelect.value = this.currentAiPalette.sceneType;
+        AIAssistant.activeSceneType = this.currentAiPalette.sceneType;
+      }
       updateAll();
     };
 
