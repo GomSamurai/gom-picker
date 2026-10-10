@@ -143,6 +143,7 @@ class GomPickerApp {
     safeBind('_bindImageExtractor', this._bindImageExtractor);
     safeBind('_bindAiAssistant', this._bindAiAssistant);
     safeBind('_bindSwatchesAndExporters', this._bindSwatchesAndExporters);
+    safeBind('_bindUniversalSwatchContextMenu', this._bindUniversalSwatchContextMenu);
     safeBind('_bindGlobalClickToCopyHex', this._bindGlobalClickToCopyHex);
     safeBind('_bindGlobalSwatchDragAndDrop', this._bindGlobalSwatchDragAndDrop);
     safeBind('_bindHistoryControls', this._bindHistoryControls);
@@ -1235,6 +1236,24 @@ class GomPickerApp {
     if (!container) return;
     container.innerHTML = '';
 
+    // Synchronize quick undo button in studio toolbar
+    const btnUndo = document.getElementById('btnQuickUndoPalette');
+    if (btnUndo) {
+      if (this.swatchManager.lastDeleted) {
+        btnUndo.style.display = 'inline-flex';
+        btnUndo.innerHTML = `<span>↩️</span> Deshacer (${this.swatchManager.lastDeleted.hex})`;
+        btnUndo.title = `Restaurar ${this.swatchManager.lastDeleted.hex} en '${this.swatchManager.lastDeleted.paletteName}' (Ctrl+Z)`;
+        btnUndo.onclick = () => {
+          const res = this.swatchManager.undoLastDelete();
+          this.renderQuickPalette();
+          this.renderSwatchesCollection();
+          if (res) this.showToast(`Color ${res.hex} restaurado en '${res.paletteName}'`, 'success');
+        };
+      } else {
+        btnUndo.style.display = 'none';
+      }
+    }
+
     const selector = document.getElementById('quickPaletteSelector');
     if (selector) {
       selector.innerHTML = '';
@@ -1296,13 +1315,13 @@ class GomPickerApp {
         if (res) {
           this.renderQuickPalette();
           this.renderSwatchesCollection();
-          this.showToast(`Color ${hex} eliminado de "${pal.name}"`, 'info', 4500, {
-            text: 'Deshacer',
+          this.showToast(`Color ${hex} eliminado de "${pal.name}"`, 'info', 7500, {
+            text: '↩️ Deshacer',
             onClick: () => {
-              this.swatchManager.undoLastDelete();
+              const und = this.swatchManager.undoLastDelete();
               this.renderQuickPalette();
               this.renderSwatchesCollection();
-              this.showToast(`Color ${hex} restaurado`, 'success');
+              if (und) this.showToast(`Color ${und.hex} restaurado en '${und.paletteName}'`, 'success');
             }
           });
         }
@@ -1407,100 +1426,424 @@ class GomPickerApp {
     return pill;
   }
 
-  showSwatchContextMenu(e, pal, index, hex, isBuiltIn) {
+  _bindUniversalSwatchContextMenu() {
+    document.addEventListener('contextmenu', (e) => {
+      // Never intercept right clicks in text inputs or textareas so native context menus work
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+
+      const swatchData = this.resolveSwatchTarget(e.target);
+      if (swatchData) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.openUniversalSwatchContextMenu(e, swatchData);
+      }
+    });
+  }
+
+  resolveSwatchTarget(target) {
+    if (!target || target.tagName === 'CANVAS') return null;
+
+    // 1. Color Wells (Hero wells FG / BG)
+    const wellBox = target.closest('#fgWell, #bgWell, #wellFg, #wellBg, .hero-swatch-box');
+    if (wellBox) {
+      const isFg = wellBox.id.toLowerCase().includes('fg') || wellBox.classList.contains('fg');
+      const color = isFg ? this.fgColor : this.bgColor;
+      return {
+        hex: color.hex,
+        rgb: { r: color.r, g: color.g, b: color.b },
+        label: isFg ? 'Color Frontal (Principal)' : 'Color de Fondo (Secundario)',
+        source: 'well',
+        element: wellBox
+      };
+    }
+
+    // 2. Element swatch lookup
+    const swatchEl = target.closest(`
+      [data-swatch-hex],
+      [data-hex],
+      [data-color],
+      .swatch-color-pill,
+      .swatch-color-block,
+      .matrix-swatch,
+      .harmony-card,
+      .harmony-card-color,
+      .history-item,
+      .atmo-stage-card,
+      .atmo-stage-color-pill,
+      .shadow-swatch-chip,
+      .endpoint-chip,
+      .pigment-step,
+      .extracted-swatch,
+      .companion-band-item,
+      .painter-swatch,
+      .ai-swatch-card,
+      .munsell-chip,
+      .chromilla-tube-chip,
+      .pigment-tube-item,
+      .cvd-swatch-sample,
+      .cvd-quadrant-card,
+      .tooltip-var-chip,
+      .ramp-swatch-cell
+    `);
+
+    const el = swatchEl || target;
+
+    let hex = el.dataset?.swatchHex || el.dataset?.hex || el.dataset?.color;
+    if (!hex && el.querySelector) {
+      const child = el.querySelector('[data-swatch-hex], [data-hex], [data-color]');
+      if (child) {
+        hex = child.dataset.swatchHex || child.dataset.hex || child.dataset.color;
+      }
+    }
+
+    if (!hex) {
+      const isCandidate = swatchEl !== null || 
+        /(swatch|chip|pill|color|sample|step|band|stage)/i.test(el.className || '');
+      if (isCandidate) {
+        const bg = el.style?.backgroundColor || window.getComputedStyle(el).backgroundColor;
+        if (bg && bg !== 'transparent' && !bg.startsWith('rgba(0, 0, 0, 0)')) {
+          const rgbMatch = bg.match(/\d+/g);
+          if (rgbMatch && rgbMatch.length >= 3) {
+            hex = ColorMath.rgbToHex(parseInt(rgbMatch[0]), parseInt(rgbMatch[1]), parseInt(rgbMatch[2]));
+          }
+        }
+      }
+    }
+
+    if (!hex || typeof hex !== 'string') return null;
+    hex = hex.trim();
+    if (!hex.startsWith('#')) return null;
+
+    if (hex.length === 4) {
+      hex = `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`.toUpperCase();
+    } else if (hex.length === 7) {
+      hex = hex.toUpperCase();
+    } else {
+      return null;
+    }
+
+    const rgb = ColorMath.hexToRgb(hex);
+
+    let label = el.dataset?.swatchLabel || el.dataset?.role || el.getAttribute?.('aria-label') || el.getAttribute?.('title') || '';
+    if (!label && el.querySelector) {
+      const textChild = el.querySelector('.harmony-card-role, .var-chip-tag, .cvd-card-desc, .hero-block-label, .swatch-label, .ai-swatch-tag');
+      if (textChild) label = textChild.textContent.trim();
+    }
+    if (!label) {
+      if (el.classList.contains('history-item')) label = 'Historial Reciente';
+      else if (el.classList.contains('matrix-swatch')) label = 'Matriz de Gama';
+      else if (el.classList.contains('pigment-step')) label = 'Paso de Mezcla';
+      else if (el.classList.contains('extracted-swatch')) label = 'Color Extraído';
+      else if (el.classList.contains('painter-swatch')) label = 'Pigmento de Maestro';
+      else if (el.classList.contains('munsell-chip')) label = 'Muestra Munsell';
+      else if (el.classList.contains('companion-band-item')) label = 'Banda Compañera';
+      else if (el.classList.contains('atmo-stage-card') || el.classList.contains('atmo-stage-color-pill') || el.classList.contains('shadow-swatch-chip')) label = 'Atmósfera / Sombra';
+      else label = `Muestra ${hex}`;
+    }
+
+    if (label.includes('(') && !label.includes('PB') && !label.includes('PR') && !label.includes('PY') && !label.includes('PG')) {
+      label = label.split('(')[0].trim();
+    }
+    if (label.includes('•')) label = label.split('•')[0].trim();
+
+    let paletteId = el.dataset?.paletteId;
+    let index = el.dataset?.index !== undefined ? parseInt(el.dataset.index) : -1;
+    let palette = null;
+    let isBuiltIn = false;
+
+    if (!paletteId) {
+      const card = el.closest?.('.palette-collection-card, [data-palette-id]');
+      if (card && card.dataset.paletteId) {
+        paletteId = card.dataset.paletteId;
+      }
+    }
+
+    if (paletteId) {
+      palette = this.swatchManager.palettes.find(p => p.id === paletteId);
+      if (!palette) {
+        const cat = PaletteCatalogs.DEFAULT_LIBRARIES.find(c => c.id === paletteId);
+        if (cat) {
+          palette = cat;
+          isBuiltIn = true;
+        }
+      }
+    }
+
+    return {
+      hex,
+      rgb,
+      label,
+      paletteId,
+      palette,
+      index,
+      isBuiltIn,
+      element: el
+    };
+  }
+
+  openUniversalSwatchContextMenu(e, swatchData) {
     const existing = document.getElementById('swatchContextMenu');
     if (existing) existing.remove();
+    const existingSub = document.querySelector('.swatch-context-submenu');
+    if (existingSub) existingSub.remove();
 
     const menu = document.createElement('div');
     menu.id = 'swatchContextMenu';
     menu.className = 'swatch-context-menu';
 
-    const x = Math.min(e.clientX, window.innerWidth - 200);
-    const y = Math.min(e.clientY, window.innerHeight - 280);
-    menu.style.left = `${x}px`;
-    menu.style.top = `${y}px`;
+    const { hex, rgb, label, palette, index, isBuiltIn } = swatchData;
+    const cmyk = ColorMath.rgbToCmyk(rgb.r, rgb.g, rgb.b);
+    const munsell = MunsellSystem.rgbToMunsell(rgb.r, rgb.g, rgb.b);
+    const lum = Math.round(ColorMath.getLuminance(rgb.r, rgb.g, rgb.b) * 100);
+    const activePal = this.swatchManager.getActivePalette() || this.swatchManager.palettes[0];
 
-    const rgb = ColorMath.hexToRgb(hex);
+    const compRgb = { r: 255 - rgb.r, g: 255 - rgb.g, b: 255 - rgb.b };
+    const compHex = ColorMath.rgbToHex(compRgb.r, compRgb.g, compRgb.b);
+    const hsv = ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b);
+    const tintRgb = ColorMath.hsvToRgb(hsv.h, Math.max(0, hsv.s * 0.7), Math.min(1, hsv.v * 1.25 + 0.15));
+    const tintHex = ColorMath.rgbToHex(tintRgb.r, tintRgb.g, tintRgb.b);
+    const shadeRgb = ColorMath.hsvToRgb((hsv.h + 15) % 360, Math.min(1, hsv.s * 1.15), Math.max(0.12, hsv.v * 0.55));
+    const shadeHex = ColorMath.rgbToHex(shadeRgb.r, shadeRgb.g, shadeRgb.b);
 
-    const items = [
-      {
-        icon: '🎯',
-        label: 'Color Frontal (FG)',
-        action: () => {
-          this.setActiveWell('fg');
-          this.setColorDirectly(rgb);
-          this.showToast(`Establecido como Frontal: ${hex}`);
-        }
-      },
-      {
-        icon: '🎨',
-        label: 'Color Fondo (BG)',
-        action: () => {
-          this.setActiveWell('bg');
-          this.setColorDirectly(rgb);
-          this.showToast(`Establecido como Fondo: ${hex}`);
-        }
-      },
-      {
-        icon: '📋',
-        label: `Copiar ${hex}`,
-        action: () => {
-          this.copyToClipboard(hex);
-          this.showToast(`Copiado: ${hex}`);
-        }
-      },
-      {
-        icon: '📋',
-        label: `Copiar RGB (${rgb.r}, ${rgb.g}, ${rgb.b})`,
-        action: () => {
-          this.copyToClipboard(`rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
-          this.showToast(`Copiado RGB: ${rgb.r}, ${rgb.g}, ${rgb.b}`);
-        }
+    // 1. Chromatic intelligence header
+    const header = document.createElement('div');
+    header.className = 'context-menu-header';
+    header.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="width: 24px; height: 24px; border-radius: 6px; background-color: ${hex}; border: 1.5px solid rgba(255,255,255,0.45); box-shadow: 0 0 10px ${hex}55; flex-shrink: 0;"></div>
+        <div style="overflow: hidden; line-height: 1.25;">
+          <div style="font-weight: 700; font-size: 0.76rem; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 175px;" title="${label}">${label}</div>
+          <div style="font-size: 0.65rem; color: var(--text-muted); font-family: monospace;">${hex} • ${munsell.notation} • ${lum}%Y</div>
+        </div>
+      </div>
+    `;
+    menu.appendChild(header);
+
+    const items = [];
+
+    // Core Well assignments
+    items.push({
+      icon: '🎯',
+      label: 'Color Frontal (FG)',
+      action: () => {
+        this.setActiveWell('fg');
+        this.setColorDirectly(rgb);
+        this.showToast(`Establecido como Frontal: ${hex}`);
       }
-    ];
+    });
 
-    if (!isBuiltIn) {
-      items.push({ divider: true });
-      items.push({
-        icon: '🔄',
-        label: 'Invertir muestra',
-        action: () => {
-          const invRgb = { r: 255 - rgb.r, g: 255 - rgb.g, b: 255 - rgb.b };
-          const invHex = ColorMath.rgbToHex(invRgb.r, invRgb.g, invRgb.b);
-          pal.colors[index] = invHex;
-          this.swatchManager.savePalettes();
-          this.renderSwatchesCollection();
-          this.renderQuickPalette();
-          this.showToast(`Color invertido a ${invHex}`);
-        }
-      });
+    items.push({
+      icon: '🎨',
+      label: 'Color Fondo (BG)',
+      action: () => {
+        this.setActiveWell('bg');
+        this.setColorDirectly(rgb);
+        this.showToast(`Establecido como Fondo: ${hex}`);
+      }
+    });
+
+    // Palette operations
+    if (activePal) {
       items.push({
         icon: '➕',
-        label: 'Duplicar muestra',
+        label: `Añadir a '${activePal.name}'`,
+        badge: 'Activa',
         action: () => {
-          this.swatchManager.addColorToPalette(pal.id, hex, index + 1);
+          this.swatchManager.addColorToPalette(activePal.id, hex);
+          this.renderSwatchesCollection();
+          this.renderQuickPalette();
+          this.showToast(`Color ${hex} añadido a '${activePal.name}'`);
+        }
+      });
+    }
+
+    if (this.swatchManager.palettes.length > 1) {
+      items.push({
+        icon: '📥',
+        label: 'Enviar a Paleta...',
+        badge: '▶',
+        hasSubmenu: true,
+        submenuItems: this.swatchManager.palettes.map(p => ({
+          label: p.name,
+          badge: `${p.colors?.length || 0}`,
+          action: () => {
+            this.swatchManager.addColorToPalette(p.id, hex);
+            this.renderSwatchesCollection();
+            this.renderQuickPalette();
+            this.showToast(`Color ${hex} añadido a '${p.name}'`);
+          }
+        }))
+      });
+    }
+
+    items.push({
+      icon: '🆕',
+      label: 'Crear nueva paleta con este color',
+      action: () => {
+        const newPal = this.swatchManager.createPalette(`Paleta ${hex}`, [hex]);
+        this.renderSwatchesCollection();
+        this.renderQuickPalette();
+        this.showToast(`Nueva paleta creada con ${hex}`, 'success');
+      }
+    });
+
+    items.push({ divider: true });
+
+    // Creative physical & studio workflows
+    items.push({
+      icon: '🖌️',
+      label: 'Depositar en Mesa de Mezclas',
+      badge: 'Wet Mixer',
+      action: () => {
+        this.switchTab('wetmixer');
+        if (this.wetMixer) {
+          const rx = this.wetMixer.width * (0.3 + Math.random() * 0.4);
+          const ry = this.wetMixer.height * (0.35 + Math.random() * 0.35);
+          this.wetMixer.depositDab(rx, ry, rgb, 46);
+        }
+        this.showToast(`Pintura ${hex} depositada en el lienzo de mezclas`, 'success');
+      }
+    });
+
+    items.push({
+      icon: '🌈',
+      label: 'Cargar en Armonías Dinámicas',
+      action: () => {
+        this.switchTab('studio');
+        this.setActiveWell('fg');
+        this.setColorDirectly(rgb);
+        this.showToast(`Armonías calculadas para ${hex}`);
+      }
+    });
+
+    items.push({
+      icon: '🌤️',
+      label: 'Cargar en Simulador de Atmósfera',
+      action: () => {
+        this.switchTab('atmosphere');
+        this.setActiveWell('fg');
+        this.setColorDirectly(rgb);
+        this.showToast(`Color cargado en atmósfera: ${hex}`);
+      }
+    });
+
+    items.push({ divider: true });
+
+    // Chromatic variations
+    items.push({
+      icon: '🔄',
+      label: 'Complementario (180°)',
+      badge: compHex,
+      action: () => {
+        this.setActiveWell('fg');
+        this.setColorDirectly(compRgb);
+        this.showToast(`Complementario cargado: ${compHex}`);
+      }
+    });
+
+    items.push({
+      icon: '☀️',
+      label: 'Tinte Iluminado (+Luz)',
+      badge: tintHex,
+      action: () => {
+        this.setActiveWell('fg');
+        this.setColorDirectly(tintRgb);
+        this.showToast(`Tinte iluminado: ${tintHex}`);
+      }
+    });
+
+    items.push({
+      icon: '🌑',
+      label: 'Sombra Pictórica (+Oscuro)',
+      badge: shadeHex,
+      action: () => {
+        this.setActiveWell('fg');
+        this.setColorDirectly(shadeRgb);
+        this.showToast(`Sombra pictórica: ${shadeHex}`);
+      }
+    });
+
+    items.push({ divider: true });
+
+    // Copy options
+    items.push({
+      icon: '📋',
+      label: `Copiar HEX (${hex})`,
+      action: () => {
+        this.copyToClipboard(hex);
+        this.showToast(`HEX copiado: ${hex}`);
+      }
+    });
+
+    items.push({
+      icon: '📋',
+      label: `Copiar RGB (${rgb.r}, ${rgb.g}, ${rgb.b})`,
+      action: () => {
+        this.copyToClipboard(`rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
+        this.showToast(`RGB copiado: ${rgb.r}, ${rgb.g}, ${rgb.b}`);
+      }
+    });
+
+    items.push({
+      icon: '📋',
+      label: `Copiar CMYK (${cmyk.c}C ${cmyk.m}M ${cmyk.y}Y ${cmyk.k}K)`,
+      action: () => {
+        this.copyToClipboard(`${cmyk.c}% ${cmyk.m}% ${cmyk.y}% ${cmyk.k}%`);
+        this.showToast(`CMYK copiado: ${cmyk.c}C ${cmyk.m}M ${cmyk.y}Y ${cmyk.k}K`);
+      }
+    });
+
+    items.push({
+      icon: '📋',
+      label: `Copiar Munsell (${munsell.notation})`,
+      action: () => {
+        this.copyToClipboard(munsell.notation);
+        this.showToast(`Munsell copiado: ${munsell.notation}`);
+      }
+    });
+
+    // In-palette options if this swatch is part of an editable palette
+    if (palette && !isBuiltIn && index >= 0) {
+      items.push({ divider: true });
+      items.push({
+        icon: '📑',
+        label: 'Duplicar muestra en paleta',
+        action: () => {
+          this.swatchManager.addColorToPalette(palette.id, hex, index + 1);
           this.renderSwatchesCollection();
           this.renderQuickPalette();
           this.showToast(`Color ${hex} duplicado`);
         }
       });
-      items.push({ divider: true });
+
+      items.push({
+        icon: '🔄',
+        label: 'Invertir muestra en paleta',
+        action: () => {
+          palette.colors[index] = compHex;
+          this.swatchManager.savePalettes();
+          this.renderSwatchesCollection();
+          this.renderQuickPalette();
+          this.showToast(`Color invertido a ${compHex}`);
+        }
+      });
+
       items.push({
         icon: '🗑️',
-        label: 'Eliminar de paleta',
+        label: `Eliminar de "${palette.name}"`,
         danger: true,
         action: () => {
-          const res = this.swatchManager.removeColorFromPalette(pal.id, index);
+          const res = this.swatchManager.removeColorFromPalette(palette.id, index);
           if (res) {
             this.renderSwatchesCollection();
             this.renderQuickPalette();
-            this.showToast(`Color ${hex} eliminado de "${pal.name}"`, 'info', 4500, {
-              text: 'Deshacer',
+            this.showToast(`Color ${hex} eliminado de "${palette.name}"`, 'info', 7500, {
+              text: '↩️ Deshacer',
               onClick: () => {
-                this.swatchManager.undoLastDelete();
+                const und = this.swatchManager.undoLastDelete();
                 this.renderSwatchesCollection();
                 this.renderQuickPalette();
-                this.showToast(`Color ${hex} restaurado`, 'success');
+                if (und) this.showToast(`Color ${und.hex} restaurado en '${und.paletteName}'`, 'success');
               }
             });
           }
@@ -1508,6 +1851,25 @@ class GomPickerApp {
       });
     }
 
+    // Global Undo if lastDeleted exists
+    if (this.swatchManager.lastDeleted) {
+      const del = this.swatchManager.lastDeleted;
+      items.push({ divider: true });
+      items.push({
+        icon: '↩️',
+        label: `Deshacer eliminación (${del.hex})`,
+        badge: 'Ctrl+Z',
+        highlight: true,
+        action: () => {
+          const und = this.swatchManager.undoLastDelete();
+          this.renderSwatchesCollection();
+          this.renderQuickPalette();
+          if (und) this.showToast(`Color ${und.hex} restaurado en '${und.paletteName}'`, 'success');
+        }
+      });
+    }
+
+    // Render items into menu DOM
     items.forEach(it => {
       if (it.divider) {
         const div = document.createElement('div');
@@ -1515,25 +1877,120 @@ class GomPickerApp {
         menu.appendChild(div);
         return;
       }
+
       const btn = document.createElement('button');
-      btn.className = `context-menu-item ${it.danger ? 'danger' : ''}`;
-      btn.innerHTML = `<span>${it.icon}</span><span>${it.label}</span>`;
-      btn.addEventListener('click', () => {
-        it.action();
-        menu.remove();
-      });
+      btn.className = `context-menu-item ${it.danger ? 'danger' : ''} ${it.highlight ? 'btn-undo-glow' : ''}`;
+      btn.innerHTML = `
+        <span style="font-size: 0.9rem;">${it.icon}</span>
+        <span style="flex-grow: 1;">${it.label}</span>
+        ${it.badge ? `<span class="context-item-badge">${it.badge}</span>` : ''}
+      `;
+
+      if (it.hasSubmenu && it.submenuItems) {
+        btn.addEventListener('mouseenter', () => {
+          this.openSwatchSubmenu(btn, it.submenuItems, menu);
+        });
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          this.openSwatchSubmenu(btn, it.submenuItems, menu);
+        });
+      } else {
+        btn.addEventListener('mouseenter', () => {
+          const oldSub = document.querySelector('.swatch-context-submenu');
+          if (oldSub) oldSub.remove();
+        });
+        btn.addEventListener('click', () => {
+          it.action();
+          menu.remove();
+          const oldSub = document.querySelector('.swatch-context-submenu');
+          if (oldSub) oldSub.remove();
+        });
+      }
+
       menu.appendChild(btn);
     });
 
     document.body.appendChild(menu);
 
+    // Viewport-aware positioning
+    const menuWidth = 230;
+    const menuHeight = menu.offsetHeight || 380;
+    let posX = e.clientX;
+    let posY = e.clientY;
+
+    if (posX + menuWidth > window.innerWidth - 12) {
+      posX = window.innerWidth - menuWidth - 12;
+    }
+    if (posY + menuHeight > window.innerHeight - 12) {
+      posY = Math.max(12, window.innerHeight - menuHeight - 12);
+    }
+
+    menu.style.left = `${Math.round(posX)}px`;
+    menu.style.top = `${Math.round(posY)}px`;
+
+    // Global click dismiss
     const closeHandler = (evt) => {
-      if (!menu.contains(evt.target)) {
+      const sub = document.querySelector('.swatch-context-submenu');
+      if (!menu.contains(evt.target) && (!sub || !sub.contains(evt.target))) {
         menu.remove();
+        if (sub) sub.remove();
         document.removeEventListener('pointerdown', closeHandler);
       }
     };
-    setTimeout(() => document.addEventListener('pointerdown', closeHandler), 10);
+    setTimeout(() => document.addEventListener('pointerdown', closeHandler), 15);
+  }
+
+  openSwatchSubmenu(parentBtn, items, parentMenu) {
+    const existing = document.querySelector('.swatch-context-submenu');
+    if (existing) existing.remove();
+
+    const sub = document.createElement('div');
+    sub.className = 'swatch-context-submenu';
+
+    items.forEach(it => {
+      const btn = document.createElement('button');
+      btn.className = 'context-menu-item';
+      btn.innerHTML = `
+        <span style="flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${it.label}</span>
+        ${it.badge ? `<span class="context-item-badge">${it.badge}</span>` : ''}
+      `;
+      btn.addEventListener('click', () => {
+        it.action();
+        sub.remove();
+        if (parentMenu) parentMenu.remove();
+      });
+      sub.appendChild(btn);
+    });
+
+    document.body.appendChild(sub);
+
+    const rect = parentBtn.getBoundingClientRect();
+    let subX = rect.right + 4;
+    let subY = rect.top;
+
+    if (subX + 210 > window.innerWidth - 12) {
+      subX = rect.left - 210 - 4;
+    }
+    if (subY + sub.offsetHeight > window.innerHeight - 12) {
+      subY = Math.max(12, window.innerHeight - sub.offsetHeight - 12);
+    }
+
+    sub.style.left = `${Math.max(12, Math.round(subX))}px`;
+    sub.style.top = `${Math.max(12, Math.round(subY))}px`;
+  }
+
+  showSwatchContextMenu(e, pal, index, hex, isBuiltIn) {
+    const swatchData = {
+      hex,
+      rgb: ColorMath.hexToRgb(hex),
+      label: pal ? `${pal.name}: ${hex}` : `Muestra ${hex}`,
+      paletteId: pal?.id,
+      palette: pal,
+      index,
+      isBuiltIn,
+      element: e.currentTarget
+    };
+    this.openUniversalSwatchContextMenu(e, swatchData);
   }
 
   showPaletteSortPopover(anchorBtn, pal) {
@@ -4450,6 +4907,23 @@ class GomPickerApp {
     toolbar.className = 'palette-toolbar';
 
     if (!isBuiltIn) {
+      // 0. Undo button (if this palette has a deleted swatch)
+      if (this.swatchManager.lastDeleted && this.swatchManager.lastDeleted.paletteId === pal.id) {
+        const btnUndo = document.createElement('button');
+        btnUndo.className = 'palette-tool-btn btn-undo-glow';
+        btnUndo.innerHTML = `<span>↩️</span> Deshacer (${this.swatchManager.lastDeleted.hex})`;
+        btnUndo.title = `Restaurar ${this.swatchManager.lastDeleted.hex} en la posición original (Ctrl+Z)`;
+        btnUndo.addEventListener('click', () => {
+          const res = this.swatchManager.undoLastDelete();
+          if (res) {
+            this.renderSwatchesCollection();
+            this.renderQuickPalette();
+            this.showToast(`Color ${res.hex} restaurado en '${pal.name}'`, 'success');
+          }
+        });
+        toolbar.appendChild(btnUndo);
+      }
+
       // 1. Quick Add FG
       const btnAddFg = document.createElement('button');
       btnAddFg.className = 'palette-tool-btn btn-active-highlight';
@@ -5188,6 +5662,15 @@ class GomPickerApp {
       // Undo (Ctrl+Z)
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
         e.preventDefault();
+        if (this.swatchManager && this.swatchManager.lastDeleted) {
+          const restored = this.swatchManager.undoLastDelete();
+          if (restored) {
+            this.renderSwatchesCollection();
+            this.renderQuickPalette();
+            this.showToast(`Color ${restored.hex} restaurado en '${restored.paletteName}'`, 'success');
+            return;
+          }
+        }
         this.undoColor();
         return;
       }
@@ -5804,8 +6287,13 @@ class GomPickerApp {
   }
 
   showToast(message, type = 'info', duration = 2800, action = null) {
-    const container = document.getElementById('toastContainer');
-    if (!container) return;
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toastContainer';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
 
     const icons = {
       info: '💡',
@@ -5821,7 +6309,7 @@ class GomPickerApp {
     if (action && action.text && typeof action.onClick === 'function') {
       const actBtn = document.createElement('button');
       actBtn.className = 'toast-action-btn';
-      actBtn.textContent = action.text;
+      actBtn.innerHTML = action.text;
       actBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         action.onClick();

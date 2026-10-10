@@ -2616,7 +2616,7 @@ body.value-check-mode {
 /* Floating Swatch Context Menu */
 .swatch-context-menu {
   position: fixed;
-  z-index: 10000;
+  z-index: 1000000;
   background: rgba(18, 19, 28, 0.96);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -2624,7 +2624,7 @@ body.value-check-mode {
   border-radius: 8px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
   padding: 5px;
-  min-width: 180px;
+  min-width: 195px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -2636,26 +2636,34 @@ body.value-check-mode {
   to { opacity: 1; transform: scale(1); }
 }
 
+.context-menu-header {
+  padding: 8px 10px 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 4px;
+}
+
 .context-menu-item {
   padding: 6px 10px;
   font-size: 0.74rem;
   color: #E2E8F0;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: background 0.12s ease;
+  transition: all 0.12s ease;
   border: none;
   background: transparent;
   width: 100%;
   text-align: left;
   font-family: inherit;
+  user-select: none;
 }
 
 .context-menu-item:hover {
   background: rgba(99, 102, 241, 0.25);
   color: #FFFFFF;
+  transform: translateX(2px);
 }
 
 .context-menu-item.danger {
@@ -2667,10 +2675,65 @@ body.value-check-mode {
   color: #FCA5A5;
 }
 
+.context-item-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.context-menu-item:hover .context-item-badge {
+  background: rgba(99, 102, 241, 0.5);
+  color: #FFFFFF;
+}
+
 .context-menu-divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.08);
-  margin: 3px 0;
+  margin: 4px 0;
+}
+
+/* Submenu */
+.swatch-context-submenu {
+  position: fixed;
+  z-index: 1000001;
+  background: rgba(18, 19, 28, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  padding: 5px;
+  min-width: 200px;
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: contextMenuPop 0.12s ease-out;
+}
+
+/* Palette Card Toolbar Undo Glow Button */
+.btn-undo-glow {
+  background: rgba(16, 185, 129, 0.22) !important;
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  color: #34D399 !important;
+  font-weight: 700 !important;
+  animation: pulseUndo 2s infinite ease-in-out;
+}
+
+.btn-undo-glow:hover {
+  background: rgba(16, 185, 129, 0.35) !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.6) !important;
+  color: #FFFFFF !important;
+}
+
+@keyframes pulseUndo {
+  0%, 100% { box-shadow: 0 0 0 rgba(16, 185, 129, 0); }
+  50% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
 }
 
 /* Floating Action Popover (for Sort, Export menus) */
@@ -2690,24 +2753,97 @@ body.value-check-mode {
   animation: contextMenuPop 0.12s ease-out;
 }
 
+/* ==========================================================================
+   TOAST NOTIFICATION ENGINE (CENTER-BOTTOM FLOATING DOCK WITH PRO UNDO)
+   ========================================================================== */
+.toast-container {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  max-width: 90vw;
+}
+
+.toast {
+  pointer-events: auto;
+  background: rgba(15, 17, 26, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #FFFFFF;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7), 0 0 24px rgba(99, 102, 241, 0.25);
+  font-size: 0.82rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  animation: toastSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.toast:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 42px rgba(0, 0, 0, 0.8), 0 0 30px rgba(99, 102, 241, 0.4);
+}
+
+.toast--info {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.toast--success {
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7), 0 0 24px rgba(16, 185, 129, 0.35);
+}
+
+.toast--warn {
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7), 0 0 24px rgba(245, 158, 11, 0.35);
+}
+
+.toast--error {
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7), 0 0 24px rgba(239, 68, 68, 0.35);
+}
+
+@keyframes toastSlideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* Toast Action Button */
 .toast-action-btn {
-  margin-left: 10px;
-  padding: 3px 9px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 4px;
-  color: #FFFFFF;
+  margin-left: 12px;
+  padding: 5px 14px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #10B981, #059669) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.5) !important;
+  border-radius: 9999px !important;
+  color: #FFFFFF !important;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.5) !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .toast-action-btn:hover {
-  background: rgba(255, 255, 255, 0.32);
-  transform: scale(1.05);
+  background: linear-gradient(135deg, #34D399, #10B981) !important;
+  transform: scale(1.08) !important;
+  box-shadow: 0 0 22px rgba(16, 185, 129, 0.8) !important;
 }
 
 /* Palette Search & Filter Bar */
@@ -3030,38 +3166,6 @@ body.value-check-mode {
   border-color: var(--accent-primary);
   background: rgba(99, 102, 241, 0.25);
   color: #FFFFFF;
-}
-
-/* Toast Notifications */
-.toast-container {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 10000;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  pointer-events: none;
-}
-
-.toast {
-  background: rgba(19, 19, 26, 0.95);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--border-accent);
-  color: #FFFFFF;
-  padding: 10px 16px;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  font-size: 0.78rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ==========================================================================
