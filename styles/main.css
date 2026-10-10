@@ -370,6 +370,22 @@ body.value-check-mode {
   height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.45) rgba(0, 0, 0, 0.25);
+}
+
+.app-content-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+.app-content-wrapper::-webkit-scrollbar-track {
+  background: rgba(14, 14, 20, 0.7);
+}
+.app-content-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.35);
+  border-radius: 4px;
+}
+.app-content-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
 }
 
 /* Workspace Topbar */
@@ -506,7 +522,7 @@ body.value-check-mode {
   margin: 0 auto;
   width: 100%;
   transition: grid-template-columns 0.25s ease;
-  align-items: start;
+  align-items: stretch;
 }
 
 .app-main.right-collapsed {
@@ -560,7 +576,7 @@ body.value-check-mode {
   }
 }
 
-/* Columns */
+/* Columns - Dynamic vertical sizing without artificial truncation */
 .column-left,
 .column-center,
 .column-right {
@@ -568,60 +584,48 @@ body.value-check-mode {
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+  height: auto;
+  min-height: 100%;
+}
+
+.column-left {
+  height: auto;
+  min-height: 100%;
+}
+
+.column-left > .glass-panel {
+  box-sizing: border-box;
+}
+
+.column-left > .glass-panel:last-child {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: fit-content;
 }
 
 .column-center {
   width: 100%;
+  min-height: 100%;
+}
+
+.column-right {
+  height: auto;
+  min-height: 100%;
+  position: relative;
 }
 
 @media (min-width: 1041px) {
   .column-left {
-    position: sticky;
-    top: 12px;
-    align-self: start;
-    max-height: calc(100vh - 76px);
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(99, 102, 241, 0.45) rgba(0, 0, 0, 0.25);
-  }
-  .column-left::-webkit-scrollbar {
-    width: 6px;
-  }
-  .column-left::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.25);
-    border-radius: 4px;
-  }
-  .column-left::-webkit-scrollbar-thumb {
-    background: rgba(99, 102, 241, 0.35);
-    border-radius: 4px;
-    transition: background var(--transition-fast);
-  }
-  .column-left::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-primary);
+    height: 100%;
+    min-height: 100%;
+    overflow: visible;
   }
 
   .column-right {
-    position: sticky;
-    top: 12px;
-    align-self: start;
-    max-height: calc(100vh - 76px);
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(99, 102, 241, 0.45) rgba(0, 0, 0, 0.25);
-  }
-  .column-right::-webkit-scrollbar {
-    width: 6px;
-  }
-  .column-right::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.25);
-    border-radius: 4px;
-  }
-  .column-right::-webkit-scrollbar-thumb {
-    background: rgba(99, 102, 241, 0.35);
-    border-radius: 4px;
-  }
-  .column-right::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-primary);
+    height: 100%;
+    min-height: 100%;
+    overflow: visible;
   }
 }
 
@@ -679,6 +683,8 @@ body.value-check-mode {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  height: 100%;
+  flex: 1;
 }
 
 .right-column-header {
@@ -757,10 +763,17 @@ body.value-check-mode {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
+  height: 100%;
 }
 
 .right-panel-view .glass-panel {
   padding: 14px 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: fit-content;
+  box-sizing: border-box;
 }
 
 .right-panel-view .panel-header {
