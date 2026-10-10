@@ -326,6 +326,7 @@ export class MasterCatalogManager {
 
   loadCustomCatalogs() {
     try {
+      if (typeof localStorage === 'undefined') return [];
       const data = localStorage.getItem(this.storageKey);
       return data ? JSON.parse(data) : [];
     } catch (e) {
@@ -336,10 +337,15 @@ export class MasterCatalogManager {
 
   saveCustomCatalogs() {
     try {
+      if (typeof localStorage === 'undefined') return;
       localStorage.setItem(this.storageKey, JSON.stringify(this.customCatalogs));
     } catch (e) {
       console.warn('Error saving custom master catalogs', e);
     }
+  }
+
+  getCatalogs() {
+    return this.getAllCatalogs();
   }
 
   getAllCatalogs() {

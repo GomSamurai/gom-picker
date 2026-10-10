@@ -76,53 +76,67 @@ class GomPickerApp {
     // 3. Initialize Floating Swatch Tooltip Engine (Hover info + Pinned card)
     this.tooltipEngine = new TooltipEngine(this);
 
-    // 4. Bind UI Controls & Event Listeners
-    this._bindHeaderTools();
-    this._bindRightColumnControls();
-    this._bindNavigationTabs();
-    this._bindWheelOptions();
-    this._bindHeroColorAndCompanionBands();
-    this._bindNumericSliders();
-    this._bindAtmosphereControls();
-    this._bindGamutMaskControls();
-    this._bindMunsellControls();
-    this._bindLimitedPalettesControls();
-    this._bindChromillaControls();
-    this._bindFlorentControls();
-    this._bindMasterPainters();
-    this._bindImageExtractor();
-    this._bindAiAssistant();
-    this._bindSwatchesAndExporters();
-    this._bindGlobalClickToCopyHex();
-    this._bindGlobalSwatchDragAndDrop();
-    this._bindHistoryControls();
-    this._bindKeyboardShortcuts();
+    // 4. Initialize Core Canvases First (Color Wheel & Image Extractor)
+    try {
+      const wheelCanvas = document.getElementById('colorWheelCanvas');
+      const initialHsv = ColorMath.rgbToHsv(this.fgColor.r, this.fgColor.g, this.fgColor.b);
+      this.colorWheel = new ColorWheel(wheelCanvas, {
+        mode: 'triangle',
+        harmonyRule: 'triadic',
+        onChange: (colorData) => this.handleWheelColorChange(colorData)
+      });
+      this.colorWheel.setColor(initialHsv, true);
+    } catch (err) {
+      console.error('[GOM Picker Pro] Error initializing ColorWheel:', err);
+    }
 
-    // 5. Initialize Color Wheel Canvas
-    const wheelCanvas = document.getElementById('colorWheelCanvas');
-    const initialHsv = ColorMath.rgbToHsv(this.fgColor.r, this.fgColor.g, this.fgColor.b);
+    try {
+      const extractCanvas = document.getElementById('extractCanvas');
+      this.imageExtractor = new ImageExtractor(extractCanvas);
+    } catch (err) {
+      console.error('[GOM Picker Pro] Error initializing ImageExtractor:', err);
+    }
 
-    this.colorWheel = new ColorWheel(wheelCanvas, {
-      mode: 'triangle',
-      harmonyRule: 'triadic',
-      onChange: (colorData) => this.handleWheelColorChange(colorData)
-    });
+    // 5. Bind UI Controls & Event Listeners
+    const safeBind = (name, fn) => {
+      try {
+        fn.call(this);
+      } catch (err) {
+        console.error(`[GOM Picker Pro] Error in ${name}:`, err);
+      }
+    };
 
-    // 6. Initialize Image Extractor Canvas
-    const extractCanvas = document.getElementById('extractCanvas');
-    this.imageExtractor = new ImageExtractor(extractCanvas);
+    safeBind('_bindHeaderTools', this._bindHeaderTools);
+    safeBind('_bindRightColumnControls', this._bindRightColumnControls);
+    safeBind('_bindNavigationTabs', this._bindNavigationTabs);
+    safeBind('_bindWheelOptions', this._bindWheelOptions);
+    safeBind('_bindHeroColorAndCompanionBands', this._bindHeroColorAndCompanionBands);
+    safeBind('_bindNumericSliders', this._bindNumericSliders);
+    safeBind('_bindAtmosphereControls', this._bindAtmosphereControls);
+    safeBind('_bindGamutMaskControls', this._bindGamutMaskControls);
+    safeBind('_bindMunsellControls', this._bindMunsellControls);
+    safeBind('_bindLimitedPalettesControls', this._bindLimitedPalettesControls);
+    safeBind('_bindChromillaControls', this._bindChromillaControls);
+    safeBind('_bindFlorentControls', this._bindFlorentControls);
+    safeBind('_bindMasterPainters', this._bindMasterPainters);
+    safeBind('_bindImageExtractor', this._bindImageExtractor);
+    safeBind('_bindAiAssistant', this._bindAiAssistant);
+    safeBind('_bindSwatchesAndExporters', this._bindSwatchesAndExporters);
+    safeBind('_bindGlobalClickToCopyHex', this._bindGlobalClickToCopyHex);
+    safeBind('_bindGlobalSwatchDragAndDrop', this._bindGlobalSwatchDragAndDrop);
+    safeBind('_bindHistoryControls', this._bindHistoryControls);
+    safeBind('_bindKeyboardShortcuts', this._bindKeyboardShortcuts);
 
-    // 7. Initial Renderings and Trigger Sync
-    this.colorWheel.setColor(initialHsv, true);
-    this.renderHistoryRibbon();
-    this.renderQuickPalette();
-    this.renderSwatchesCollection();
-    this.renderAtmosphereStages();
-    this.renderLimitedPalettes('zorn');
-    this.renderChromillaMixer(this.fgColor);
-    this.renderFlorentFarges(this.fgColor);
-    this.generateInitialAiPalette();
-    this.loadSampleImage('assets/samples/monet.png');
+    // 6. Initial Renderings and Trigger Sync
+    safeBind('renderHistoryRibbon', this.renderHistoryRibbon);
+    safeBind('renderQuickPalette', this.renderQuickPalette);
+    safeBind('renderSwatchesCollection', this.renderSwatchesCollection);
+    safeBind('renderAtmosphereStages', this.renderAtmosphereStages);
+    safeBind('renderLimitedPalettes', () => this.renderLimitedPalettes('zorn'));
+    safeBind('renderChromillaMixer', () => this.renderChromillaMixer(this.fgColor));
+    safeBind('renderFlorentFarges', () => this.renderFlorentFarges(this.fgColor));
+    safeBind('generateInitialAiPalette', this.generateInitialAiPalette);
+    safeBind('loadSampleImage', () => this.loadSampleImage('assets/samples/monet.png'));
 
     console.log('[GOM Picker Pro] Inicializado con éxito. Todos los sistemas operativos.');
   }
