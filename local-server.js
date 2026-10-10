@@ -3,10 +3,14 @@
  * Serves static files with correct MIME types for ES Modules and Photoshop UXP.
  */
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const { exec } = require('child_process');
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { exec } from 'child_process';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Usamos el puerto 5050 para evitar colisiones con Service Workers
 // o proyectos previos del usuario en el puerto 3000 (ej: Soundscape Studio)
