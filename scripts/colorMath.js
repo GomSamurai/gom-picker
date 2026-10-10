@@ -374,86 +374,152 @@ export const ColorMath = {
     };
   },
 
-  // Realistic Spectral Pigment Blending (Kubelka-Munk Spectral Reflectance Model)
-  // Simulates authentic physical pigment mixing:
-  // - Yellow + Blue = Rich Natural Green (Sap / Viridian / Forest Green)
-  // - Red + Yellow = Vibrant Warm Orange
-  // - Red + Blue = Deep Violet / Purple
-  // - Ultramarine + Burnt Sienna = Pearlescent Neutral Gray
-  mixPigments(color1, color2, weight = 0.5) {
+  // Traditional Artist's RYB Subtractive Pigment Mixing (Oil & Acrylic physical dynamics)
+  // Yellow + Blue/Cyan = Natural Foliage / Sap Green
+  // Red + Yellow = Warm Amber / Orange
+  // Red + Blue = Rich Royal Purple / Violet
+  // Complementaries (e.g. Red + Green, Blue + Orange) neutralize toward earthy grey/taupe
+  // Guarantees 100% mathematical idempotence: mix(C, C, w) === C (zero drift)
+  mixRyb(c1, c2, weight = 0.5) {
     const w = ColorMath.clamp(weight, 0, 1);
-    return ColorMath.blendKubelkaMunk(color1, color2, w);
-  },
+    if (w <= 0) return { r: c1.r, g: c1.g, b: c1.b };
+    if (w >= 1) return { r: c2.r, g: c2.g, b: c2.b };
+    if (c1.r === c2.r && c1.g === c2.g && c1.b === c2.b) return { r: c1.r, g: c1.g, b: c1.b };
 
-  // 8-Band Kubelka-Munk Spectral Pigment Mixing Engine
-  blendKubelkaMunk(c1, c2, w = 0.5) {
-    const ks1 = this._rgbToPigmentAbsorption(c1.r, c1.g, c1.b);
-    const ks2 = this._rgbToPigmentAbsorption(c2.r, c2.g, c2.b);
-    const ksMix = new Float32Array(8);
-    for (let i = 0; i < 8; i++) {
-      ksMix[i] = (1 - w) * ks1[i] + w * ks2[i];
-    }
-    return this._pigmentAbsorptionToRgb(ksMix);
-  },
+    const hsv1 = ColorMath.rgbToHsv(c1.r, c1.g, c1.b);
+    const hsv2 = ColorMath.rgbToHsv(c2.r, c2.g, c2.b);
 
-  _rgbToPigmentAbsorption(r255, g255, b255) {
-    const r = r255 / 255;
-    const g = g255 / 255;
-    const b = b255 / 255;
+    const isAchromatic1 = hsv1.s < 0.03;
+    const isAchromatic2 = hsv2.s < 0.03;
 
-    // Estimate 8 spectral reflectance bands R(lambda)
-    // 0: Violet (420nm), 1: Blue (460nm), 2: Cyan (490nm), 3: Green (530nm),
-    // 4: Yellow (580nm), 5: Orange (610nm), 6: Red (650nm), 7: Deep Red (680nm)
-    const R = new Float32Array(8);
+    let hRyb;
+    let s;
 
-    // Violet (420nm):
-    R[0] = b * 0.90 + r * 0.10 * (1 - g);
-    // Blue (460nm):
-    R[1] = b * 0.95 + g * 0.08;
-    // Cyan (490nm):
-    R[2] = b * 0.65 + g * 0.55;
-    // Green (530nm):
-    // In physical pigments, Yellow reflects heavily across green and red wavelengths (absorbs only blue).
-    // Blue pigments have a secondary reflectance window in cyan/green.
-    const yellowTail = Math.min(r, g) * Math.max(0, 1 - b * 1.2);
-    const blueTail = b * Math.max(0, 1 - r) * 0.28;
-    R[3] = g * 0.75 + yellowTail * 0.65 + blueTail;
-    // Yellow (580nm):
-    R[4] = Math.min(1, (r * 0.65 + g * 0.60) * Math.max(0, 1 - b * 0.85));
-    // Orange (610nm):
-    R[5] = r * 0.85 + g * 0.30 * Math.max(0, 1 - b);
-    // Red (650nm):
-    R[6] = r * 0.95;
-    // Deep Red (680nm):
-    R[7] = r * 0.90 + b * 0.05 * (1 - g);
+    if (isAchromatic1 && isAchromatic2) {
+      hRyb = 0;
+      s = 0;
+    } else if (isAchromatic1) {
+      hRyb = ColorMath.rgbToRybHue(hsv2.h);
+      s = hsv2.s * w;
+    } else if (isAchromatic2) {
+      hRyb = ColorMath.rgbToRybHue(hsv1.h);
+      s = hsv1.s * (1 - w);
+    } else {
+      const rybH1 = ColorMath.rgbToRybHue(hsv1.h);
+      const rybH2 = ColorMath.rgbToRybHue(hsv2.h);
 
-    // Convert to Kubelka-Munk K/S (Absorption/Scattering):
-    // K/S = (1 - R)^2 / (2 * R)
-    const ks = new Float32Array(8);
-    for (let i = 0; i < 8; i++) {
-      const refl = Math.max(0.015, Math.min(0.985, R[i]));
-      ks[i] = Math.pow(1 - refl, 2) / (2 * refl);
-    }
-    return ks;
-  },
+      let dHue = Math.abs(rybH1 - rybH2);
+      if (dHue > 180) dHue = 360 - dHue;
 
-  _pigmentAbsorptionToRgb(ksMix) {
-    // Invert Kubelka-Munk equation: R = 1 + ks - sqrt(ks^2 + 2*ks)
-    const R = new Float32Array(8);
-    for (let i = 0; i < 8; i++) {
-      const k = ksMix[i];
-      R[i] = 1 + k - Math.sqrt(k * k + 2 * k);
+      let angle;
+      if (Math.abs(rybH1 - rybH2) <= 180) {
+        angle = rybH1 + (rybH2 - rybH1) * w;
+      } else {
+        if (rybH1 < rybH2) {
+          angle = (rybH1 + 360) + (rybH2 - (rybH1 + 360)) * w;
+        } else {
+          angle = rybH1 + ((rybH2 + 360) - rybH1) * w;
+        }
+      }
+      angle = (angle % 360 + 360) % 360;
+      hRyb = angle;
+
+      // Natural artist pigment desaturation for complementary pairs
+      const cancelFactor = Math.cos((dHue * Math.PI) / 360);
+      const linearS = (1 - w) * hsv1.s + w * hsv2.s;
+      s = linearS * Math.pow(Math.max(0, cancelFactor), 0.65);
     }
 
-    // Synthesize sRGB based on CIE standard observer spectral response
-    let r = R[4] * 0.25 + R[5] * 0.35 + R[6] * 0.50 + R[7] * 0.25;
-    let g = R[2] * 0.20 + R[3] * 0.85 + R[4] * 0.30;
-    let b = R[0] * 0.40 + R[1] * 0.75 + R[2] * 0.15;
+    const rgbHue = ColorMath.rybToRgbHue(hRyb);
+
+    // Subtractive physical darkening factor:
+    // Mixing pigments increases light absorption proportional to hue opposition
+    const hueDiff = Math.abs(hsv1.h - hsv2.h);
+    const minHueDiff = Math.min(hueDiff, 360 - hueDiff);
+    const subtractiveDip = 1 - (minHueDiff / 180) * 0.15 * (hsv1.s * hsv2.s);
+    const v = ((1 - w) * hsv1.v + w * hsv2.v) * subtractiveDip;
+
+    return ColorMath.hsvToRgb(rgbHue, ColorMath.clamp(s, 0, 1), ColorMath.clamp(v, 0, 1));
+  },
+
+  mixPigments(color1, color2, weight = 0.5) {
+    return ColorMath.mixRyb(color1, color2, weight);
+  },
+
+  // Subtractive Beer-Lambert Law (Watercolor / Ink / CMY physical transmission)
+  // Optical density model: Transmittance T_mix = T1^(1-w) * T2^w
+  // Pure Cyan + Yellow = Emerald Green, Magenta + Yellow = Scarlet Red
+  mixSubtractiveCmy(c1, c2, weight = 0.5) {
+    const w = ColorMath.clamp(weight, 0, 1);
+    if (w <= 0) return { r: c1.r, g: c1.g, b: c1.b };
+    if (w >= 1) return { r: c2.r, g: c2.g, b: c2.b };
+    if (c1.r === c2.r && c1.g === c2.g && c1.b === c2.b) return { r: c1.r, g: c1.g, b: c1.b };
+
+    const toDensity = (v) => -Math.log(Math.max(0.005, v / 255));
+    const fromDensity = (d) => Math.round(ColorMath.clamp(Math.exp(-d) * 255, 0, 255));
 
     return {
-      r: Math.round(ColorMath.clamp(r * 255, 0, 255)),
-      g: Math.round(ColorMath.clamp(g * 255, 0, 255)),
-      b: Math.round(ColorMath.clamp(b * 255, 0, 255))
+      r: fromDensity((1 - w) * toDensity(c1.r) + w * toDensity(c2.r)),
+      g: fromDensity((1 - w) * toDensity(c1.g) + w * toDensity(c2.g)),
+      b: fromDensity((1 - w) * toDensity(c1.b) + w * toDensity(c2.b))
     };
+  },
+
+  // Perceptually Uniform OKLCH Blending (Digital Vibrante)
+  // Preserves perceived luminosity and chroma smoothly without intermediate gray drop
+  mixOklch(c1, c2, weight = 0.5) {
+    const w = ColorMath.clamp(weight, 0, 1);
+    if (w <= 0) return { r: c1.r, g: c1.g, b: c1.b };
+    if (w >= 1) return { r: c2.r, g: c2.g, b: c2.b };
+    if (c1.r === c2.r && c1.g === c2.g && c1.b === c2.b) return { r: c1.r, g: c1.g, b: c1.b };
+
+    const ok1 = ColorMath.rgbToOklch(c1.r, c1.g, c1.b);
+    const ok2 = ColorMath.rgbToOklch(c2.r, c2.g, c2.b);
+
+    const l = (1 - w) * ok1.l + w * ok2.l;
+    const c = (1 - w) * ok1.c + w * ok2.c;
+
+    // Shortest angular path on OKLCH Hue circle
+    let h1 = ok1.h;
+    let h2 = ok2.h;
+    let dh = h2 - h1;
+    if (dh > 180) dh -= 360;
+    if (dh < -180) dh += 360;
+    const h = (h1 + dh * w + 360) % 360;
+
+    return ColorMath.oklchToRgb(l, c, h);
+  },
+
+  // Classic Optical Smudge Blending (Linear sRGB with gamma 2.2 expansion)
+  // Smooth gradient diffusion like a traditional tortillon / paper blending stump
+  mixSmudge(c1, c2, weight = 0.5) {
+    const w = ColorMath.clamp(weight, 0, 1);
+    if (w <= 0) return { r: c1.r, g: c1.g, b: c1.b };
+    if (w >= 1) return { r: c2.r, g: c2.g, b: c2.b };
+    if (c1.r === c2.r && c1.g === c2.g && c1.b === c2.b) return { r: c1.r, g: c1.g, b: c1.b };
+
+    const toLin = (v) => Math.pow(Math.max(0, v) / 255, 2.2);
+    const toGam = (v) => Math.round(ColorMath.clamp(Math.pow(Math.max(0, v), 1 / 2.2) * 255, 0, 255));
+
+    return {
+      r: toGam((1 - w) * toLin(c1.r) + w * toLin(c2.r)),
+      g: toGam((1 - w) * toLin(c1.g) + w * toLin(c2.g)),
+      b: toGam((1 - w) * toLin(c1.b) + w * toLin(c2.b))
+    };
+  },
+
+  // Unified Mixing Engine by Mode: 'ryb' | 'cmy' | 'oklch' | 'smudge'
+  mixByMode(c1, c2, weight = 0.5, mode = 'ryb') {
+    switch (mode) {
+      case 'cmy':
+        return ColorMath.mixSubtractiveCmy(c1, c2, weight);
+      case 'oklch':
+        return ColorMath.mixOklch(c1, c2, weight);
+      case 'smudge':
+        return ColorMath.mixSmudge(c1, c2, weight);
+      case 'ryb':
+      default:
+        return ColorMath.mixRyb(c1, c2, weight);
+    }
   }
 };

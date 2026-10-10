@@ -1308,8 +1308,8 @@
                 <span>🖌️</span> Lienzo de Mezcla Física & Espátula Digital
               </div>
               <div style="display: flex; gap: 6px; align-items: center;">
-                <span class="active-badge" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: rgba(99,102,241,0.15); color: #A5B4FC; border: 1px solid rgba(99,102,241,0.3);">
-                  Mezcla Sustractiva de Pigmentos
+                <span id="mixerModeBadge" class="active-badge" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: rgba(99,102,241,0.15); color: #A5B4FC; border: 1px solid rgba(99,102,241,0.3);">
+                  🎨 Pigmento Real de Artista (RYB)
                 </span>
               </div>
             </div>
@@ -1332,9 +1332,20 @@
               </button>
             </div>
 
+            <!-- Selector de Modo / Física de Mezcla -->
+            <div class="mixer-mode-group" style="display: flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.25); padding: 3px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; white-space: nowrap;">Física:</span>
+              <select id="mixerBlendModeSelect" class="studio-select" style="padding: 3px 8px; font-size: 0.73rem; background: rgba(18, 20, 29, 0.95); border: 1px solid rgba(255, 255, 255, 0.15); color: #FFFFFF; border-radius: 4px; outline: none; cursor: pointer;">
+                <option value="ryb" selected>🎨 Pigmento Real Artista (RYB Óleo/Acrílico)</option>
+                <option value="cmy">💧 Sustractiva Acuarela/Tintas (CMY Físico)</option>
+                <option value="oklch">✨ Perceptual OKLCH (Digital Vibrante)</option>
+                <option value="smudge">🌪️ Difuminado Óptico (Smudge Clásico)</option>
+              </select>
+            </div>
+
             <div class="mixer-slider-group">
               <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Grosor:</span>
-              <input type="range" id="mixerBrushSizeRange" min="16" max="72" value="36" class="range-slider" style="width: 80px;" />
+              <input type="range" id="mixerBrushSizeRange" min="16" max="72" value="36" class="range-slider" style="width: 75px;" />
               <span id="mixerBrushSizeVal" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-cyan);">36px</span>
             </div>
 
@@ -1366,8 +1377,8 @@
           </div>
 
           <!-- Studio Mixing Tip -->
-          <div style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid var(--border-subtle); font-size: 0.73rem; color: var(--text-secondary); line-height: 1.5;">
-            💡 <strong>Consejo del Taller de Pintor:</strong> Para crear grises perla luminosos, deposita una mancha de <em>Azul Ultramar</em> y otra de <em>Siena Tostada</em>. Pasa la espátula entre ambas para observar cómo la mezcla sustractiva genera una rampa infinita de tonos neutros sin caer en la suciedad del gris plano digital.
+          <div id="mixerPhysicsDesc" style="margin-top: 10px; padding: 10px 14px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid var(--border-subtle); font-size: 0.73rem; color: var(--text-secondary); line-height: 1.5;">
+            💡 <strong>Consejo del Taller:</strong> Con <em>Pigmento Real Artista (RYB)</em>, fusionar Amarillo con Cyan o Azul genera verdes auténticos de hoja y savia; Rojo con Amarillo genera naranja cálido. Si prefieres la absorción lumínica pura de acuarelas o tintas de imprenta, cambia a <em>Sustractiva CMY</em>. Para degradados continuos sin zonas oscuras, elige <em>Perceptual OKLCH</em>.
           </div>
         </div>
       </div>

@@ -29,6 +29,18 @@ export class WetMixerEngine {
     // Virtual knife blade paint reservoir
     this.knifeColor = null; // { r, g, b }
     this.knifeAmount = 0.0;
+
+    // Mixing mode: 'ryb' (Artist Pigment) | 'cmy' (Subtractive CMY) | 'oklch' (Perceptual) | 'smudge' (Optical)
+    this.blendMode = 'ryb';
+  }
+
+  setBlendMode(mode) {
+    const validModes = ['ryb', 'cmy', 'oklch', 'smudge'];
+    this.blendMode = validModes.includes(mode) ? mode : 'ryb';
+  }
+
+  blend(c1, c2, weight = 0.5) {
+    return ColorMath.mixByMode(c1, c2, weight, this.blendMode);
   }
 
   init(canvasId = 'wetMixerCanvas') {
@@ -114,9 +126,9 @@ export class WetMixerEngine {
   }
 
   _depositInitialDabs() {
-    // Deposit sample artist primaries: Cadmium Yellow, Cobalt Blue, Crimson
-    this.depositDab(this.width * 0.35, this.height * 0.45, { r: 246, g: 255, b: 0 }, 48); // Pure Bright Yellow
-    this.depositDab(this.width * 0.65, this.height * 0.45, { r: 26, g: 69, b: 255 }, 48);  // Rich Cobalt Blue
+    // Deposit sample artist primaries: Cadmium Yellow, Primary Cyan / Blue, Crimson Rose
+    this.depositDab(this.width * 0.32, this.height * 0.45, { r: 255, g: 235, b: 0 }, 50); // Cadmium Yellow
+    this.depositDab(this.width * 0.68, this.height * 0.45, { r: 0, g: 220, b: 255 }, 50);  // Primary Cyan / Turquoise
     this.depositDab(this.width * 0.50, this.height * 0.76, { r: 244, g: 63, b: 94 }, 42);  // Crimson Rose
   }
 
@@ -173,10 +185,9 @@ export class WetMixerEngine {
     this._renderToScreen();
   }
 
-  // Authentic Subtractive Physical Paint Blending via 8-Band Kubelka-Munk
-  // Yields true artist greens for Yellow + Blue, warm orange for Red + Yellow, etc.
-  static blendSubtractive(c1, c2, weight = 0.5) {
-    return ColorMath.mixPigments(c1, c2, weight);
+  // Authentic Physical Paint Blending with selectable physics
+  static blendSubtractive(c1, c2, weight = 0.5, mode = 'ryb') {
+    return ColorMath.mixByMode(c1, c2, weight, mode);
   }
 
   _bindEvents() {
@@ -279,14 +290,14 @@ export class WetMixerEngine {
       if (surfaceCol) {
         // Palette knife touches wet paint on canvas
         if (this.knifeColor) {
-          // Authentic subtractive Kubelka-Munk blend between knife blade paint and surface paint!
-          const mixed = WetMixerEngine.blendSubtractive(this.knifeColor, surfaceCol, 0.5);
+          // Authentic physical blend using active blendMode ('ryb', 'cmy', 'oklch', 'smudge')
+          const mixed = this.blend(this.knifeColor, surfaceCol, 0.45);
 
-          // Stamp mixed pigment onto paint buffer
-          const r = this.brushSize * 0.9;
-          const grad = this.paintCtx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r);
+          // Stamp mixed pigment onto paint buffer with feathered impasto edge
+          const r = this.brushSize * 0.85;
+          const grad = this.paintCtx.createRadialGradient(cx, cy, r * 0.15, cx, cy, r);
           grad.addColorStop(0, `rgb(${mixed.r}, ${mixed.g}, ${mixed.b})`);
-          grad.addColorStop(0.75, `rgba(${mixed.r}, ${mixed.g}, ${mixed.b}, 0.92)`);
+          grad.addColorStop(0.78, `rgba(${mixed.r}, ${mixed.g}, ${mixed.b}, 0.95)`);
           grad.addColorStop(1, `rgba(${mixed.r}, ${mixed.g}, ${mixed.b}, 0)`);
 
           this.paintCtx.beginPath();
@@ -294,9 +305,9 @@ export class WetMixerEngine {
           this.paintCtx.fillStyle = grad;
           this.paintCtx.fill();
 
-          // Knife blade absorbs the newly mixed color
-          this.knifeColor = mixed;
-          this.knifeAmount = Math.min(1.0, this.knifeAmount + 0.15);
+          // Knife blade absorbs surface paint with smooth continuous transfer
+          this.knifeColor = this.blend(this.knifeColor, surfaceCol, 0.18);
+          this.knifeAmount = Math.min(1.0, this.knifeAmount + 0.12);
         } else {
           // Pick up surface paint on the clean blade
           this.knifeColor = { r: surfaceCol.r, g: surfaceCol.g, b: surfaceCol.b };
@@ -331,7 +342,7 @@ export class WetMixerEngine {
   getColorAt(x, y) {
     if (!this.paintCtx || x < 0 || x >= this.width || y < 0 || y >= this.height) return null;
     const pixel = this.paintCtx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
-    if (pixel[3] < 15) return null; // No paint deposited here
+    if (pixel[3] < 30) return null; // No paint deposited here
     return { r: pixel[0], g: pixel[1], b: pixel[2] };
   }
 

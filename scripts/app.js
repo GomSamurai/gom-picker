@@ -4560,6 +4560,46 @@ class GomPickerApp {
         this.showToast('Lienzo de mezcla limpiado');
       });
     }
+
+    const modeSelect = document.getElementById('mixerBlendModeSelect');
+    const modeBadge = document.getElementById('mixerModeBadge');
+    const modeDesc = document.getElementById('mixerPhysicsDesc');
+
+    if (modeSelect) {
+      modeSelect.addEventListener('change', (e) => {
+        const mode = e.target.value;
+        if (!this.wetMixer) this._initWetMixer();
+        if (this.wetMixer) this.wetMixer.setBlendMode(mode);
+
+        const modeData = {
+          ryb: {
+            badge: '🎨 Pigmento Real de Artista (RYB)',
+            tip: '💡 <strong>Modo Pigmento Real Artista (RYB):</strong> Simulación física de pigmentos (óleo, acrílico). Amarillo + Cyan/Azul genera verde vibrante; Rojo + Amarillo genera naranja; y los colores complementarios se neutralizan hacia tierras/grises de artista.',
+            toast: 'Física activa: Pigmento Real Artista (RYB Óleo/Acrílico)'
+          },
+          cmy: {
+            badge: '💧 Sustractiva Acuarela/Tintas (CMY)',
+            tip: '💡 <strong>Modo Sustractivo CMY:</strong> Absorción espectral de luz según la ley de Beer-Lambert (acuarela líquida y tintas gráficas). Cyan + Amarillo genera un verde esmeralda translúcido de alta intensidad cromática.',
+            toast: 'Física activa: Sustractiva Acuarela/Tintas (CMY Físico)'
+          },
+          oklch: {
+            badge: '✨ Perceptual OKLCH (Digital Vibrante)',
+            tip: '💡 <strong>Modo Perceptual OKLCH:</strong> Espacio de color uniforme que mantiene el brillo cromático sin crear zonas oscuras ("grises muertos") intermedias en la fusión de los matices.',
+            toast: 'Física activa: Perceptual OKLCH (Digital Luminoso)'
+          },
+          smudge: {
+            badge: '🌪️ Difuminado Óptico (Smudge Clásico)',
+            tip: '💡 <strong>Modo Difuminado Óptico:</strong> Fusión continua lineal corregida por gamma, similar al arrastre suave de grafito y pastel con un difumino tradicional de papel.',
+            toast: 'Física activa: Difuminado Óptico Suave (Smudge Clásico)'
+          }
+        };
+
+        const current = modeData[mode] || modeData.ryb;
+        if (modeBadge) modeBadge.textContent = current.badge;
+        if (modeDesc) modeDesc.innerHTML = current.tip;
+        this.showToast(current.toast);
+      });
+    }
   }
 
   _initWetMixer() {
@@ -4567,6 +4607,10 @@ class GomPickerApp {
       const canvas = document.getElementById('wetMixerCanvas');
       if (canvas) {
         this.wetMixer = new WetMixerEngine(this);
+        const modeSelect = document.getElementById('mixerBlendModeSelect');
+        if (modeSelect) {
+          this.wetMixer.setBlendMode(modeSelect.value);
+        }
         this.wetMixer.init('wetMixerCanvas');
       }
     }
