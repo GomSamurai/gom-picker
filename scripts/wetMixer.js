@@ -30,6 +30,9 @@ export class WetMixerEngine {
     this.knifeColor = null; // { r, g, b }
     this.knifeAmount = 0.0;
 
+    // Snapshot buffer to prevent self-overwriting feedback loop
+    this.snapshotData = null;
+
     // Mixing mode: 'ryb' (Artist Pigment) | 'cmy' (Subtractive CMY) | 'oklch' (Perceptual) | 'smudge' (Optical)
     this.blendMode = 'ryb';
   }
@@ -68,6 +71,28 @@ export class WetMixerEngine {
     this.height = h;
   }
 
+  _takeSnapshot() {
+    if (!this.paintCtx) return;
+    try {
+      this.snapshotData = this.paintCtx.getImageData(0, 0, this.width, this.height).data;
+    } catch (_) {
+      this.snapshotData = null;
+    }
+  }
+
+  getSnapshotColorAt(x, y) {
+    if (!this.snapshotData || x < 0 || x >= this.width || y < 0 || y >= this.height) return null;
+    const px = Math.floor(x);
+    const py = Math.floor(y);
+    const idx = (py * this.width + px) * 4;
+    if (this.snapshotData[idx + 3] < 25) return null;
+    return {
+      r: this.snapshotData[idx],
+      g: this.snapshotData[idx + 1],
+      b: this.snapshotData[idx + 2]
+    };
+  }
+
   clearPalette() {
     if (!this.ctx || !this.paintCtx) return;
 
@@ -75,6 +100,7 @@ export class WetMixerEngine {
     this.paintCtx.clearRect(0, 0, this.width, this.height);
     this.knifeColor = null;
     this.knifeAmount = 0.0;
+    this.snapshotData = null;
 
     this._renderToScreen();
   }
@@ -127,9 +153,9 @@ export class WetMixerEngine {
 
   _depositInitialDabs() {
     // Deposit sample artist primaries: Cadmium Yellow, Primary Cyan / Blue, Crimson Rose
-    this.depositDab(this.width * 0.32, this.height * 0.45, { r: 255, g: 235, b: 0 }, 50); // Cadmium Yellow
-    this.depositDab(this.width * 0.68, this.height * 0.45, { r: 0, g: 220, b: 255 }, 50);  // Primary Cyan / Turquoise
-    this.depositDab(this.width * 0.50, this.height * 0.76, { r: 244, g: 63, b: 94 }, 42);  // Crimson Rose
+    this.depositDab(this.width * 0.38, this.height * 0.45, { r: 255, g: 235, b: 0 }, 55); // Cadmium Yellow
+    this.depositDab(this.width * 0.62, this.height * 0.45, { r: 0, g: 220, b: 255 }, 55);  // Primary Cyan / Turquoise
+    this.depositDab(this.width * 0.50, this.height * 0.76, { r: 244, g: 63, b: 94 }, 44);  // Crimson Rose
   }
 
   // Deposit a generous mound of opaque oil paint
@@ -225,6 +251,8 @@ export class WetMixerEngine {
           this.knifeColor = null;
           this.knifeAmount = 0.0;
         }
+        // Capture pristine snapshot of palette state before this stroke begins
+        this._takeSnapshot();
       }
     };
 
@@ -252,6 +280,7 @@ export class WetMixerEngine {
       this.isDrawing = false;
       this.lastX = null;
       this.lastY = null;
+      this.snapshotData = null;
     };
 
     this.canvas.addEventListener('mousedown', onDown);
@@ -275,7 +304,7 @@ export class WetMixerEngine {
     if (!this.paintCtx) return;
 
     const dist = Math.hypot(x1 - x0, y1 - y0);
-    const stepDist = Math.max(3, this.brushSize * 0.18);
+    const stepDist = Math.max(2, this.brushSize * 0.15);
     const steps = Math.max(1, Math.ceil(dist / stepDist));
 
     this.paintCtx.save();
@@ -285,7 +314,9 @@ export class WetMixerEngine {
       const cx = x0 + (x1 - x0) * t;
       const cy = y0 + (y1 - y0) * t;
 
-      const surfaceCol = this.getColorAt(cx, cy);
+      // Crucial: Sample from the pre-stroke snapshot to read the true underlying paint
+      // rather than sampling the freshly stamped opaque disc from the previous microstep!
+      const surfaceCol = this.getSnapshotColorAt(cx, cy) || this.getColorAt(cx, cy);
 
       if (surfaceCol) {
         // Palette knife touches wet paint on canvas
@@ -306,8 +337,8 @@ export class WetMixerEngine {
           this.paintCtx.fill();
 
           // Knife blade absorbs surface paint with smooth continuous transfer
-          this.knifeColor = this.blend(this.knifeColor, surfaceCol, 0.18);
-          this.knifeAmount = Math.min(1.0, this.knifeAmount + 0.12);
+          this.knifeColor = this.blend(this.knifeColor, surfaceCol, 0.22);
+          this.knifeAmount = Math.min(1.0, this.knifeAmount + 0.15);
         } else {
           // Pick up surface paint on the clean blade
           this.knifeColor = { r: surfaceCol.r, g: surfaceCol.g, b: surfaceCol.b };
@@ -329,7 +360,7 @@ export class WetMixerEngine {
           this.paintCtx.fillStyle = grad;
           this.paintCtx.fill();
 
-          this.knifeAmount *= 0.93; // Gradually deplete knife paint
+          this.knifeAmount *= 0.97; // Gradually deplete knife paint across empty glass
         }
       }
     }
