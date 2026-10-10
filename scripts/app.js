@@ -4485,24 +4485,35 @@ class GomPickerApp {
   // --- 1. WET PAINT PALETTE & DIGITAL PALETTE KNIFE (WET MIXER) ---
 
   _bindWetMixerControls() {
+    const btnKnife = document.getElementById('btnMixerToolKnife');
     const btnBlend = document.getElementById('btnMixerToolBlend');
     const btnDab = document.getElementById('btnMixerToolDab');
     const btnPipette = document.getElementById('btnMixerToolPipette');
+
     const sizeRange = document.getElementById('mixerBrushSizeRange');
     const sizeVal = document.getElementById('mixerBrushSizeVal');
+    const softRange = document.getElementById('mixerSoftnessRange');
+    const softVal = document.getElementById('mixerSoftnessVal');
+    const wetRange = document.getElementById('mixerWetnessRange');
+    const wetVal = document.getElementById('mixerWetnessVal');
+
+    const presetBtns = document.querySelectorAll('.mixer-preset-btn');
+
     const btnDepFg = document.getElementById('btnMixerDepositFg');
     const btnDepBg = document.getElementById('btnMixerDepositBg');
-    const btnDepAi = document.getElementById('btnMixerDepositAi');
+    const btnDepPal = document.getElementById('btnMixerDepositPalette') || document.getElementById('btnMixerDepositAi');
+    const btnDepPrimaries = document.getElementById('btnMixerDepositPrimaries');
     const btnClear = document.getElementById('btnMixerClear');
 
     const setTool = (tool) => {
       if (!this.wetMixer) this._initWetMixer();
-      if (this.wetMixer) this.wetMixer.tool = tool;
-      [btnBlend, btnDab, btnPipette].forEach(b => {
+      if (this.wetMixer) this.wetMixer.setTool(tool);
+      [btnKnife, btnBlend, btnDab, btnPipette].forEach(b => {
         if (b) b.classList.toggle('active', b.dataset.tool === tool);
       });
     };
 
+    if (btnKnife) btnKnife.addEventListener('click', () => setTool('knife'));
     if (btnBlend) btnBlend.addEventListener('click', () => setTool('blend'));
     if (btnDab) btnDab.addEventListener('click', () => setTool('dab'));
     if (btnPipette) btnPipette.addEventListener('click', () => setTool('pipette'));
@@ -4511,16 +4522,70 @@ class GomPickerApp {
       sizeRange.addEventListener('input', (e) => {
         const val = parseInt(e.target.value, 10);
         if (!this.wetMixer) this._initWetMixer();
-        if (this.wetMixer) this.wetMixer.brushSize = val;
+        if (this.wetMixer) this.wetMixer.setBrushSize(val);
         if (sizeVal) sizeVal.textContent = `${val}px`;
       });
     }
+
+    if (softRange) {
+      softRange.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        if (!this.wetMixer) this._initWetMixer();
+        if (this.wetMixer) this.wetMixer.setSoftness(val / 100);
+        if (softVal) softVal.textContent = `${val}%`;
+        presetBtns.forEach(b => b.classList.remove('active'));
+      });
+    }
+
+    if (wetRange) {
+      wetRange.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        if (!this.wetMixer) this._initWetMixer();
+        if (this.wetMixer) this.wetMixer.setBlendStrength(val / 100);
+        if (wetVal) wetVal.textContent = `${val}%`;
+        presetBtns.forEach(b => b.classList.remove('active'));
+      });
+    }
+
+    // Quick Mixing Presets
+    presetBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const preset = btn.dataset.preset;
+        if (!this.wetMixer) this._initWetMixer();
+        if (this.wetMixer) this.wetMixer.applyPreset(preset);
+
+        presetBtns.forEach(b => b.classList.toggle('active', b === btn));
+
+        if (preset === 'creamy') {
+          if (softRange) softRange.value = 70;
+          if (softVal) softVal.textContent = '70%';
+          if (wetRange) wetRange.value = 45;
+          if (wetVal) wetVal.textContent = '45%';
+          setTool('blend');
+          this.showToast('🧈 Fusión Cremosa activa: degradados infinitos y mantecosos', 'success');
+        } else if (preset === 'knife') {
+          if (softRange) softRange.value = 35;
+          if (softVal) softVal.textContent = '35%';
+          if (wetRange) wetRange.value = 60;
+          if (wetVal) wetVal.textContent = '60%';
+          setTool('knife');
+          this.showToast('🔪 Espátula Firme activa: arrastre de óleo con relieve e impasto', 'success');
+        } else if (preset === 'glaze') {
+          if (softRange) softRange.value = 90;
+          if (softVal) softVal.textContent = '90%';
+          if (wetRange) wetRange.value = 30;
+          if (wetVal) wetVal.textContent = '30%';
+          setTool('blend');
+          this.showToast('💨 Veladura activa: difuminado ultra-suave sin bordes', 'success');
+        }
+      });
+    });
 
     if (btnDepFg) {
       btnDepFg.addEventListener('click', () => {
         if (!this.wetMixer) this._initWetMixer();
         const rgb = this.fgColor;
-        this.wetMixer.depositDab(this.wetMixer.width * 0.38, this.wetMixer.height * 0.45, rgb, this.wetMixer.brushSize * 1.2);
+        this.wetMixer.depositDab(this.wetMixer.width * 0.38, this.wetMixer.height * 0.45, rgb, this.wetMixer.brushSize * 1.25);
         this.showToast(`Mancha de color frontal depositada: ${this.fgColor.hex}`);
       });
     }
@@ -4529,13 +4594,13 @@ class GomPickerApp {
       btnDepBg.addEventListener('click', () => {
         if (!this.wetMixer) this._initWetMixer();
         const rgb = this.bgColor;
-        this.wetMixer.depositDab(this.wetMixer.width * 0.62, this.wetMixer.height * 0.45, rgb, this.wetMixer.brushSize * 1.2);
+        this.wetMixer.depositDab(this.wetMixer.width * 0.62, this.wetMixer.height * 0.45, rgb, this.wetMixer.brushSize * 1.25);
         this.showToast(`Mancha de color de fondo depositada: ${this.bgColor.hex}`);
       });
     }
 
-    if (btnDepAi) {
-      btnDepAi.addEventListener('click', () => {
+    if (btnDepPal) {
+      btnDepPal.addEventListener('click', () => {
         if (!this.wetMixer) this._initWetMixer();
         const colors = (this.currentAiPalette && this.currentAiPalette.colors) 
           ? this.currentAiPalette.colors 
@@ -4551,6 +4616,14 @@ class GomPickerApp {
           this.wetMixer.depositDab(x, y, rgb, 38);
         });
         this.showToast(`Depositadas ${count} manchas de la paleta en el lienzo`);
+      });
+    }
+
+    if (btnDepPrimaries) {
+      btnDepPrimaries.addEventListener('click', () => {
+        if (!this.wetMixer) this._initWetMixer();
+        this.wetMixer.depositPrimaries();
+        this.showToast('🌈 5 Tubos maestros depositados: Amarillo Cadmio, Cyan, Carmín, Blanco y Negro', 'success');
       });
     }
 
@@ -4611,6 +4684,12 @@ class GomPickerApp {
         if (modeSelect) {
           this.wetMixer.setBlendMode(modeSelect.value);
         }
+        const sizeRange = document.getElementById('mixerBrushSizeRange');
+        if (sizeRange) this.wetMixer.setBrushSize(parseInt(sizeRange.value, 10));
+        const softRange = document.getElementById('mixerSoftnessRange');
+        if (softRange) this.wetMixer.setSoftness(parseInt(softRange.value, 10) / 100);
+        const wetRange = document.getElementById('mixerWetnessRange');
+        if (wetRange) this.wetMixer.setBlendStrength(parseInt(wetRange.value, 10) / 100);
         this.wetMixer.init('wetMixerCanvas');
       }
     }

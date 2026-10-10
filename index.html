@@ -1321,8 +1321,11 @@
           <!-- Wet Mixer Toolbar -->
           <div class="wet-mixer-toolbar">
             <div class="mixer-tool-group">
-              <button id="btnMixerToolBlend" class="mixer-tool-btn active" data-tool="blend" title="Espátula / Pincel de mezcla física (Arrastra para fusionar)">
+              <button id="btnMixerToolKnife" class="mixer-tool-btn" data-tool="knife" title="Espátula de mezcla física (Cuerpo, relieve y arrastre de óleo)">
                 <span>🔪</span> Espátula
+              </button>
+              <button id="btnMixerToolBlend" class="mixer-tool-btn active" data-tool="blend" title="Pincel difuminador (Degradados mantecosos, suaves y continuos)">
+                <span>🖌️</span> Difuminador
               </button>
               <button id="btnMixerToolDab" class="mixer-tool-btn" data-tool="dab" title="Depositar manchas de pintura">
                 <span>💧</span> Mancha
@@ -1343,21 +1346,45 @@
               </select>
             </div>
 
-            <div class="mixer-slider-group">
+            <!-- Sliders de Pincel / Espátula -->
+            <div class="mixer-slider-group" title="Tamaño del cabezal o espátula">
               <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Grosor:</span>
-              <input type="range" id="mixerBrushSizeRange" min="16" max="72" value="36" class="range-slider" style="width: 75px;" />
+              <input type="range" id="mixerBrushSizeRange" min="14" max="76" value="36" class="range-slider" style="width: 65px;" />
               <span id="mixerBrushSizeVal" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-cyan);">36px</span>
             </div>
 
+            <div class="mixer-slider-group" title="Suavizado del trazo: de filo definido a degradado mantecoso ultra-suave">
+              <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Suavizado:</span>
+              <input type="range" id="mixerSoftnessRange" min="10" max="95" value="70" class="range-slider" style="width: 65px;" />
+              <span id="mixerSoftnessVal" style="font-family: var(--font-mono); font-size: 0.72rem; color: #A5B4FC;">70%</span>
+            </div>
+
+            <div class="mixer-slider-group" title="Humedad / Fuerza: absorción gradual vs fusión directa">
+              <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Humedad:</span>
+              <input type="range" id="mixerWetnessRange" min="15" max="90" value="45" class="range-slider" style="width: 65px;" />
+              <span id="mixerWetnessVal" style="font-family: var(--font-mono); font-size: 0.72rem; color: #34D399;">45%</span>
+            </div>
+
+            <!-- Estilos Rápidos (Presets) -->
+            <div class="mixer-presets-group" style="display: flex; gap: 4px; align-items: center;">
+              <button class="chip-select mixer-preset-btn active" data-preset="creamy" title="Fusión mantecosa con degradados continuos infinitos">🧈 Cremoso</button>
+              <button class="chip-select mixer-preset-btn" data-preset="knife" title="Espátula firme con relieve e impasto">🔪 Espátula</button>
+              <button class="chip-select mixer-preset-btn" data-preset="glaze" title="Veladura ultra-suave sin bordes">💨 Glaseado</button>
+            </div>
+
+            <!-- Dispensadores de Pintura -->
             <div class="mixer-actions-group">
-              <button id="btnMixerDepositFg" class="tool-action-btn" title="Depositar mancha del Color Frontal activo en el centro">
-                <span>●</span> Echar FG
+              <button id="btnMixerDepositFg" class="tool-action-btn" title="Depositar mancha del Color Frontal activo">
+                <span>●</span> FG
               </button>
               <button id="btnMixerDepositBg" class="tool-action-btn" title="Depositar mancha del Color de Fondo">
-                <span>○</span> Echar BG
+                <span>○</span> BG
               </button>
-              <button id="btnMixerDepositAi" class="tool-action-btn" title="Depositar las muestras de la paleta actual">
-                <span>🎨</span> Echar Paleta
+              <button id="btnMixerDepositPalette" class="tool-action-btn" title="Depositar las muestras de la paleta activa">
+                <span>🎨</span> Paleta
+              </button>
+              <button id="btnMixerDepositPrimaries" class="tool-action-btn" title="Depositar los 5 tubos maestros de taller (Amarillo, Cyan, Magenta, Blanco, Negro)">
+                <span>🌈</span> Primarios Taller
               </button>
               <button id="btnMixerClear" class="tool-action-btn danger" title="Limpiar paleta de mezcla">
                 <span>🗑️</span> Limpiar
@@ -1371,9 +1398,15 @@
             </div>
           </div>
 
-          <!-- Interactive Mixing Canvas -->
+          <!-- Interactive Mixing Canvas with Dynamic Brush Reticle -->
           <div class="wet-canvas-container" style="position: relative; margin-top: 10px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-subtle); box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);">
             <canvas id="wetMixerCanvas" width="680" height="420" style="display: block; width: 100%; height: 420px; cursor: crosshair; touch-action: none; background: #111218;"></canvas>
+            
+            <!-- Live Studio Brush Reticle -->
+            <div id="mixerBrushCursor" class="mixer-brush-reticle" style="display: none;">
+              <div id="mixerCursorCore" class="mixer-reticle-core"></div>
+              <div id="mixerCursorPip" class="mixer-reticle-pip"></div>
+            </div>
           </div>
 
           <!-- Studio Mixing Tip -->

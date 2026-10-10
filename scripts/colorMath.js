@@ -435,19 +435,21 @@ export const ColorMath = {
       angle = (angle % 360 + 360) % 360;
       hRyb = angle;
 
-      // Natural artist pigment desaturation for complementary pairs
+      // Natural artist pigment desaturation for complementary pairs (peaking at w = 0.5)
       const cancelFactor = Math.cos((dHue * Math.PI) / 360);
       const linearS = (1 - w) * hsv1.s + w * hsv2.s;
-      s = linearS * Math.pow(Math.max(0, cancelFactor), 0.65);
+      const dipWeight = 4 * w * (1 - w);
+      const sDip = 1.0 - dipWeight * (1.0 - Math.pow(Math.max(0, cancelFactor), 0.65));
+      s = linearS * sDip;
     }
 
     const rgbHue = ColorMath.rybToRgbHue(hRyb);
 
-    // Subtractive physical darkening factor:
-    // Mixing pigments increases light absorption proportional to hue opposition
+    // Subtractive physical darkening factor (peaking at w = 0.5 in complementary opposition):
     const hueDiff = Math.abs(hsv1.h - hsv2.h);
     const minHueDiff = Math.min(hueDiff, 360 - hueDiff);
-    const subtractiveDip = 1 - (minHueDiff / 180) * 0.15 * (hsv1.s * hsv2.s);
+    const dipWeight = 4 * w * (1 - w);
+    const subtractiveDip = 1 - (minHueDiff / 180) * 0.15 * (hsv1.s * hsv2.s) * dipWeight;
     const v = ((1 - w) * hsv1.v + w * hsv2.v) * subtractiveDip;
 
     return ColorMath.hsvToRgb(rgbHue, ColorMath.clamp(s, 0, 1), ColorMath.clamp(v, 0, 1));
