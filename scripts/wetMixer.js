@@ -32,6 +32,8 @@ export class WetMixerEngine {
 
     // Snapshot buffer to prevent self-overwriting feedback loop
     this.snapshotData = null;
+    this.snapshotWidth = 0;
+    this.snapshotHeight = 0;
 
     // Mixing mode: 'ryb' (Artist Pigment) | 'cmy' (Subtractive CMY) | 'oklch' (Perceptual) | 'smudge' (Optical)
     this.blendMode = 'ryb';
@@ -58,39 +60,68 @@ export class WetMixerEngine {
   }
 
   _setupCanvasResolution() {
+    if (!this.canvas) return;
     const rect = this.canvas.getBoundingClientRect();
-    const w = rect.width || 680;
-    const h = rect.height || 420;
+    const w = Math.round(rect.width) || 680;
+    const h = Math.round(rect.height) || 420;
 
-    this.canvas.width = w;
-    this.canvas.height = h;
-    this.paintCanvas.width = w;
-    this.paintCanvas.height = h;
+    if (this.width !== w || this.height !== h) {
+      let backup = null;
+      if (this.paintCanvas && this.width > 0 && this.height > 0) {
+        backup = document.createElement('canvas');
+        backup.width = this.width;
+        backup.height = this.height;
+        const bctx = backup.getContext('2d');
+        bctx.drawImage(this.paintCanvas, 0, 0);
+      }
 
-    this.width = w;
-    this.height = h;
+      this.canvas.width = w;
+      this.canvas.height = h;
+      this.paintCanvas.width = w;
+      this.paintCanvas.height = h;
+
+      this.width = w;
+      this.height = h;
+
+      if (backup && this.paintCtx) {
+        this.paintCtx.drawImage(backup, 0, 0);
+      }
+    }
   }
 
   _takeSnapshot() {
     if (!this.paintCtx) return;
     try {
-      this.snapshotData = this.paintCtx.getImageData(0, 0, this.width, this.height).data;
+      const w = this.paintCanvas.width || this.width;
+      const h = this.paintCanvas.height || this.height;
+      if (w > 0 && h > 0) {
+        const img = this.paintCtx.getImageData(0, 0, w, h);
+        this.snapshotData = img.data;
+        this.snapshotWidth = img.width;
+        this.snapshotHeight = img.height;
+      }
     } catch (_) {
       this.snapshotData = null;
+      this.snapshotWidth = 0;
+      this.snapshotHeight = 0;
     }
   }
 
   getSnapshotColorAt(x, y) {
-    if (!this.snapshotData || x < 0 || x >= this.width || y < 0 || y >= this.height) return null;
+    if (!this.snapshotData || !this.snapshotWidth) return null;
     const px = Math.floor(x);
     const py = Math.floor(y);
-    const idx = (py * this.width + px) * 4;
-    if (this.snapshotData[idx + 3] < 25) return null;
-    return {
-      r: this.snapshotData[idx],
-      g: this.snapshotData[idx + 1],
-      b: this.snapshotData[idx + 2]
-    };
+    if (px < 0 || px >= this.snapshotWidth || py < 0 || py >= this.snapshotHeight) return null;
+    const idx = (py * this.snapshotWidth + px) * 4;
+    const a = this.snapshotData[idx + 3];
+    if (typeof a !== 'number' || a < 25) return null;
+    const r = this.snapshotData[idx];
+    const g = this.snapshotData[idx + 1];
+    const b = this.snapshotData[idx + 2];
+    if (typeof r !== 'number' || typeof g !== 'number' || typeof b !== 'number' || isNaN(r) || isNaN(g) || isNaN(b)) {
+      return null;
+    }
+    return { r, g, b };
   }
 
   clearPalette() {
@@ -101,6 +132,8 @@ export class WetMixerEngine {
     this.knifeColor = null;
     this.knifeAmount = 0.0;
     this.snapshotData = null;
+    this.snapshotWidth = 0;
+    this.snapshotHeight = 0;
 
     this._renderToScreen();
   }
@@ -281,6 +314,8 @@ export class WetMixerEngine {
       this.lastX = null;
       this.lastY = null;
       this.snapshotData = null;
+      this.snapshotWidth = 0;
+      this.snapshotHeight = 0;
     };
 
     this.canvas.addEventListener('mousedown', onDown);
@@ -308,73 +343,86 @@ export class WetMixerEngine {
     const steps = Math.max(1, Math.ceil(dist / stepDist));
 
     this.paintCtx.save();
+    try {
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const cx = x0 + (x1 - x0) * t;
+        const cy = y0 + (y1 - y0) * t;
 
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps;
-      const cx = x0 + (x1 - x0) * t;
-      const cy = y0 + (y1 - y0) * t;
-
-      // Crucial: Sample from the pre-stroke snapshot to read the true underlying paint
-      // rather than sampling the freshly stamped opaque disc from the previous microstep!
-      const surfaceCol = this.getSnapshotColorAt(cx, cy) || this.getColorAt(cx, cy);
-
-      if (surfaceCol) {
-        // Palette knife touches wet paint on canvas
-        if (this.knifeColor) {
-          // Authentic physical blend using active blendMode ('ryb', 'cmy', 'oklch', 'smudge')
-          const mixed = this.blend(this.knifeColor, surfaceCol, 0.45);
-
-          // Stamp mixed pigment onto paint buffer with feathered impasto edge
-          const r = this.brushSize * 0.85;
-          const grad = this.paintCtx.createRadialGradient(cx, cy, r * 0.15, cx, cy, r);
-          grad.addColorStop(0, `rgb(${mixed.r}, ${mixed.g}, ${mixed.b})`);
-          grad.addColorStop(0.78, `rgba(${mixed.r}, ${mixed.g}, ${mixed.b}, 0.95)`);
-          grad.addColorStop(1, `rgba(${mixed.r}, ${mixed.g}, ${mixed.b}, 0)`);
-
-          this.paintCtx.beginPath();
-          this.paintCtx.arc(cx, cy, r, 0, Math.PI * 2);
-          this.paintCtx.fillStyle = grad;
-          this.paintCtx.fill();
-
-          // Knife blade absorbs surface paint with smooth continuous transfer
-          this.knifeColor = this.blend(this.knifeColor, surfaceCol, 0.22);
-          this.knifeAmount = Math.min(1.0, this.knifeAmount + 0.15);
-        } else {
-          // Pick up surface paint on the clean blade
-          this.knifeColor = { r: surfaceCol.r, g: surfaceCol.g, b: surfaceCol.b };
-          this.knifeAmount = 1.0;
+        // Crucial: Sample from the pre-stroke snapshot to read the true underlying paint
+        // rather than sampling the freshly stamped opaque disc from the previous microstep!
+        let surfaceCol = this.getSnapshotColorAt(cx, cy);
+        if (!surfaceCol) {
+          surfaceCol = this.getColorAt(cx, cy);
         }
-      } else {
-        // Knife moves across dry/empty palette glass:
-        // Leaves a streak of carried paint if blade has paint
-        if (this.knifeColor && this.knifeAmount > 0.05) {
-          const r = this.brushSize * 0.75 * this.knifeAmount;
-          const k = this.knifeColor;
 
-          const grad = this.paintCtx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r);
-          grad.addColorStop(0, `rgba(${k.r}, ${k.g}, ${k.b}, ${this.knifeAmount * 0.85})`);
-          grad.addColorStop(1, `rgba(${k.r}, ${k.g}, ${k.b}, 0)`);
+        if (surfaceCol) {
+          // Palette knife touches wet paint on canvas
+          if (this.knifeColor) {
+            // Authentic physical blend using active blendMode ('ryb', 'cmy', 'oklch', 'smudge')
+            const mixed = this.blend(this.knifeColor, surfaceCol, 0.45);
 
-          this.paintCtx.beginPath();
-          this.paintCtx.arc(cx, cy, r, 0, Math.PI * 2);
-          this.paintCtx.fillStyle = grad;
-          this.paintCtx.fill();
+            // Stamp mixed pigment onto paint buffer with feathered impasto edge
+            const r = this.brushSize * 0.85;
+            const grad = this.paintCtx.createRadialGradient(cx, cy, r * 0.15, cx, cy, r);
+            grad.addColorStop(0, `rgb(${mixed.r}, ${mixed.g}, ${mixed.b})`);
+            grad.addColorStop(0.78, `rgba(${mixed.r}, ${mixed.g}, ${mixed.b}, 0.95)`);
+            grad.addColorStop(1, `rgba(${mixed.r}, ${mixed.g}, ${mixed.b}, 0)`);
 
-          this.knifeAmount *= 0.97; // Gradually deplete knife paint across empty glass
+            this.paintCtx.beginPath();
+            this.paintCtx.arc(cx, cy, r, 0, Math.PI * 2);
+            this.paintCtx.fillStyle = grad;
+            this.paintCtx.fill();
+
+            // Knife blade absorbs surface paint with smooth continuous transfer
+            this.knifeColor = this.blend(this.knifeColor, surfaceCol, 0.22);
+            this.knifeAmount = Math.min(1.0, this.knifeAmount + 0.15);
+          } else {
+            // Pick up surface paint on the clean blade
+            this.knifeColor = { r: surfaceCol.r, g: surfaceCol.g, b: surfaceCol.b };
+            this.knifeAmount = 1.0;
+          }
+        } else {
+          // Knife moves across dry/empty palette glass:
+          // Leaves a streak of carried paint if blade has paint
+          if (this.knifeColor && this.knifeAmount > 0.05) {
+            const r = this.brushSize * 0.75 * this.knifeAmount;
+            const k = this.knifeColor;
+
+            const grad = this.paintCtx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r);
+            grad.addColorStop(0, `rgba(${k.r}, ${k.g}, ${k.b}, ${this.knifeAmount * 0.85})`);
+            grad.addColorStop(1, `rgba(${k.r}, ${k.g}, ${k.b}, 0)`);
+
+            this.paintCtx.beginPath();
+            this.paintCtx.arc(cx, cy, r, 0, Math.PI * 2);
+            this.paintCtx.fillStyle = grad;
+            this.paintCtx.fill();
+
+            this.knifeAmount *= 0.97; // Gradually deplete knife paint across empty glass
+          }
         }
       }
+    } finally {
+      this.paintCtx.restore();
+      this._renderToScreen();
     }
-
-    this.paintCtx.restore();
-    this._renderToScreen();
   }
 
   // Samples pigment strictly from the offscreen paint buffer (never from the dark background)
   getColorAt(x, y) {
-    if (!this.paintCtx || x < 0 || x >= this.width || y < 0 || y >= this.height) return null;
-    const pixel = this.paintCtx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
-    if (pixel[3] < 30) return null; // No paint deposited here
-    return { r: pixel[0], g: pixel[1], b: pixel[2] };
+    if (!this.paintCtx) return null;
+    const w = this.paintCanvas.width || this.width;
+    const h = this.paintCanvas.height || this.height;
+    const px = Math.floor(x);
+    const py = Math.floor(y);
+    if (px < 0 || px >= w || py < 0 || py >= h) return null;
+    try {
+      const pixel = this.paintCtx.getImageData(px, py, 1, 1).data;
+      if (typeof pixel[3] !== 'number' || pixel[3] < 25) return null;
+      return { r: pixel[0], g: pixel[1], b: pixel[2] };
+    } catch (_) {
+      return null;
+    }
   }
 
   sampleColorAt(x, y) {
