@@ -3913,4 +3913,230 @@ body.value-check-mode {
   box-shadow: 0 0 16px var(--accent-glow);
 }
 
+/* ==========================================================================
+   WET PAINT PALETTE & DIGITAL PALETTE KNIFE (WET MIXER)
+   ========================================================================== */
+.wet-mixer-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  margin-top: 10px;
+}
+
+.mixer-tool-group {
+  display: flex;
+  gap: 4px;
+}
+
+.mixer-tool-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all var(--transition-fast);
+}
+
+.mixer-tool-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+}
+
+.mixer-tool-btn.active {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: var(--accent-primary);
+  color: #FFFFFF;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+}
+
+.mixer-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border-left: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.mixer-actions-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mixer-hover-indicator {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+}
+
+/* ==========================================================================
+   PERCEPTUAL RAMP STUDIO & GRADIENT GENERATOR
+   ========================================================================== */
+.ramp-controls-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.ramp-step-chip {
+  flex: 1;
+  min-width: 60px;
+  height: 90px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 6px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  position: relative;
+  overflow: hidden;
+}
+
+.ramp-step-chip:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.ramp-step-meta {
+  background: rgba(10, 11, 16, 0.85);
+  backdrop-filter: blur(6px);
+  border-radius: 4px;
+  padding: 3px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ramp-step-hex {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  display: block;
+}
+
+.ramp-step-ratio {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  display: block;
+}
+
+/* ==========================================================================
+   COLOR VISION DEFICIENCY (CVD) ACCESSIBILITY MATRIX
+   ========================================================================== */
+.cvd-matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.cvd-quadrant-card {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color var(--transition-fast);
+}
+
+.cvd-quadrant-card:hover {
+  border-color: var(--border-accent);
+}
+
+.cvd-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cvd-card-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cvd-card-pop {
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.cvd-swatch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cvd-swatch-sample {
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.cvd-swatch-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cvd-swatch-hex {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.cvd-card-desc {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.cvd-wcag-pill {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-top: 2px;
+}
+
+
 

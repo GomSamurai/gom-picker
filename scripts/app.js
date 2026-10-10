@@ -26,6 +26,11 @@ import { CompanionBands } from './companionBands.js';
 import { PaletteCatalogs } from './paletteCatalogs.js';
 import { BrandPigments } from './brandPigments.js';
 import { AIChatStudio } from './aiChat.js';
+import { WetMixerEngine } from './wetMixer.js';
+import { CVDSimulator } from './cvdSimulator.js';
+import { RampStudio } from './rampStudio.js';
+import { SwatchSheetExporter } from './swatchSheetExporter.js';
+import { ProfileBackup } from './profileBackup.js';
 
 class GomPickerApp {
   constructor() {
@@ -36,6 +41,10 @@ class GomPickerApp {
     this.baseBgColor = { r: 244, g: 63, b: 94, hex: '#F43F5E' };
     this.activeSpace = 'rgb'; // 'rgb' | 'cmyk' | 'hsl'
     this.lastGamutCheck = null;
+
+    this.wetMixer = null;
+    this.currentRamp = [];
+    this._isCvdModalOpen = false;
 
     this.swatchManager = new SwatchManager();
     this.imageExtractor = null;
@@ -141,6 +150,10 @@ class GomPickerApp {
     safeBind('_bindCommandPalette', this._bindCommandPalette);
     safeBind('_bindShortcutsModal', this._bindShortcutsModal);
     safeBind('_bindEyeDropper', this._bindEyeDropper);
+    safeBind('_bindWetMixerControls', this._bindWetMixerControls);
+    safeBind('_bindRampStudioControls', this._bindRampStudioControls);
+    safeBind('_bindCvdControls', this._bindCvdControls);
+    safeBind('_bindProfileBackupControls', this._bindProfileBackupControls);
     safeBind('_restoreSavedSession', this._restoreSavedSession);
 
     // 6. Initial Renderings and Trigger Sync
@@ -151,6 +164,7 @@ class GomPickerApp {
     safeBind('renderLimitedPalettes', () => this.renderLimitedPalettes('zorn'));
     safeBind('renderChromillaMixer', () => this.renderChromillaMixer(this.fgColor));
     safeBind('renderFlorentFarges', () => this.renderFlorentFarges(this.fgColor));
+    safeBind('renderRampStudio', this.renderRampStudio);
     safeBind('generateInitialAiPalette', this.generateInitialAiPalette);
     safeBind('loadSampleImage', () => this.loadSampleImage('assets/samples/monet.png'));
     safeBind('updateWcagBadge', this.updateWcagBadge);
@@ -219,6 +233,12 @@ class GomPickerApp {
     this.renderChromillaMixer(rgb);
     this.renderFlorentFarges(rgb);
     this.runPaletteDiagnostic();
+    if (typeof this.renderRampStudio === 'function') {
+      this.renderRampStudio();
+    }
+    if (this._isCvdModalOpen && typeof this.renderCvdMatrix === 'function') {
+      this.renderCvdMatrix(this.fgColor);
+    }
 
     // Broadcast update to independent floating window
     if (broadcast && this.broadcastChannel) {
@@ -774,7 +794,9 @@ class GomPickerApp {
       florent: document.getElementById('viewFlorent'),
       atmosphere: document.getElementById('viewAtmosphere'),
       masters: document.getElementById('viewMasters'),
-      extractor: document.getElementById('viewExtractor')
+      extractor: document.getElementById('viewExtractor'),
+      wetmixer: document.getElementById('viewWetMixer'),
+      ramps: document.getElementById('viewRamps')
     };
 
     const tabMeta = {
@@ -785,6 +807,8 @@ class GomPickerApp {
       atmosphere: { title: 'Modificador Dinámico de Atmósfera', sub: 'Luz ambiental y cálculo térmico para sombras realistas', icon: '🌅' },
       masters: { title: 'Paletas de Grandes Maestros', sub: 'Colección histórica: Sorolla, Monet, Rembrandt, Van Gogh, Vermeer...', icon: '🏛️' },
       extractor: { title: 'Extractor K-Means & Análisis de Imagen', sub: 'Extracción por clustering, dominancias y paletas armónicas', icon: '📷' },
+      wetmixer: { title: 'Lienzo de Mezcla Física & Espátula Digital', sub: 'Paleta húmeda interactiva con mezcla sustractiva de pigmentos', icon: '🖌️' },
+      ramps: { title: 'Generador de Rampas Tonales & Degradados OKLCH', sub: 'Degradados de alta fidelidad perceptual sin zona muerta de gris', icon: '📐' },
       ai: { title: 'Asesor Cromático IA (Columna Derecha)', sub: 'Consultor inteligente 100% offline para esquemas y composiciones', icon: '🧠' },
       swatches: { title: 'Bibliotecas de Muestras (Columna Derecha)', sub: 'Gestión de paletas, importación/exportación .ASE binario y catálogos', icon: '📚' }
     };
@@ -826,7 +850,7 @@ class GomPickerApp {
           return;
         }
 
-        // Center Views (Studio, Gamut Masks, Chromilla, Florent, Atmosphere, Masters, Extractor)
+        // Center Views (Studio, Gamut Masks, Chromilla, Florent, Atmosphere, Masters, Extractor, WetMixer, Ramps)
         tabBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
@@ -862,6 +886,12 @@ class GomPickerApp {
         }
         if (tabKey === 'atmosphere') {
           this.renderAtmosphereStages();
+        }
+        if (tabKey === 'wetmixer') {
+          if (!this.wetMixer) this._initWetMixer();
+        }
+        if (tabKey === 'ramps') {
+          this.renderRampStudio();
         }
 
         // Scroll content wrapper smoothly to top when switching workspaces
@@ -3213,6 +3243,16 @@ class GomPickerApp {
       });
     }
 
+    const btnAiExportPng = document.getElementById('btnAiExportPng');
+    if (btnAiExportPng) {
+      btnAiExportPng.addEventListener('click', () => {
+        if (!this.currentAiPalette || !this.currentAiPalette.colors) return;
+        const name = this.currentAiPalette.title || 'Paleta IA 60-30-10';
+        SwatchSheetExporter.exportPaletteToPng(name, this.currentAiPalette.colors);
+        this.showToast('✓ Lámina Swatch Sheet generada en PNG de alta resolución (1200x630px)', 'success');
+      });
+    }
+
     // AI Subtabs Toggle (60-30-10 Synthesizer vs Art Master Chat Studio)
     const tabSynth = document.getElementById('tabBtnAiSynth');
     const tabChat = document.getElementById('tabBtnAiChat');
@@ -3640,6 +3680,15 @@ class GomPickerApp {
         const activePal = this.swatchManager.palettes[0] || { name: 'GOM_Harmonies', colors: [this.fgColor.hex, this.bgColor.hex] };
         this.swatchManager.exportAsSvgCard(activePal);
         this.showToast('Ficha de color en SVG descargada');
+      });
+    }
+
+    const btnSwatchesPng = document.getElementById('btnSwatchesExportPng');
+    if (btnSwatchesPng) {
+      btnSwatchesPng.addEventListener('click', () => {
+        const activePal = this.swatchManager.palettes[0] || { name: 'Paleta Activa GOM Picker', colors: [this.fgColor.hex, this.bgColor.hex] };
+        SwatchSheetExporter.exportPaletteToPng(activePal.name, activePal.colors);
+        this.showToast('✓ Lámina Swatch Sheet descargada en PNG (1200x630px)', 'success');
       });
     }
   }
@@ -4431,6 +4480,381 @@ class GomPickerApp {
     textarea.select();
     try { document.execCommand('copy'); } catch (_) {}
     document.body.removeChild(textarea);
+  // --- 1. WET PAINT PALETTE & DIGITAL PALETTE KNIFE (WET MIXER) ---
+
+  _bindWetMixerControls() {
+    const btnBlend = document.getElementById('btnMixerToolBlend');
+    const btnDab = document.getElementById('btnMixerToolDab');
+    const btnPipette = document.getElementById('btnMixerToolPipette');
+    const sizeRange = document.getElementById('mixerBrushSizeRange');
+    const sizeVal = document.getElementById('mixerBrushSizeVal');
+    const btnDepFg = document.getElementById('btnMixerDepositFg');
+    const btnDepBg = document.getElementById('btnMixerDepositBg');
+    const btnDepAi = document.getElementById('btnMixerDepositAi');
+    const btnClear = document.getElementById('btnMixerClear');
+
+    const setTool = (tool) => {
+      if (!this.wetMixer) this._initWetMixer();
+      if (this.wetMixer) this.wetMixer.tool = tool;
+      [btnBlend, btnDab, btnPipette].forEach(b => {
+        if (b) b.classList.toggle('active', b.dataset.tool === tool);
+      });
+    };
+
+    if (btnBlend) btnBlend.addEventListener('click', () => setTool('blend'));
+    if (btnDab) btnDab.addEventListener('click', () => setTool('dab'));
+    if (btnPipette) btnPipette.addEventListener('click', () => setTool('pipette'));
+
+    if (sizeRange) {
+      sizeRange.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        if (!this.wetMixer) this._initWetMixer();
+        if (this.wetMixer) this.wetMixer.brushSize = val;
+        if (sizeVal) sizeVal.textContent = `${val}px`;
+      });
+    }
+
+    if (btnDepFg) {
+      btnDepFg.addEventListener('click', () => {
+        if (!this.wetMixer) this._initWetMixer();
+        const rgb = this.fgColor;
+        this.wetMixer.depositDab(this.wetMixer.width * 0.45, this.wetMixer.height * 0.45, rgb, this.wetMixer.brushSize * 1.2);
+        this.showToast(`Mancha de color frontal depositada: ${this.fgColor.hex}`);
+      });
+    }
+
+    if (btnDepBg) {
+      btnDepBg.addEventListener('click', () => {
+        if (!this.wetMixer) this._initWetMixer();
+        const rgb = this.bgColor;
+        this.wetMixer.depositDab(this.wetMixer.width * 0.58, this.wetMixer.height * 0.45, rgb, this.wetMixer.brushSize * 1.2);
+        this.showToast(`Mancha de color de fondo depositada: ${this.bgColor.hex}`);
+      });
+    }
+
+    if (btnDepAi) {
+      btnDepAi.addEventListener('click', () => {
+        if (!this.wetMixer) this._initWetMixer();
+        const colors = (this.currentAiPalette && this.currentAiPalette.colors) 
+          ? this.currentAiPalette.colors 
+          : (this.swatchManager.palettes[0]?.colors || [this.fgColor.hex, this.bgColor.hex]);
+        
+        const count = colors.length;
+        const step = this.wetMixer.width / (count + 1);
+        colors.forEach((c, idx) => {
+          const hex = typeof c === 'string' ? c : c.hex;
+          const rgb = ColorMath.hexToRgb(hex);
+          const x = step * (idx + 1);
+          const y = this.wetMixer.height * 0.65;
+          this.wetMixer.depositDab(x, y, rgb, 38);
+        });
+        this.showToast(`Depositadas ${count} manchas de la paleta en el lienzo`);
+      });
+    }
+
+    if (btnClear) {
+      btnClear.addEventListener('click', () => {
+        if (this.wetMixer) this.wetMixer.clearPalette();
+        this.showToast('Lienzo de mezcla limpiado');
+      });
+    }
+  }
+
+  _initWetMixer() {
+    if (!this.wetMixer) {
+      const canvas = document.getElementById('wetMixerCanvas');
+      if (canvas) {
+        this.wetMixer = new WetMixerEngine(this);
+        this.wetMixer.init('wetMixerCanvas');
+      }
+    }
+  }
+
+  // --- 2. PERCEPTUAL RAMP STUDIO & GRADIENT GENERATOR ---
+
+  _bindRampStudioControls() {
+    const btnSwap = document.getElementById('btnRampSwap');
+    const modeSelect = document.getElementById('rampModeSelect');
+    const curveSelect = document.getElementById('rampCurveSelect');
+    const stepsSelect = document.getElementById('rampStepsSelect');
+
+    const btnCopyCss = document.getElementById('btnRampCopyCss');
+    const btnCopySvg = document.getElementById('btnRampCopySvg');
+    const btnCopyHex = document.getElementById('btnRampCopyHexList');
+    const btnDownPng = document.getElementById('btnRampDownloadPng');
+
+    if (btnSwap) {
+      btnSwap.addEventListener('click', () => {
+        this.swapWells();
+        this.renderRampStudio();
+      });
+    }
+
+    [modeSelect, curveSelect, stepsSelect].forEach(sel => {
+      if (sel) sel.addEventListener('change', () => this.renderRampStudio());
+    });
+
+    if (btnCopyCss) {
+      btnCopyCss.addEventListener('click', () => {
+        if (!this.currentRamp || this.currentRamp.length === 0) return;
+        const css = RampStudio.generateCssGradient(this.currentRamp);
+        navigator.clipboard.writeText(css);
+        this.showToast('✓ CSS linear-gradient copiado al portapapeles', 'success');
+      });
+    }
+
+    if (btnCopySvg) {
+      btnCopySvg.addEventListener('click', () => {
+        if (!this.currentRamp || this.currentRamp.length === 0) return;
+        const svg = RampStudio.generateSvgGradient(this.currentRamp);
+        navigator.clipboard.writeText(svg);
+        this.showToast('✓ SVG linearGradient copiado al portapapeles', 'success');
+      });
+    }
+
+    if (btnCopyHex) {
+      btnCopyHex.addEventListener('click', () => {
+        if (!this.currentRamp || this.currentRamp.length === 0) return;
+        const hexList = this.currentRamp.map(s => s.hex).join(', ');
+        navigator.clipboard.writeText(hexList);
+        this.showToast(`✓ Códigos HEX copiados: ${hexList}`, 'success');
+      });
+    }
+
+    if (btnDownPng) {
+      btnDownPng.addEventListener('click', () => {
+        if (!this.currentRamp || this.currentRamp.length === 0) return;
+        RampStudio.downloadRampPng(this.currentRamp, `rampa_${this.fgColor.hex.slice(1)}_${this.bgColor.hex.slice(1)}.png`);
+        this.showToast('✓ Rampa PNG descargada');
+      });
+    }
+  }
+
+  renderRampStudio() {
+    const c1Pill = document.getElementById('rampColor1Pill');
+    const c1Hex = document.getElementById('rampColor1Hex');
+    const c2Pill = document.getElementById('rampColor2Pill');
+    const c2Hex = document.getElementById('rampColor2Hex');
+    const modeSelect = document.getElementById('rampModeSelect');
+    const curveSelect = document.getElementById('rampCurveSelect');
+    const stepsSelect = document.getElementById('rampStepsSelect');
+    const continuousPreview = document.getElementById('rampContinuousPreview');
+    const badge = document.getElementById('rampInterpolationBadge');
+    const container = document.getElementById('rampDiscreteStepsContainer');
+
+    if (c1Pill) c1Pill.style.backgroundColor = this.fgColor.hex;
+    if (c1Hex) c1Hex.textContent = this.fgColor.hex;
+    if (c2Pill) c2Pill.style.backgroundColor = this.bgColor.hex;
+    if (c2Hex) c2Hex.textContent = this.bgColor.hex;
+
+    const mode = modeSelect ? modeSelect.value : 'oklch';
+    const curve = curveSelect ? curveSelect.value : 'linear';
+    const steps = stepsSelect ? parseInt(stepsSelect.value, 10) : 8;
+
+    const ramp = RampStudio.generateRamp(this.fgColor, this.bgColor, steps, mode, curve);
+    this.currentRamp = ramp;
+
+    if (continuousPreview) {
+      continuousPreview.style.background = RampStudio.generateCssGradient(ramp);
+    }
+    if (badge) {
+      badge.textContent = mode === 'oklch' ? 'OKLCH Perceptual' : (mode === 'subtractive' ? 'Pigmento Sustractivo' : 'RGB Lineal');
+    }
+
+    if (container) {
+      container.innerHTML = '';
+      ramp.forEach((s) => {
+        const chip = document.createElement('div');
+        chip.className = 'ramp-step-chip draggable-swatch';
+        chip.style.backgroundColor = s.hex;
+        chip.draggable = true;
+        chip.dataset.hex = s.hex;
+        chip.title = `Paso ${s.step}: ${s.hex} (${s.ratio}%) - Click para seleccionar`;
+
+        chip.innerHTML = `
+          <div class="ramp-step-meta">
+            <span class="ramp-step-hex">${s.hex}</span>
+            <span class="ramp-step-ratio">${s.ratio}%</span>
+          </div>
+        `;
+
+        chip.addEventListener('click', () => {
+          this.setColorDirectly(s.rgb);
+          this.showToast(`Color de rampa seleccionado: ${s.hex}`);
+        });
+
+        chip.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', s.hex);
+          e.dataTransfer.setData('application/json', JSON.stringify({ hex: s.hex, rgb: s.rgb }));
+        });
+
+        container.appendChild(chip);
+      });
+    }
+  }
+
+  // --- 3. COLOR VISION DEFICIENCY (CVD) ACCESSIBILITY MATRIX ---
+
+  _bindCvdControls() {
+    const btnOpen = document.getElementById('btnOpenCvdModal');
+    const modal = document.getElementById('cvdModal');
+    const btnClose = document.getElementById('btnCloseCvdModal');
+    const btnDone = document.getElementById('btnDoneCvdModal');
+    const filterSelect = document.getElementById('cvdGlobalFilterSelect');
+    const btnResetFilter = document.getElementById('btnResetCvdFilter');
+
+    this._isCvdModalOpen = false;
+
+    const open = () => {
+      if (modal) {
+        modal.style.display = 'flex';
+        this._isCvdModalOpen = true;
+        this.renderCvdMatrix(this.fgColor);
+      }
+    };
+
+    const close = () => {
+      if (modal) {
+        modal.style.display = 'none';
+        this._isCvdModalOpen = false;
+      }
+    };
+
+    if (btnOpen) btnOpen.addEventListener('click', open);
+    if (btnClose) btnClose.addEventListener('click', close);
+    if (btnDone) btnDone.addEventListener('click', close);
+
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+      });
+    }
+
+    if (filterSelect) {
+      filterSelect.addEventListener('change', (e) => {
+        const val = e.target.value;
+        CVDSimulator.setGlobalFilter(val);
+        const name = val === 'normal' ? 'Normal' : filterSelect.options[filterSelect.selectedIndex].text;
+        this.showToast(`Filtro de pantalla global: ${name}`);
+      });
+    }
+
+    if (btnResetFilter) {
+      btnResetFilter.addEventListener('click', () => {
+        if (filterSelect) filterSelect.value = 'normal';
+        CVDSimulator.setGlobalFilter('normal');
+        this.showToast('Visión normal restablecida');
+      });
+    }
+  }
+
+  renderCvdMatrix(color) {
+    const grid = document.getElementById('cvdMatrixGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const hex = color.hex || ColorMath.rgbToHex(color.r, color.g, color.b);
+
+    CVDSimulator.TYPES.forEach(type => {
+      const simHex = CVDSimulator.simulateHex(hex, type.id);
+
+      const card = document.createElement('div');
+      card.className = 'cvd-quadrant-card';
+      card.innerHTML = `
+        <div class="cvd-card-header">
+          <div class="cvd-card-title">
+            <span>${type.id === 'normal' ? '👁️' : '🧬'}</span>
+            <span>${type.name}</span>
+          </div>
+          <span class="cvd-card-pop">${type.pop}</span>
+        </div>
+        <div class="cvd-swatch-row">
+          <div class="cvd-swatch-sample" style="background-color: ${simHex};"></div>
+          <div class="cvd-swatch-info">
+            <span class="cvd-swatch-hex">${simHex}</span>
+            <span class="cvd-card-desc">${type.desc}</span>
+          </div>
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        navigator.clipboard.writeText(simHex);
+        this.showToast(`Copiado HEX simulado (${type.name}): ${simHex}`);
+      });
+
+      grid.appendChild(card);
+    });
+  }
+
+  // --- 4. PROFILE BACKUP & RESTORE SYSTEM ---
+
+  _bindProfileBackupControls() {
+    const btnOpen = document.getElementById('btnProfileBackup');
+    const modal = document.getElementById('profileBackupModal');
+    const btnClose = document.getElementById('btnCloseProfileBackupModal');
+    const btnExport = document.getElementById('btnDoExportBackup');
+    const btnTrigger = document.getElementById('btnTriggerImportBackup');
+    const fileInput = document.getElementById('backupFileInput');
+
+    const updateStats = () => {
+      const pCountEl = document.getElementById('backupPalettesCount');
+      const hCountEl = document.getElementById('backupHistoryCount');
+      const cCountEl = document.getElementById('backupCatalogsCount');
+
+      let pCount = this.swatchManager.palettes?.length || 0;
+      let hCount = this.swatchManager.history?.length || 0;
+      let cCount = 0;
+
+      try {
+        const cRaw = localStorage.getItem('gom_custom_master_catalogs');
+        if (cRaw) cCount = JSON.parse(cRaw).length;
+      } catch (_) {}
+
+      if (pCountEl) pCountEl.textContent = pCount;
+      if (hCountEl) hCountEl.textContent = hCount;
+      if (cCountEl) cCountEl.textContent = cCount;
+    };
+
+    const open = () => {
+      if (modal) {
+        modal.style.display = 'flex';
+        updateStats();
+      }
+    };
+
+    const close = () => {
+      if (modal) modal.style.display = 'none';
+    };
+
+    if (btnOpen) btnOpen.addEventListener('click', open);
+    if (btnClose) btnClose.addEventListener('click', close);
+
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+      });
+    }
+
+    if (btnExport) {
+      btnExport.addEventListener('click', () => {
+        ProfileBackup.exportBackup(this);
+      });
+    }
+
+    if (btnTrigger && fileInput) {
+      btnTrigger.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          const success = await ProfileBackup.importBackup(file, this);
+          if (success) {
+            updateStats();
+            setTimeout(close, 1200);
+          }
+        }
+        fileInput.value = '';
+      });
+    }
   }
 
   showToast(message, type = 'info', duration = 2800) {

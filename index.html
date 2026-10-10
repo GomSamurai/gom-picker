@@ -65,6 +65,14 @@
           <span class="tab-icon">📷</span>
           <span class="tab-label">Extractor K-Means</span>
         </button>
+        <button class="nav-tab-btn" data-tab="wetmixer" title="Lienzo de Mezcla Física & Espátula Digital">
+          <span class="tab-icon">🖌️</span>
+          <span class="tab-label">Lienzo de Mezcla</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="ramps" title="Generador de Rampas Tonales & Degradados OKLCH">
+          <span class="tab-icon">📐</span>
+          <span class="tab-label">Rampas & Degradados</span>
+        </button>
         <button class="nav-tab-btn" data-tab="ai" title="Asesor Cromático IA Local y Privado">
           <span class="tab-icon">🧠</span>
           <span class="tab-label">Asesor IA</span>
@@ -132,6 +140,14 @@
         </button>
         <button id="btnShortcutsHelp" class="tool-action-btn" title="Atajos de teclado y ayuda (Tecla ?)">
           <span>⌨️</span>
+        </button>
+        <button id="btnOpenCvdModal" class="tool-action-btn" title="Simulador de Accesibilidad & Daltonismo (Protanopía, Deuteranopía, Tritanopía, Monocromo)">
+          <span>👁️</span>
+          <span class="btn-tool-text">Daltonismo</span>
+        </button>
+        <button id="btnProfileBackup" class="tool-action-btn" title="Copia de Seguridad y Restauración de Perfil Completo (.json)">
+          <span>💾</span>
+          <span class="btn-tool-text">Backup</span>
         </button>
         <button id="btnToggleSwatchPopups" class="tool-action-btn btn-toggle-swatch-popups active-toggle" title="Activar/Desactivar popups informativos sobre las muestras">
           <span>💬</span>
@@ -1283,6 +1299,187 @@
         </div>
       </div>
 
+      <!-- TAB VIEW 8: LIENZO DE MEZCLA FÍSICA & ESPÁTULA DIGITAL (WET PAINT PALETTE) -->
+      <div id="viewWetMixer" class="tab-view" style="display: none;">
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-header-top">
+              <div class="panel-title">
+                <span>🖌️</span> Lienzo de Mezcla Física & Espátula Digital
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="active-badge" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: rgba(99,102,241,0.15); color: #A5B4FC; border: 1px solid rgba(99,102,241,0.3);">
+                  Mezcla Sustractiva de Pigmentos
+                </span>
+              </div>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">
+              Simula una paleta real de pintor. Deposita manchas de pintura y fúndelas con la espátula. Haz clic con la pipeta para capturar cualquier matiz intermedio.
+            </div>
+          </div>
+
+          <!-- Wet Mixer Toolbar -->
+          <div class="wet-mixer-toolbar">
+            <div class="mixer-tool-group">
+              <button id="btnMixerToolBlend" class="mixer-tool-btn active" data-tool="blend" title="Espátula / Pincel de mezcla física (Arrastra para fusionar)">
+                <span>🔪</span> Espátula
+              </button>
+              <button id="btnMixerToolDab" class="mixer-tool-btn" data-tool="dab" title="Depositar manchas de pintura">
+                <span>💧</span> Mancha
+              </button>
+              <button id="btnMixerToolPipette" class="mixer-tool-btn" data-tool="pipette" title="Pipeta de muestra (Click para cargar en el estudio)">
+                <span>🧪</span> Pipeta
+              </button>
+            </div>
+
+            <div class="mixer-slider-group">
+              <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Grosor:</span>
+              <input type="range" id="mixerBrushSizeRange" min="16" max="72" value="36" class="range-slider" style="width: 80px;" />
+              <span id="mixerBrushSizeVal" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-cyan);">36px</span>
+            </div>
+
+            <div class="mixer-actions-group">
+              <button id="btnMixerDepositFg" class="tool-action-btn" title="Depositar mancha del Color Frontal activo en el centro">
+                <span>●</span> Echar FG
+              </button>
+              <button id="btnMixerDepositBg" class="tool-action-btn" title="Depositar mancha del Color de Fondo">
+                <span>○</span> Echar BG
+              </button>
+              <button id="btnMixerDepositAi" class="tool-action-btn" title="Depositar las muestras de la paleta actual">
+                <span>🎨</span> Echar Paleta
+              </button>
+              <button id="btnMixerClear" class="tool-action-btn danger" title="Limpiar paleta de mezcla">
+                <span>🗑️</span> Limpiar
+              </button>
+            </div>
+
+            <div class="mixer-hover-indicator">
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Muestra:</span>
+              <span id="mixerHoverPill" class="chat-active-pill" style="background-color: #6366F1;"></span>
+              <span id="mixerHoverHex" style="font-family: var(--font-mono); font-size: 0.74rem; font-weight: 700;">#6366F1</span>
+            </div>
+          </div>
+
+          <!-- Interactive Mixing Canvas -->
+          <div class="wet-canvas-container" style="position: relative; margin-top: 10px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-subtle); box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);">
+            <canvas id="wetMixerCanvas" width="680" height="420" style="display: block; width: 100%; height: 420px; cursor: crosshair; touch-action: none; background: #111218;"></canvas>
+          </div>
+
+          <!-- Studio Mixing Tip -->
+          <div style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid var(--border-subtle); font-size: 0.73rem; color: var(--text-secondary); line-height: 1.5;">
+            💡 <strong>Consejo del Taller de Pintor:</strong> Para crear grises perla luminosos, deposita una mancha de <em>Azul Ultramar</em> y otra de <em>Siena Tostada</em>. Pasa la espátula entre ambas para observar cómo la mezcla sustractiva genera una rampa infinita de tonos neutros sin caer en la suciedad del gris plano digital.
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB VIEW 9: RAMPAS TONALES & DEGRADADOS ARTÍSTICOS OKLCH (PERCEPTUAL RAMPS) -->
+      <div id="viewRamps" class="tab-view" style="display: none;">
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-header-top">
+              <div class="panel-title">
+                <span>📐</span> Generador de Rampas Tonales & Degradados OKLCH
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="active-badge" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: rgba(6,182,212,0.15); color: #67E8F9; border: 1px solid rgba(6,182,212,0.3);">
+                  Perceptual Zero-Dead-Zone
+                </span>
+              </div>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">
+              Genera degradados profesionales de luz a sombra. La interpolación perceptual OKLCH erradica la desaturación intermedia ("gris muerto") que suele arruinar los degradados estándar de Photoshop y CSS.
+            </div>
+          </div>
+
+          <!-- Ramp Config Controls Ribbon -->
+          <div class="ramp-controls-bar" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px solid var(--border-subtle);">
+            
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 0.74rem; font-weight: 600; color: #fff;">Origen:</span>
+              <div id="rampColor1Pill" style="width: 22px; height: 22px; border-radius: 4px; background-color: #6366F1; border: 1px solid rgba(255,255,255,0.3); cursor: pointer;" title="Color Inicial (Color Frontal FG)"></div>
+              <span id="rampColor1Hex" style="font-family: var(--font-mono); font-size: 0.74rem; color: var(--accent-cyan);">#6366F1</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 0.74rem; font-weight: 600; color: #fff;">Destino:</span>
+              <div id="rampColor2Pill" style="width: 22px; height: 22px; border-radius: 4px; background-color: #F43F5E; border: 1px solid rgba(255,255,255,0.3); cursor: pointer;" title="Color Final (Color de Fondo BG)"></div>
+              <span id="rampColor2Hex" style="font-family: var(--font-mono); font-size: 0.74rem; color: var(--accent-rose);">#F43F5E</span>
+            </div>
+
+            <button id="btnRampSwap" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem;" title="Invertir dirección de la rampa">
+              <span>🔄</span> Invertir
+            </button>
+
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 0.74rem; font-weight: 600; color: #fff;">Espacio:</span>
+              <select id="rampModeSelect" class="chip-select" style="font-size: 0.74rem;">
+                <option value="oklch" selected>Perceptual OKLCH (Luminoso)</option>
+                <option value="subtractive">Sustractivo Pigmento (Óleo)</option>
+                <option value="rgb">RGB Lineal Estándar</option>
+              </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 0.74rem; font-weight: 600; color: #fff;">Curva:</span>
+              <select id="rampCurveSelect" class="chip-select" style="font-size: 0.74rem;">
+                <option value="linear" selected>Lineal Equilibrada</option>
+                <option value="s_curve">Curva-S (Contraste Cinematográfico)</option>
+                <option value="ease_in">Sombras Extendidas (Low-Key)</option>
+                <option value="ease_out">Luces Extendidas (High-Key)</option>
+              </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 0.74rem; font-weight: 600; color: #fff;">Pasos:</span>
+              <select id="rampStepsSelect" class="chip-select" style="font-size: 0.74rem;">
+                <option value="3">3 Pasos (Luz / Medio / Sombra)</option>
+                <option value="5">5 Pasos (Estudio Clásico)</option>
+                <option value="8" selected>8 Pasos (Pixel Art / Rampa 2D)</option>
+                <option value="12">12 Pasos (Graduación Suave)</option>
+                <option value="16">16 Pasos (Ultra Detalle)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Continuous Gradient Strip Preview -->
+          <div style="margin-top: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 0.75rem; font-weight: 600; color: #fff;">Degradado Continuo de Referencia:</span>
+              <span id="rampInterpolationBadge" style="font-size: 0.7rem; font-family: var(--font-mono); color: var(--accent-cyan);">OKLCH Interpolation</span>
+            </div>
+            <div id="rampContinuousPreview" style="height: 48px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.4);"></div>
+          </div>
+
+          <!-- Discrete Steps Palette Strip -->
+          <div style="margin-top: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 0.75rem; font-weight: 600; color: #fff;">Muestras Discretas Extraídas (Click para cargar en el estudio):</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Arrastra o haz click en cualquier muestra</span>
+            </div>
+            <div id="rampDiscreteStepsContainer" style="display: flex; gap: 8px; min-height: 80px; flex-wrap: wrap; margin-top: 8px;">
+              <!-- Rendered dynamically by RampStudio -->
+            </div>
+          </div>
+
+          <!-- Ramp Exporters Ribbon -->
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+            <button id="btnRampCopyCss" class="tool-action-btn" title="Copiar código CSS linear-gradient(...) al portapapeles">
+              <span>📋</span> Copiar CSS Gradient
+            </button>
+            <button id="btnRampCopySvg" class="tool-action-btn" title="Copiar código SVG linearGradient al portapapeles">
+              <span>📐</span> Copiar SVG Gradient
+            </button>
+            <button id="btnRampCopyHexList" class="tool-action-btn" title="Copiar lista de códigos HEX">
+              <span>📑</span> Copiar Lista HEX
+            </button>
+            <button id="btnRampDownloadPng" class="tool-action-btn" title="Descargar rampa de muestras como imagen PNG">
+              <span>🖼️</span> Descargar PNG de Rampa
+            </button>
+          </div>
+
+        </div>
+      </div>
+
     </section>
 
     <!-- RIGHT COLUMN: Asesor IA y Bibliotecas integrados permanentemente -->
@@ -1412,9 +1609,14 @@
             <div class="ai-swatches-section">
               <div class="ai-swatches-header">
                 <span class="ai-swatches-title">🎨 MUESTRAS DE LA PALETA (60 • 30 • 10)</span>
-                <button id="btnAiSaveToLibrary" class="ai-save-btn" title="Guardar esta paleta completa en tu biblioteca de muestras">
-                  💾 Guardar en Biblioteca
-                </button>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <button id="btnAiExportPng" class="ai-save-btn" style="background: linear-gradient(135deg, rgba(236,72,153,0.3), rgba(168,85,247,0.3)); border-color: rgba(236,72,153,0.5);" title="Exportar lámina Swatch Sheet en PNG de alta resolución (1200x630px)">
+                    🖼️ Lámina PNG
+                  </button>
+                  <button id="btnAiSaveToLibrary" class="ai-save-btn" title="Guardar esta paleta completa en tu biblioteca de muestras">
+                    💾 Guardar en Biblioteca
+                  </button>
+                </div>
               </div>
               <div id="aiSwatchesGrid" class="ai-swatches-grid">
                 <!-- Dynamically rendered 5 swatches with FG/BG and copy -->
@@ -1542,6 +1744,9 @@
               </button>
               <button id="btnExportSvgCard" class="tool-action-btn" style="justify-content: center;" title="Descargar ficha gráfica de alta resolución en SVG">
                 <span>🖼️</span> Tarjeta SVG Presentación
+              </button>
+              <button id="btnSwatchesExportPng" class="tool-action-btn" style="justify-content: center; background: linear-gradient(135deg, rgba(236,72,153,0.25), rgba(168,85,247,0.25)); border-color: rgba(236,72,153,0.5);" title="Descargar lámina gráfica Swatch Sheet de alta resolución en PNG (1200x630px)">
+                <span>🖼️</span> Lámina Swatch PNG
               </button>
             </div>
           </div>
@@ -1841,6 +2046,103 @@
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
           <button id="btnCancelAiConfig" class="tool-action-btn" style="padding: 6px 14px; font-size: 0.78rem;">Cancelar</button>
           <button id="btnSaveAiConfig" class="ai-gen-btn" style="padding: 6px 16px; font-size: 0.78rem;">Guardar Configuración</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLOR VISION DEFICIENCY (CVD) & ACCESSIBILITY MODAL -->
+  <div id="cvdModal" class="master-modal-backdrop" style="display: none;">
+    <div class="master-modal-container compact" style="max-width: 680px;">
+      <div class="master-modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="master-modal-badge">👁️ Accesibilidad Cromática</span>
+          <span style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Simulador de Daltonismo & Matriz CVD</span>
+        </div>
+        <button id="btnCloseCvdModal" class="modal-close-btn" title="Cerrar modal (Esc)">✕</button>
+      </div>
+
+      <div class="shortcuts-modal-body" style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">
+          Comprueba cómo perciben tus colores las personas con distintas anomalías de la visión cromática. Las simulaciones utilizan matrices de transformación en espacio lineal LMS (Brettel / Machado / Vienot).
+        </div>
+
+        <!-- Global Workspace Filter Toggle -->
+        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(99,102,241,0.12); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(99,102,241,0.25);">
+          <div>
+            <div style="font-size: 0.78rem; font-weight: 700; color: #C7D2FE;">Filtro Global en Todo el Espacio de Trabajo:</div>
+            <div style="font-size: 0.72rem; color: var(--text-secondary);">Aplica la simulación a toda la pantalla en vivo</div>
+          </div>
+          <select id="cvdGlobalFilterSelect" class="chip-select" style="font-size: 0.78rem; padding: 6px 10px;">
+            <option value="normal">Normal (Sin Filtro)</option>
+            <option value="deuteranopia">Deuteranopía (Verde)</option>
+            <option value="protanopia">Protanopía (Rojo)</option>
+            <option value="tritanopia">Tritanopía (Azul)</option>
+            <option value="achromatopsia">Acromatopsia (Monocromo)</option>
+          </select>
+        </div>
+
+        <!-- 2x2 CVD Comparison Matrix of the Active Color -->
+        <div class="cvd-matrix-grid" id="cvdMatrixGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
+          <!-- Dynamically populated cards for Normal, Deuteranopia, Protanopia, Tritanopia, Achromatopsia -->
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+          <button id="btnResetCvdFilter" class="tool-action-btn" style="padding: 6px 14px; font-size: 0.78rem;">Restablecer Visión Normal</button>
+          <button id="btnDoneCvdModal" class="ai-gen-btn" style="padding: 6px 16px; font-size: 0.78rem;">Listo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE BACKUP & RESTORE MODAL -->
+  <div id="profileBackupModal" class="master-modal-backdrop" style="display: none;">
+    <div class="master-modal-container compact" style="max-width: 580px;">
+      <div class="master-modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="master-modal-badge">💾 Perfil de Estudio</span>
+          <span style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Copia de Seguridad y Restauración Completa</span>
+        </div>
+        <button id="btnCloseProfileBackupModal" class="modal-close-btn" title="Cerrar modal (Esc)">✕</button>
+      </div>
+
+      <div class="shortcuts-modal-body" style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">
+          Exporta todas tus paletas creadas, catálogos importados, historial de colores, preferencias del estudio y claves de IA en un único archivo <code>.json</code> para sincronizar entre ordenadores o guardar una copia segura.
+        </div>
+
+        <!-- Stats summary box -->
+        <div id="backupStatsBox" style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
+          <div>
+            <div id="backupPalettesCount" style="font-size: 1.3rem; font-weight: 700; color: var(--accent-cyan);">0</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">Paletas de Usuario</div>
+          </div>
+          <div>
+            <div id="backupHistoryCount" style="font-size: 1.3rem; font-weight: 700; color: var(--accent-primary);">0</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">Muestras en Historial</div>
+          </div>
+          <div>
+            <div id="backupCatalogsCount" style="font-size: 1.3rem; font-weight: 700; color: var(--accent-rose);">0</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">Catálogos Maestros</div>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
+          <button id="btnDoExportBackup" class="ai-gen-btn" style="padding: 10px; font-size: 0.82rem; justify-content: center; display: flex; align-items: center; gap: 8px;">
+            <span>💾</span> Descargar Respaldo Completo (.JSON)
+          </button>
+
+          <div style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.03); border: 1px dashed var(--border-subtle); border-radius: 8px; padding: 10px;">
+            <input type="file" id="backupFileInput" accept=".json" style="display: none;" />
+            <button id="btnTriggerImportBackup" class="tool-action-btn" style="flex: 1; justify-content: center; padding: 8px; font-size: 0.78rem;">
+              <span>📂</span> Restaurar desde Archivo (.JSON)
+            </button>
+          </div>
+        </div>
+
+        <div style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.4; border-top: 1px solid var(--border-subtle); padding-top: 8px;">
+          💡 Al importar un respaldo, tus paletas existentes no se borran: se fusionan de forma inteligente evitando duplicados.
         </div>
       </div>
     </div>
