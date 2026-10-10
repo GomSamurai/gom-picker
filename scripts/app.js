@@ -1609,6 +1609,8 @@ class GomPickerApp {
       desc.className = 'atmo-stage-desc';
       desc.textContent = stage.desc;
 
+      card.title = `${stage.name} (${stage.hex}) - ${stage.desc}`;
+
       card.appendChild(pill);
       card.appendChild(title);
       card.appendChild(hex);
