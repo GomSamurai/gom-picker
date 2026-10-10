@@ -4,6 +4,7 @@
   "description": "The Definitive Color Picker & Harmony Suite for Adobe Photoshop and Digital Artists",
   "main": "index.html",
   "scripts": {
+    "build": "echo GOM Picker Pro static ready",
     "start": "node local-server.js",
     "dev": "node local-server.js"
   },
