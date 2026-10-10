@@ -510,19 +510,39 @@ class GomPickerApp {
         e.preventDefault();
         quickBar.classList.add('drag-over');
       });
-      quickBar.addEventListener('dragleave', () => quickBar.classList.remove('drag-over'));
+      quickBar.addEventListener('dragleave', (e) => {
+        if (!quickBar.contains(e.relatedTarget)) {
+          quickBar.classList.remove('drag-over');
+        }
+      });
       quickBar.addEventListener('drop', (e) => {
         e.preventDefault();
         quickBar.classList.remove('drag-over');
+        
+        const rawSwatchData = e.dataTransfer.getData('application/gom-swatch');
         const hex = e.dataTransfer.getData('text/plain');
+        const activePal = this.swatchManager.getActivePalette();
+
+        if (!activePal) return;
+
+        if (rawSwatchData) {
+          try {
+            const { paletteId: sourcePalId, hex: sourceHex } = JSON.parse(rawSwatchData);
+            if (sourcePalId !== activePal.id) {
+              this.swatchManager.addColorToPalette(activePal.id, sourceHex);
+              this.renderQuickPalette();
+              this.renderSwatchesCollection();
+              this.showToast(`Color ${sourceHex} copiado a '${activePal.name}'`);
+              return;
+            }
+          } catch (err) {}
+        }
+
         if (hex && hex.startsWith('#')) {
-          if (this.swatchManager.palettes.length > 0) {
-            this.swatchManager.palettes[0].colors.push(hex.toUpperCase());
-            this.swatchManager.savePalettes();
-            this.renderQuickPalette();
-            this.renderSwatchesCollection();
-            this.showToast(`Color ${hex} añadido a la paleta activa`);
-          }
+          this.swatchManager.addColorToPalette(activePal.id, hex);
+          this.renderQuickPalette();
+          this.renderSwatchesCollection();
+          this.showToast(`Color ${hex} añadido a '${activePal.name}'`);
         }
       });
     }
@@ -1215,27 +1235,443 @@ class GomPickerApp {
     if (!container) return;
     container.innerHTML = '';
 
-    const activePal = this.swatchManager.palettes[0] || { colors: [] };
-    const isAtmo = AtmosphereEngine.state.enabled;
+    const selector = document.getElementById('quickPaletteSelector');
+    if (selector) {
+      selector.innerHTML = '';
+      this.swatchManager.palettes.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.name} (${p.colors.length})`;
+        if (p.id === this.swatchManager.activePaletteId) {
+          opt.selected = true;
+        }
+        selector.appendChild(opt);
+      });
+    }
+
+    const activePal = this.swatchManager.getActivePalette() || { id: 'temp', name: 'Paleta Rápida', colors: [] };
+
+    if (!activePal.colors || activePal.colors.length === 0) {
+      const emptyNotice = document.createElement('div');
+      emptyNotice.className = 'palette-empty-dropzone';
+      emptyNotice.innerHTML = '<span>🎨</span><span>Paleta vacía. Arrastra cualquier muestra aquí o pulsa <b>+ Añadir FG</b></span>';
+      container.appendChild(emptyNotice);
+      return;
+    }
 
     activePal.colors.forEach((hex, idx) => {
-      const baseRgb = ColorMath.hexToRgb(hex);
-      const dispRgb = isAtmo ? AtmosphereEngine.transformColor(baseRgb) : baseRgb;
-      const dispHex = ColorMath.rgbToHex(dispRgb.r, dispRgb.g, dispRgb.b);
-
-      const pill = document.createElement('div');
-      pill.className = 'swatch-color-pill';
-      pill.style.backgroundColor = dispHex;
-      pill.dataset.swatchHex = dispHex;
-      pill.dataset.swatchLabel = isAtmo ? `Muestra (Atmo: ${dispHex})` : 'Muestra Rápida';
-      pill.draggable = true;
-
-      pill.addEventListener('click', () => {
-        this.setColorDirectly(baseRgb);
-      });
-
+      const pill = this._createSwatchPillDom(activePal, hex, idx, false);
       container.appendChild(pill);
     });
+  }
+
+  _createSwatchPillDom(pal, hex, idx, isBuiltIn = false) {
+    const isAtmo = AtmosphereEngine.state.enabled;
+    const baseRgb = ColorMath.hexToRgb(hex);
+    const dispRgb = isAtmo ? AtmosphereEngine.transformColor(baseRgb) : baseRgb;
+    const dispHex = ColorMath.rgbToHex(dispRgb.r, dispRgb.g, dispRgb.b);
+
+    const pill = document.createElement('div');
+    pill.className = 'swatch-color-pill';
+    pill.style.backgroundColor = dispHex;
+    pill.dataset.swatchHex = dispHex;
+    pill.dataset.paletteId = pal.id;
+    pill.dataset.index = idx;
+    pill.dataset.swatchLabel = isAtmo ? `${pal.name} (Atmo: ${dispHex})` : `${pal.name}: ${dispHex}`;
+    pill.draggable = true;
+    pill.title = `${dispHex} • Click: seleccionar | Arrastra: ordenar | Click derecho: opciones`;
+
+    // 1. Delete button badge (for user palettes)
+    if (!isBuiltIn) {
+      const btnDel = document.createElement('button');
+      btnDel.className = 'swatch-delete-badge';
+      btnDel.innerHTML = '✕';
+      btnDel.title = 'Eliminar color de la paleta';
+      btnDel.setAttribute('aria-label', 'Eliminar color');
+
+      btnDel.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const res = this.swatchManager.removeColorFromPalette(pal.id, idx);
+        if (res) {
+          this.renderQuickPalette();
+          this.renderSwatchesCollection();
+          this.showToast(`Color ${hex} eliminado de "${pal.name}"`, 'info', 4500, {
+            text: 'Deshacer',
+            onClick: () => {
+              this.swatchManager.undoLastDelete();
+              this.renderQuickPalette();
+              this.renderSwatchesCollection();
+              this.showToast(`Color ${hex} restaurado`, 'success');
+            }
+          });
+        }
+      });
+      pill.appendChild(btnDel);
+    }
+
+    // 2. Drag and drop reordering
+    pill.addEventListener('dragstart', (e) => {
+      e.stopPropagation();
+      e.dataTransfer.setData('text/plain', dispHex);
+      e.dataTransfer.setData('application/gom-swatch', JSON.stringify({
+        paletteId: pal.id,
+        index: idx,
+        hex: hex
+      }));
+      e.dataTransfer.effectAllowed = 'move';
+      pill.classList.add('is-dragging');
+    });
+
+    pill.addEventListener('dragend', () => {
+      pill.classList.remove('is-dragging');
+      document.querySelectorAll('.drag-insert-before, .drag-insert-after').forEach(el => {
+        el.classList.remove('drag-insert-before', 'drag-insert-after');
+      });
+    });
+
+    pill.addEventListener('dragover', (e) => {
+      if (isBuiltIn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const rect = pill.getBoundingClientRect();
+      const isLeft = (e.clientX - rect.left) < (rect.width / 2);
+      if (isLeft) {
+        pill.classList.add('drag-insert-before');
+        pill.classList.remove('drag-insert-after');
+      } else {
+        pill.classList.add('drag-insert-after');
+        pill.classList.remove('drag-insert-before');
+      }
+    });
+
+    pill.addEventListener('dragleave', () => {
+      pill.classList.remove('drag-insert-before', 'drag-insert-after');
+    });
+
+    pill.addEventListener('drop', (e) => {
+      if (isBuiltIn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const isInsertBefore = pill.classList.contains('drag-insert-before');
+      pill.classList.remove('drag-insert-before', 'drag-insert-after');
+
+      const rawSwatchData = e.dataTransfer.getData('application/gom-swatch');
+      const rawHex = e.dataTransfer.getData('text/plain');
+
+      if (rawSwatchData) {
+        try {
+          const { paletteId: sourcePalId, index: sourceIdx, hex: sourceHex } = JSON.parse(rawSwatchData);
+          if (sourcePalId === pal.id) {
+            // Reordering within the same palette
+            let targetIdx = isInsertBefore ? idx : idx + 1;
+            if (sourceIdx < targetIdx) targetIdx--;
+            this.swatchManager.reorderColorInPalette(pal.id, sourceIdx, targetIdx);
+            this.renderQuickPalette();
+            this.renderSwatchesCollection();
+            return;
+          } else {
+            // Dragged from another palette
+            const targetIdx = isInsertBefore ? idx : idx + 1;
+            this.swatchManager.addColorToPalette(pal.id, sourceHex, targetIdx);
+            this.renderQuickPalette();
+            this.renderSwatchesCollection();
+            this.showToast(`Color ${sourceHex} copiado a '${pal.name}'`);
+            return;
+          }
+        } catch (err) {}
+      }
+
+      if (rawHex && rawHex.startsWith('#')) {
+        const targetIdx = isInsertBefore ? idx : idx + 1;
+        this.swatchManager.addColorToPalette(pal.id, rawHex.toUpperCase(), targetIdx);
+        this.renderQuickPalette();
+        this.renderSwatchesCollection();
+        this.showToast(`Color ${rawHex} añadido a '${pal.name}'`);
+      }
+    });
+
+    // 3. Selection
+    pill.addEventListener('click', () => {
+      this.setColorDirectly(baseRgb);
+      this.showToast(`Muestra seleccionada: ${dispHex}`);
+    });
+
+    // 4. Right-click context menu
+    pill.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.showSwatchContextMenu(e, pal, idx, hex, isBuiltIn);
+    });
+
+    return pill;
+  }
+
+  showSwatchContextMenu(e, pal, index, hex, isBuiltIn) {
+    const existing = document.getElementById('swatchContextMenu');
+    if (existing) existing.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'swatchContextMenu';
+    menu.className = 'swatch-context-menu';
+
+    const x = Math.min(e.clientX, window.innerWidth - 200);
+    const y = Math.min(e.clientY, window.innerHeight - 280);
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+
+    const rgb = ColorMath.hexToRgb(hex);
+
+    const items = [
+      {
+        icon: '🎯',
+        label: 'Color Frontal (FG)',
+        action: () => {
+          this.setActiveWell('fg');
+          this.setColorDirectly(rgb);
+          this.showToast(`Establecido como Frontal: ${hex}`);
+        }
+      },
+      {
+        icon: '🎨',
+        label: 'Color Fondo (BG)',
+        action: () => {
+          this.setActiveWell('bg');
+          this.setColorDirectly(rgb);
+          this.showToast(`Establecido como Fondo: ${hex}`);
+        }
+      },
+      {
+        icon: '📋',
+        label: `Copiar ${hex}`,
+        action: () => {
+          this.copyToClipboard(hex);
+          this.showToast(`Copiado: ${hex}`);
+        }
+      },
+      {
+        icon: '📋',
+        label: `Copiar RGB (${rgb.r}, ${rgb.g}, ${rgb.b})`,
+        action: () => {
+          this.copyToClipboard(`rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
+          this.showToast(`Copiado RGB: ${rgb.r}, ${rgb.g}, ${rgb.b}`);
+        }
+      }
+    ];
+
+    if (!isBuiltIn) {
+      items.push({ divider: true });
+      items.push({
+        icon: '🔄',
+        label: 'Invertir muestra',
+        action: () => {
+          const invRgb = { r: 255 - rgb.r, g: 255 - rgb.g, b: 255 - rgb.b };
+          const invHex = ColorMath.rgbToHex(invRgb.r, invRgb.g, invRgb.b);
+          pal.colors[index] = invHex;
+          this.swatchManager.savePalettes();
+          this.renderSwatchesCollection();
+          this.renderQuickPalette();
+          this.showToast(`Color invertido a ${invHex}`);
+        }
+      });
+      items.push({
+        icon: '➕',
+        label: 'Duplicar muestra',
+        action: () => {
+          this.swatchManager.addColorToPalette(pal.id, hex, index + 1);
+          this.renderSwatchesCollection();
+          this.renderQuickPalette();
+          this.showToast(`Color ${hex} duplicado`);
+        }
+      });
+      items.push({ divider: true });
+      items.push({
+        icon: '🗑️',
+        label: 'Eliminar de paleta',
+        danger: true,
+        action: () => {
+          const res = this.swatchManager.removeColorFromPalette(pal.id, index);
+          if (res) {
+            this.renderSwatchesCollection();
+            this.renderQuickPalette();
+            this.showToast(`Color ${hex} eliminado de "${pal.name}"`, 'info', 4500, {
+              text: 'Deshacer',
+              onClick: () => {
+                this.swatchManager.undoLastDelete();
+                this.renderSwatchesCollection();
+                this.renderQuickPalette();
+                this.showToast(`Color ${hex} restaurado`, 'success');
+              }
+            });
+          }
+        }
+      });
+    }
+
+    items.forEach(it => {
+      if (it.divider) {
+        const div = document.createElement('div');
+        div.className = 'context-menu-divider';
+        menu.appendChild(div);
+        return;
+      }
+      const btn = document.createElement('button');
+      btn.className = `context-menu-item ${it.danger ? 'danger' : ''}`;
+      btn.innerHTML = `<span>${it.icon}</span><span>${it.label}</span>`;
+      btn.addEventListener('click', () => {
+        it.action();
+        menu.remove();
+      });
+      menu.appendChild(btn);
+    });
+
+    document.body.appendChild(menu);
+
+    const closeHandler = (evt) => {
+      if (!menu.contains(evt.target)) {
+        menu.remove();
+        document.removeEventListener('pointerdown', closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener('pointerdown', closeHandler), 10);
+  }
+
+  showPaletteSortPopover(anchorBtn, pal) {
+    const existing = document.querySelector('.palette-popover-menu');
+    if (existing) {
+      const wasSame = existing.dataset.anchorId === (anchorBtn.id || pal.id);
+      existing.remove();
+      if (wasSame) return;
+    }
+
+    const pop = document.createElement('div');
+    pop.className = 'palette-popover-menu';
+    pop.dataset.anchorId = anchorBtn.id || pal.id;
+
+    const rect = anchorBtn.getBoundingClientRect();
+    pop.style.left = `${Math.min(rect.left, window.innerWidth - 200)}px`;
+    pop.style.top = `${rect.bottom + 4}px`;
+
+    const sorts = [
+      { icon: '🌈', label: 'Por Tono (Hue 0°→360°)', key: 'hue' },
+      { icon: '☀️', label: 'Luz: Claro a Oscuro', key: 'lum-desc' },
+      { icon: '🌙', label: 'Luz: Oscuro a Claro', key: 'lum-asc' },
+      { icon: '⚡', label: 'Saturación (Vivo a Neutro)', key: 'sat-desc' },
+      { icon: '🔁', label: 'Invertir Orden Actual', key: 'reverse' }
+    ];
+
+    sorts.forEach(s => {
+      const item = document.createElement('button');
+      item.className = 'context-menu-item';
+      item.innerHTML = `<span>${s.icon}</span><span>${s.label}</span>`;
+      item.addEventListener('click', () => {
+        this.swatchManager.sortPalette(pal.id, s.key);
+        this.renderSwatchesCollection();
+        this.renderQuickPalette();
+        this.showToast(`Paleta '${pal.name}' ordenada`);
+        pop.remove();
+      });
+      pop.appendChild(item);
+    });
+
+    document.body.appendChild(pop);
+    const close = (e) => {
+      if (!pop.contains(e.target) && e.target !== anchorBtn) {
+        pop.remove();
+        document.removeEventListener('pointerdown', close);
+      }
+    };
+    setTimeout(() => document.addEventListener('pointerdown', close), 10);
+  }
+
+  showPaletteExportPopover(anchorBtn, pal) {
+    const existing = document.querySelector('.palette-popover-menu');
+    if (existing) {
+      const wasSame = existing.dataset.anchorId === (anchorBtn.id || pal.id);
+      existing.remove();
+      if (wasSame) return;
+    }
+
+    const pop = document.createElement('div');
+    pop.className = 'palette-popover-menu';
+    pop.dataset.anchorId = anchorBtn.id || pal.id;
+
+    const rect = anchorBtn.getBoundingClientRect();
+    pop.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
+    pop.style.top = `${rect.bottom + 4}px`;
+
+    const exports = [
+      {
+        icon: '📦',
+        label: 'Adobe Swatch (.ASE)',
+        run: () => {
+          this.swatchManager.exportAsAse(pal);
+          this.showToast('Descargado archivo .ASE (Photoshop/Illustrator)');
+        }
+      },
+      {
+        icon: '🎨',
+        label: 'GIMP / Krita (.GPL)',
+        run: () => {
+          this.swatchManager.exportAsGpl(pal);
+          this.showToast('Descargado archivo .GPL (Krita/GIMP/Inkscape)');
+        }
+      },
+      {
+        icon: '💻',
+        label: 'Variables CSS (:root)',
+        run: () => {
+          const css = this.swatchManager.exportAsCss(pal);
+          this.copyToClipboard(css);
+          this.showToast('Variables CSS copiadas al portapapeles');
+        }
+      },
+      {
+        icon: '⚙️',
+        label: 'Tokens de Diseño JSON',
+        run: () => {
+          const json = this.swatchManager.exportAsJson(pal);
+          this.copyToClipboard(json);
+          this.showToast('Tokens JSON copiados al portapapeles');
+        }
+      },
+      {
+        icon: '🖼️',
+        label: 'Ficha Gráfica SVG',
+        run: () => {
+          this.swatchManager.exportAsSvgCard(pal);
+          this.showToast('Ficha SVG descargada');
+        }
+      },
+      {
+        icon: '🖼️',
+        label: 'Lámina Swatch PNG (1200x630)',
+        run: () => {
+          SwatchSheetExporter.exportPaletteToPng(pal.name, pal.colors);
+          this.showToast('✓ Lámina Swatch Sheet PNG descargada', 'success');
+        }
+      }
+    ];
+
+    exports.forEach(ex => {
+      const item = document.createElement('button');
+      item.className = 'context-menu-item';
+      item.innerHTML = `<span>${ex.icon}</span><span>${ex.label}</span>`;
+      item.addEventListener('click', () => {
+        ex.run();
+        pop.remove();
+      });
+      pop.appendChild(item);
+    });
+
+    document.body.appendChild(pop);
+    const close = (e) => {
+      if (!pop.contains(e.target) && e.target !== anchorBtn) {
+        pop.remove();
+        document.removeEventListener('pointerdown', close);
+      }
+    };
+    setTimeout(() => document.addEventListener('pointerdown', close), 10);
   }
 
   // --- CHROMILLA PHYSICAL TUBE INVENTORY & BRANDS ---
@@ -3594,20 +4030,60 @@ class GomPickerApp {
     const btnCreate = document.getElementById('btnCreatePalette');
     const btnAuto = document.getElementById('btnAutoGeneratePalette');
     const btnQuickAdd = document.getElementById('btnQuickAddToActive');
+    const quickSel = document.getElementById('quickPaletteSelector');
+    const btnQuickSort = document.getElementById('btnQuickSortPalette');
+    const btnQuickClear = document.getElementById('btnQuickClearPalette');
+    const btnImportModal = document.getElementById('btnImportPaletteModal');
+    const btnExportAll = document.getElementById('btnExportAllPalettes');
+    const searchInput = document.getElementById('paletteSearchInput');
+    const btnClearSearch = document.getElementById('btnClearPaletteSearch');
+
     const btnAse = document.getElementById('btnExportAse');
     const btnGpl = document.getElementById('btnExportGpl');
     const btnCss = document.getElementById('btnExportCss');
     const btnJson = document.getElementById('btnExportJson');
     const btnSvg = document.getElementById('btnExportSvgCard');
+    const btnSwatchesPng = document.getElementById('btnSwatchesExportPng');
+
+    // Quick Palette Strip Toolbar in Studio
+    if (quickSel) {
+      quickSel.addEventListener('change', (e) => {
+        this.swatchManager.setActivePalette(e.target.value);
+        this.renderQuickPalette();
+        this.renderSwatchesCollection();
+        const act = this.swatchManager.getActivePalette();
+        if (act) this.showToast(`Paleta activa: '${act.name}'`);
+      });
+    }
+
+    if (btnQuickSort) {
+      btnQuickSort.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const act = this.swatchManager.getActivePalette();
+        if (act) this.showPaletteSortPopover(btnQuickSort, act);
+      });
+    }
+
+    if (btnQuickClear) {
+      btnQuickClear.addEventListener('click', () => {
+        const act = this.swatchManager.getActivePalette();
+        if (act && confirm(`¿Vaciar todas las muestras de la paleta activa "${act.name}"?`)) {
+          this.swatchManager.clearPaletteColors(act.id);
+          this.renderQuickPalette();
+          this.renderSwatchesCollection();
+          this.showToast(`Paleta '${act.name}' vaciada`);
+        }
+      });
+    }
 
     if (btnQuickAdd) {
       btnQuickAdd.addEventListener('click', () => {
-        if (this.swatchManager.palettes.length > 0) {
-          this.swatchManager.palettes[0].colors.push(this.fgColor.hex);
-          this.swatchManager.savePalettes();
+        const activePal = this.swatchManager.getActivePalette();
+        if (activePal) {
+          this.swatchManager.addColorToPalette(activePal.id, this.fgColor.hex);
           this.renderQuickPalette();
           this.renderSwatchesCollection();
-          this.showToast(`Color ${this.fgColor.hex} añadido a tu paleta activa`);
+          this.showToast(`Color ${this.fgColor.hex} añadido a '${activePal.name}'`);
         }
       });
     }
@@ -3620,7 +4096,7 @@ class GomPickerApp {
           const newPal = this.swatchManager.addPalette(name, currentPal);
           this.renderSwatchesCollection();
           this.renderQuickPalette();
-          this.showToast(`Paleta '${newPal.name}' creada`);
+          this.showToast(`Paleta '${newPal.name}' creada con éxito`, 'success');
         }
       });
     }
@@ -3635,7 +4111,7 @@ class GomPickerApp {
         const newPal = this.swatchManager.addPalette(`Armonía ${this.colorWheel.harmonyRule} (${this.fgColor.hex})`, autoColors);
         this.renderSwatchesCollection();
         this.renderQuickPalette();
-        this.showToast(`Paleta automática creada con éxito`);
+        this.showToast(`Paleta armónica '${newPal.name}' generada`, 'success');
       });
     }
 
@@ -3650,9 +4126,128 @@ class GomPickerApp {
       });
     });
 
+    // Palette Search Input
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        this.paletteSearchQuery = e.target.value;
+        if (btnClearSearch) btnClearSearch.style.display = e.target.value ? 'block' : 'none';
+        this.renderSwatchesCollection();
+      });
+    }
+
+    if (btnClearSearch && searchInput) {
+      btnClearSearch.addEventListener('click', () => {
+        searchInput.value = '';
+        this.paletteSearchQuery = '';
+        btnClearSearch.style.display = 'none';
+        this.renderSwatchesCollection();
+        searchInput.focus();
+      });
+    }
+
+    // Export All Palettes Backup (.JSON)
+    if (btnExportAll) {
+      btnExportAll.addEventListener('click', () => {
+        this.swatchManager.exportAllPalettesAsJson();
+        this.showToast('✓ Respaldo de todas tus paletas descargado en JSON', 'success');
+      });
+    }
+
+    // Smart Import Palette Modal
+    const importModal = document.getElementById('importPaletteModal');
+    const btnCloseImport = document.getElementById('btnCloseImportPaletteModal');
+    const btnCancelImport = document.getElementById('btnCancelImportPalette');
+    const btnConfirmImport = document.getElementById('btnConfirmImportPalette');
+    const importTextarea = document.getElementById('importPaletteTextarea');
+    const importNameInput = document.getElementById('importPaletteNameInput');
+    const importPreview = document.getElementById('importPaletteLivePreview');
+    const importCount = document.getElementById('importPaletteCount');
+
+    let detectedHexes = [];
+
+    const updateImportPreview = () => {
+      if (!importTextarea) return;
+      const text = importTextarea.value;
+      const hexRegex = /#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g;
+      const matches = text.match(hexRegex) || [];
+      detectedHexes = [];
+
+      matches.forEach(rawHex => {
+        let hex = rawHex.toUpperCase();
+        if (hex.length === 4) {
+          hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+        }
+        if (!detectedHexes.includes(hex)) {
+          detectedHexes.push(hex);
+        }
+      });
+
+      if (importCount) {
+        importCount.textContent = `${detectedHexes.length} colores detectados`;
+      }
+      if (importPreview) {
+        importPreview.innerHTML = '';
+        if (detectedHexes.length === 0) {
+          importPreview.innerHTML = '<span style="font-size: 0.72rem; color: var(--text-muted); padding: 4px;">Sin colores detectados todavía</span>';
+        } else {
+          detectedHexes.forEach(hex => {
+            const dot = document.createElement('div');
+            dot.style.width = '24px';
+            dot.style.height = '24px';
+            dot.style.borderRadius = '4px';
+            dot.style.backgroundColor = hex;
+            dot.style.border = '1px solid rgba(255,255,255,0.2)';
+            dot.title = hex;
+            importPreview.appendChild(dot);
+          });
+        }
+      }
+      if (btnConfirmImport) {
+        btnConfirmImport.disabled = detectedHexes.length === 0;
+      }
+    };
+
+    if (btnImportModal && importModal) {
+      btnImportModal.addEventListener('click', () => {
+        importModal.style.display = 'flex';
+        if (importTextarea) {
+          importTextarea.value = '';
+          updateImportPreview();
+          setTimeout(() => importTextarea.focus(), 60);
+        }
+        if (importNameInput) {
+          importNameInput.value = `Paleta Importada #${this.swatchManager.palettes.length + 1}`;
+        }
+      });
+    }
+
+    const closeImport = () => {
+      if (importModal) importModal.style.display = 'none';
+    };
+
+    if (btnCloseImport) btnCloseImport.addEventListener('click', closeImport);
+    if (btnCancelImport) btnCancelImport.addEventListener('click', closeImport);
+
+    if (importTextarea) {
+      importTextarea.addEventListener('input', updateImportPreview);
+    }
+
+    if (btnConfirmImport) {
+      btnConfirmImport.addEventListener('click', () => {
+        if (detectedHexes.length === 0) return;
+        const name = (importNameInput?.value || '').trim() || `Paleta Importada (${detectedHexes.length} colores)`;
+        const newPal = this.swatchManager.addPalette(name, detectedHexes);
+        closeImport();
+        this.renderSwatchesCollection();
+        this.renderQuickPalette();
+        this.showToast(`✓ Paleta '${newPal.name}' creada con ${detectedHexes.length} colores`, 'success');
+      });
+    }
+
+    // Universal Export Bar Listeners (export active palette)
     if (btnAse) {
       btnAse.addEventListener('click', () => {
-        const activePal = this.swatchManager.palettes[0] || { name: 'GOM_Harmonies', colors: [this.fgColor.hex, this.bgColor.hex] };
+        const activePal = this.swatchManager.getActivePalette() || { name: 'GOM_Harmonies', colors: [this.fgColor.hex, this.bgColor.hex] };
         this.swatchManager.exportAsAse(activePal);
         this.showToast('Descargado archivo .ASE (Adobe Swatch Exchange para Photoshop)');
       });
@@ -3660,7 +4255,7 @@ class GomPickerApp {
 
     if (btnGpl) {
       btnGpl.addEventListener('click', () => {
-        const activePal = this.swatchManager.palettes[0] || { name: 'GOM_Harmonies', colors: [this.fgColor.hex, this.bgColor.hex] };
+        const activePal = this.swatchManager.getActivePalette() || { name: 'GOM_Harmonies', colors: [this.fgColor.hex, this.bgColor.hex] };
         this.swatchManager.exportAsGpl(activePal);
         this.showToast('Descargado archivo .GPL para GIMP y Krita');
       });
@@ -3668,7 +4263,7 @@ class GomPickerApp {
 
     if (btnCss) {
       btnCss.addEventListener('click', () => {
-        const activePal = this.swatchManager.palettes[0] || { name: 'GOM_Harmonies', colors: [this.fgColor.hex, this.bgColor.hex] };
+        const activePal = this.swatchManager.getActivePalette() || { name: 'GOM_Harmonies', colors: [this.fgColor.hex, this.bgColor.hex] };
         const css = this.swatchManager.exportAsCss(activePal);
         this.copyToClipboard(css);
         this.showToast('Variables CSS copiadas al portapapeles');
@@ -3677,7 +4272,7 @@ class GomPickerApp {
 
     if (btnJson) {
       btnJson.addEventListener('click', () => {
-        const activePal = this.swatchManager.palettes[0] || { name: 'GOM_Harmonies', colors: [this.fgColor.hex, this.bgColor.hex] };
+        const activePal = this.swatchManager.getActivePalette() || { name: 'GOM_Harmonies', colors: [this.fgColor.hex, this.bgColor.hex] };
         const json = this.swatchManager.exportAsJson(activePal);
         this.copyToClipboard(json);
         this.showToast('Tokens de diseño JSON copiados');
@@ -3686,16 +4281,15 @@ class GomPickerApp {
 
     if (btnSvg) {
       btnSvg.addEventListener('click', () => {
-        const activePal = this.swatchManager.palettes[0] || { name: 'GOM_Harmonies', colors: [this.fgColor.hex, this.bgColor.hex] };
+        const activePal = this.swatchManager.getActivePalette() || { name: 'GOM_Harmonies', colors: [this.fgColor.hex, this.bgColor.hex] };
         this.swatchManager.exportAsSvgCard(activePal);
         this.showToast('Ficha de color en SVG descargada');
       });
     }
 
-    const btnSwatchesPng = document.getElementById('btnSwatchesExportPng');
     if (btnSwatchesPng) {
       btnSwatchesPng.addEventListener('click', () => {
-        const activePal = this.swatchManager.palettes[0] || { name: 'Paleta Activa GOM Picker', colors: [this.fgColor.hex, this.bgColor.hex] };
+        const activePal = this.swatchManager.getActivePalette() || { name: 'Paleta Activa GOM Picker', colors: [this.fgColor.hex, this.bgColor.hex] };
         SwatchSheetExporter.exportPaletteToPng(activePal.name, activePal.colors);
         this.showToast('✓ Lámina Swatch Sheet descargada en PNG (1200x630px)', 'success');
       });
@@ -3707,13 +4301,30 @@ class GomPickerApp {
     if (!container) return;
     container.innerHTML = '';
 
-    const filter = this.activeCatalogFilter;
+    const filter = this.activeCatalogFilter || 'all';
+    const searchQuery = (this.paletteSearchQuery || '').trim().toLowerCase();
+
+    const matchesSearch = (item) => {
+      if (!searchQuery) return true;
+      if (item.name.toLowerCase().includes(searchQuery)) return true;
+      if (item.category && item.category.toLowerCase().includes(searchQuery)) return true;
+      const q = searchQuery.replace('#', '');
+      return item.colors.some(c => {
+        const hex = (typeof c === 'string' ? c : c.hex).toLowerCase().replace('#', '');
+        return hex.includes(q);
+      });
+    };
+
+    let renderedCount = 0;
 
     // 1. Render User Saved Palettes
     if (filter === 'all' || filter === 'user') {
       this.swatchManager.palettes.forEach(pal => {
-        const card = this._createPaletteCardDom(pal, false);
-        container.appendChild(card);
+        if (matchesSearch(pal)) {
+          const card = this._createPaletteCardDom(pal, false);
+          container.appendChild(card);
+          renderedCount++;
+        }
       });
     }
 
@@ -3727,118 +4338,319 @@ class GomPickerApp {
           description: cat.description,
           colors: cat.colors.map(c => typeof c === 'string' ? c : c.hex)
         };
-        const card = this._createPaletteCardDom(palData, true);
-        container.appendChild(card);
+        if (matchesSearch(palData)) {
+          const card = this._createPaletteCardDom(palData, true);
+          container.appendChild(card);
+          renderedCount++;
+        }
       }
     });
+
+    if (renderedCount === 0) {
+      const emptyDiv = document.createElement('div');
+      emptyDiv.style.textAlign = 'center';
+      emptyDiv.style.padding = '36px 12px';
+      emptyDiv.style.color = 'var(--text-muted)';
+      emptyDiv.style.fontSize = '0.85rem';
+      emptyDiv.innerHTML = searchQuery 
+        ? `No se encontraron paletas que coincidan con "<b>${searchQuery}</b>".`
+        : 'No hay paletas para mostrar en esta categoría.';
+      container.appendChild(emptyDiv);
+    }
   }
 
   _createPaletteCardDom(pal, isBuiltIn = false) {
     const card = document.createElement('div');
     card.className = 'palette-collection-card';
+    if (!isBuiltIn && pal.id === this.swatchManager.activePaletteId) {
+      card.classList.add('palette-card-active');
+    }
     card.dataset.paletteId = pal.id;
 
-    // Header
-    const header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.justifyContent = 'space-between';
-    header.style.alignItems = 'center';
+    // Header Row
+    const headerRow = document.createElement('div');
+    headerRow.className = 'palette-header-row';
 
-    const left = document.createElement('div');
-    const name = document.createElement('div');
-    name.style.fontSize = '0.85rem';
-    name.style.fontWeight = '700';
-    name.style.color = '#FFFFFF';
-    name.textContent = pal.name;
+    // Left info
+    const infoCol = document.createElement('div');
+    infoCol.className = 'palette-header-info';
 
-    const count = document.createElement('div');
-    count.style.fontSize = '0.7rem';
-    count.style.color = 'var(--text-muted)';
-    count.textContent = `${pal.colors.length} colores • ${pal.category || (isBuiltIn ? 'Catálogo Oficial' : 'Paleta de Usuario')}`;
+    const titleWrapper = document.createElement('div');
+    titleWrapper.className = 'palette-title-wrapper';
 
-    left.appendChild(name);
-    left.appendChild(count);
+    const nameText = document.createElement('div');
+    nameText.className = 'palette-name-text';
+    nameText.innerHTML = isBuiltIn ? pal.name : `${pal.name} <span style="font-size: 0.7rem; opacity: 0.6;">✏️</span>`;
+    nameText.title = isBuiltIn ? pal.name : 'Doble click o click para renombrar esta paleta';
 
-    const right = document.createElement('div');
-    right.style.display = 'flex';
-    right.style.gap = '6px';
-
-    const btnAse = document.createElement('button');
-    btnAse.className = 'tool-action-btn';
-    btnAse.style.padding = '2px 6px';
-    btnAse.style.fontSize = '0.68rem';
-    btnAse.textContent = 'ASE';
-    btnAse.title = 'Descargar .ASE Photoshop';
-    btnAse.addEventListener('click', () => this.swatchManager.exportAsAse(pal));
-
-    right.appendChild(btnAse);
-
+    // Inline rename for user palettes
     if (!isBuiltIn) {
-      const btnDel = document.createElement('button');
-      btnDel.className = 'tool-action-btn';
-      btnDel.style.padding = '2px 6px';
-      btnDel.style.fontSize = '0.68rem';
-      btnDel.textContent = '✕';
-      btnDel.title = 'Eliminar paleta';
-      btnDel.addEventListener('click', () => {
-        this.swatchManager.deletePalette(pal.id);
-        this.renderSwatchesCollection();
-        this.renderQuickPalette();
+      nameText.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'palette-name-input';
+        input.value = pal.name;
+        titleWrapper.replaceChild(input, nameText);
+        input.focus();
+        input.select();
+
+        const commit = () => {
+          const newName = input.value.trim();
+          if (newName) {
+            this.swatchManager.renamePalette(pal.id, newName);
+            nameText.innerHTML = `${newName} <span style="font-size: 0.7rem; opacity: 0.6;">✏️</span>`;
+            this.renderQuickPalette();
+          }
+          if (input.parentNode === titleWrapper) {
+            titleWrapper.replaceChild(nameText, input);
+          }
+        };
+
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') {
+            if (input.parentNode === titleWrapper) {
+              titleWrapper.replaceChild(nameText, input);
+            }
+          }
+        });
       });
-      right.appendChild(btnDel);
     }
 
-    header.appendChild(left);
-    header.appendChild(right);
+    titleWrapper.appendChild(nameText);
 
-    // Swatches Flow Container (Uncapped, supports 2 to 250+ colors)
+    if (!isBuiltIn && pal.id === this.swatchManager.activePaletteId) {
+      const activeBadge = document.createElement('span');
+      activeBadge.className = 'palette-badge-active';
+      activeBadge.innerHTML = '★ Activa';
+      titleWrapper.appendChild(activeBadge);
+    }
+
+    const metaRow = document.createElement('div');
+    metaRow.className = 'palette-meta-row';
+    metaRow.textContent = `${pal.colors.length} colores • ${pal.category || (isBuiltIn ? 'Catálogo Oficial' : 'Paleta Personalizada')}`;
+
+    infoCol.appendChild(titleWrapper);
+    infoCol.appendChild(metaRow);
+
+    // Continuous gradient preview bar
+    if (pal.colors && pal.colors.length > 0) {
+      const gradBar = document.createElement('div');
+      gradBar.className = 'palette-gradient-strip';
+      const cleanHexes = pal.colors.map(c => typeof c === 'string' ? c : c.hex);
+      gradBar.style.background = cleanHexes.length === 1 
+        ? cleanHexes[0] 
+        : `linear-gradient(to right, ${cleanHexes.join(', ')})`;
+      infoCol.appendChild(gradBar);
+    }
+
+    // Right: Toolbar
+    const toolbar = document.createElement('div');
+    toolbar.className = 'palette-toolbar';
+
+    if (!isBuiltIn) {
+      // 1. Quick Add FG
+      const btnAddFg = document.createElement('button');
+      btnAddFg.className = 'palette-tool-btn btn-active-highlight';
+      btnAddFg.innerHTML = '<span>+</span> FG';
+      btnAddFg.title = `Añadir el color frontal actual (${this.fgColor.hex}) a esta paleta`;
+      btnAddFg.addEventListener('click', () => {
+        this.swatchManager.addColorToPalette(pal.id, this.fgColor.hex);
+        this.renderSwatchesCollection();
+        this.renderQuickPalette();
+        this.showToast(`Color ${this.fgColor.hex} añadido a '${pal.name}'`);
+      });
+      toolbar.appendChild(btnAddFg);
+
+      // 2. Set as Active Palette
+      if (pal.id !== this.swatchManager.activePaletteId) {
+        const btnSetActive = document.createElement('button');
+        btnSetActive.className = 'palette-tool-btn';
+        btnSetActive.innerHTML = '<span>★</span> Activar';
+        btnSetActive.title = 'Establecer como la paleta activa principal';
+        btnSetActive.addEventListener('click', () => {
+          this.swatchManager.setActivePalette(pal.id);
+          this.renderSwatchesCollection();
+          this.renderQuickPalette();
+          this.showToast(`Paleta activa: '${pal.name}'`, 'success');
+        });
+        toolbar.appendChild(btnSetActive);
+      }
+
+      // 3. Sort popover
+      const btnSort = document.createElement('button');
+      btnSort.className = 'palette-tool-btn';
+      btnSort.innerHTML = '<span>↕️</span> Ordenar';
+      btnSort.title = 'Ordenar muestras (Tono, Luz, Saturación)';
+      btnSort.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showPaletteSortPopover(btnSort, pal);
+      });
+      toolbar.appendChild(btnSort);
+
+      // 4. Duplicate palette
+      const btnDup = document.createElement('button');
+      btnDup.className = 'palette-tool-btn';
+      btnDup.innerHTML = '<span>📑</span>';
+      btnDup.title = 'Duplicar esta paleta';
+      btnDup.addEventListener('click', () => {
+        const cloned = this.swatchManager.duplicatePalette(pal.id);
+        if (cloned) {
+          this.renderSwatchesCollection();
+          this.renderQuickPalette();
+          this.showToast(`Paleta duplicada: '${cloned.name}'`, 'success');
+        }
+      });
+      toolbar.appendChild(btnDup);
+
+      // 5. Invert colors
+      const btnInvert = document.createElement('button');
+      btnInvert.className = 'palette-tool-btn';
+      btnInvert.innerHTML = '<span>🔄</span>';
+      btnInvert.title = 'Invertir todos los colores (Complementarios)';
+      btnInvert.addEventListener('click', () => {
+        this.swatchManager.invertColorsInPalette(pal.id);
+        this.renderSwatchesCollection();
+        this.renderQuickPalette();
+        this.showToast(`Colores invertidos en '${pal.name}'`);
+      });
+      toolbar.appendChild(btnInvert);
+
+      // 6. Export Menu
+      const btnExport = document.createElement('button');
+      btnExport.className = 'palette-tool-btn';
+      btnExport.innerHTML = '<span>💾</span> Exportar';
+      btnExport.title = 'Exportar paleta (.ASE, .GPL, CSS, JSON, SVG, PNG)';
+      btnExport.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showPaletteExportPopover(btnExport, pal);
+      });
+      toolbar.appendChild(btnExport);
+
+      // 7. Clear swatches
+      const btnClear = document.createElement('button');
+      btnClear.className = 'palette-tool-btn btn-danger-hover';
+      btnClear.innerHTML = '<span>🧹</span>';
+      btnClear.title = 'Vaciar todas las muestras de esta paleta';
+      btnClear.addEventListener('click', () => {
+        if (confirm(`¿Vaciar todas las muestras de "${pal.name}"?`)) {
+          this.swatchManager.clearPaletteColors(pal.id);
+          this.renderSwatchesCollection();
+          this.renderQuickPalette();
+          this.showToast(`Muestras vaciadas de '${pal.name}'`);
+        }
+      });
+      toolbar.appendChild(btnClear);
+
+      // 8. Delete palette
+      const btnDel = document.createElement('button');
+      btnDel.className = 'palette-tool-btn btn-danger-hover';
+      btnDel.innerHTML = '<span>✕</span>';
+      btnDel.title = 'Eliminar esta paleta por completo';
+      btnDel.addEventListener('click', () => {
+        if (confirm(`¿Eliminar la paleta "${pal.name}"?`)) {
+          this.swatchManager.deletePalette(pal.id);
+          this.renderSwatchesCollection();
+          this.renderQuickPalette();
+          this.showToast(`Paleta '${pal.name}' eliminada`);
+        }
+      });
+      toolbar.appendChild(btnDel);
+    } else {
+      // Built-in catalog card actions
+      const btnClone = document.createElement('button');
+      btnClone.className = 'palette-tool-btn btn-active-highlight';
+      btnClone.innerHTML = '<span>📑</span> Clonar Editable';
+      btnClone.title = 'Crear una copia editable de este catálogo en tus paletas';
+      btnClone.addEventListener('click', () => {
+        const cloned = this.swatchManager.duplicatePalette(pal.id, pal);
+        if (cloned) {
+          this.activeCatalogFilter = 'user';
+          const userTab = document.querySelector('#catalogFilterTabs button[data-cat="user"]');
+          if (userTab) {
+            document.querySelectorAll('#catalogFilterTabs button').forEach(b => b.classList.remove('active-toggle'));
+            userTab.classList.add('active-toggle');
+          }
+          this.renderSwatchesCollection();
+          this.renderQuickPalette();
+          this.showToast(`✓ Catálogo clonado como paleta editable '${cloned.name}'`, 'success');
+        }
+      });
+      toolbar.appendChild(btnClone);
+
+      const btnExport = document.createElement('button');
+      btnExport.className = 'palette-tool-btn';
+      btnExport.innerHTML = '<span>💾</span> Exportar';
+      btnExport.title = 'Exportar este catálogo';
+      btnExport.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showPaletteExportPopover(btnExport, pal);
+      });
+      toolbar.appendChild(btnExport);
+    }
+
+    headerRow.appendChild(infoCol);
+    headerRow.appendChild(toolbar);
+
+    // Swatches Flow Container
     const swatchesFlow = document.createElement('div');
     swatchesFlow.className = 'palette-swatches-flow';
 
-    const isAtmo = AtmosphereEngine.state.enabled;
-
-    pal.colors.forEach(hex => {
-      const baseRgb = ColorMath.hexToRgb(hex);
-      const dispRgb = isAtmo ? AtmosphereEngine.transformColor(baseRgb) : baseRgb;
-      const dispHex = ColorMath.rgbToHex(dispRgb.r, dispRgb.g, dispRgb.b);
-
-      const pill = document.createElement('div');
-      pill.className = 'swatch-color-pill';
-      pill.style.backgroundColor = dispHex;
-      pill.dataset.swatchHex = dispHex;
-      pill.dataset.swatchLabel = pal.name;
-      pill.draggable = true;
-
-      pill.addEventListener('click', () => {
-        this.setColorDirectly(baseRgb);
-        this.showToast(`Muestra seleccionada: ${dispHex}`);
+    if (!pal.colors || pal.colors.length === 0) {
+      const emptyNotice = document.createElement('div');
+      emptyNotice.className = 'palette-empty-dropzone';
+      emptyNotice.innerHTML = '<span>🎨</span><span>Paleta vacía. Arrastra colores aquí o pulsa <b>+ FG</b> para empezar.</span>';
+      swatchesFlow.appendChild(emptyNotice);
+    } else {
+      pal.colors.forEach((col, idx) => {
+        const hex = typeof col === 'string' ? col : col.hex;
+        const pill = this._createSwatchPillDom(pal, hex, idx, isBuiltIn);
+        swatchesFlow.appendChild(pill);
       });
+    }
 
-      swatchesFlow.appendChild(pill);
-    });
-
-    // Drag-and-drop listener to accept swatches onto this palette
+    // Drag-and-drop listener to accept swatches onto this palette card
     if (!isBuiltIn) {
       card.addEventListener('dragover', (e) => {
         e.preventDefault();
         card.classList.add('drag-over');
       });
-      card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+      card.addEventListener('dragleave', (e) => {
+        if (!card.contains(e.relatedTarget)) {
+          card.classList.remove('drag-over');
+        }
+      });
       card.addEventListener('drop', (e) => {
         e.preventDefault();
         card.classList.remove('drag-over');
-        const hex = e.dataTransfer.getData('text/plain');
-        if (hex && hex.startsWith('#')) {
-          pal.colors.push(hex.toUpperCase());
-          this.swatchManager.savePalettes();
+
+        const rawSwatchData = e.dataTransfer.getData('application/gom-swatch');
+        const rawHex = e.dataTransfer.getData('text/plain');
+
+        if (rawSwatchData) {
+          try {
+            const { paletteId: sourcePalId, hex: sourceHex } = JSON.parse(rawSwatchData);
+            if (sourcePalId !== pal.id) {
+              this.swatchManager.addColorToPalette(pal.id, sourceHex);
+              this.renderSwatchesCollection();
+              this.renderQuickPalette();
+              this.showToast(`Color ${sourceHex} copiado a '${pal.name}'`);
+              return;
+            }
+          } catch (err) {}
+        }
+
+        if (rawHex && rawHex.startsWith('#')) {
+          this.swatchManager.addColorToPalette(pal.id, rawHex);
           this.renderSwatchesCollection();
           this.renderQuickPalette();
-          this.showToast(`Color ${hex} añadido a '${pal.name}'`);
+          this.showToast(`Color ${rawHex} añadido a '${pal.name}'`);
         }
       });
     }
 
-    card.appendChild(header);
+    card.appendChild(headerRow);
     card.appendChild(swatchesFlow);
     return card;
   }
@@ -4991,7 +5803,7 @@ class GomPickerApp {
     }
   }
 
-  showToast(message, type = 'info', duration = 2800) {
+  showToast(message, type = 'info', duration = 2800, action = null) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
 
@@ -5005,6 +5817,19 @@ class GomPickerApp {
     const toast = document.createElement('div');
     toast.className = `toast toast--${type}`;
     toast.innerHTML = `<span style="font-size: 1.1rem; line-height: 1;">${icons[type] || '✨'}</span><span>${message}</span>`;
+    
+    if (action && action.text && typeof action.onClick === 'function') {
+      const actBtn = document.createElement('button');
+      actBtn.className = 'toast-action-btn';
+      actBtn.textContent = action.text;
+      actBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        action.onClick();
+        toast.remove();
+      });
+      toast.appendChild(actBtn);
+    }
+
     toast.onclick = () => {
       toast.style.opacity = '0';
       toast.style.transform = 'translateY(10px)';

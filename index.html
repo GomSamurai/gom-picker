@@ -339,16 +339,24 @@
         
         <!-- Quick Palette Strip & Drag Bar -->
         <div class="glass-panel quick-palette-panel">
-          <div class="panel-header">
-            <div class="panel-title">
-              <span>📚</span> Paleta Rápida Activa (Arrastra cualquier muestra aquí para guardarla)
+          <div class="panel-header" style="flex-wrap: wrap; gap: 8px;">
+            <div class="panel-title" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span>📚</span>
+              <span>Paleta Rápida:</span>
+              <select id="quickPaletteSelector" class="chip-select" style="font-size: 0.72rem; padding: 2px 6px; font-weight: 700;" title="Cambiar paleta activa para el estudio"></select>
             </div>
-            <div class="panel-controls">
+            <div class="panel-controls" style="display: flex; gap: 6px; align-items: center;">
               <button id="btnQuickAddToActive" class="tool-action-btn" style="padding: 2px 8px; font-size: 0.72rem;" title="Añadir color frontal actual">
-                <span>+</span> Añadir Actual
+                <span>+</span> Añadir FG
+              </button>
+              <button id="btnQuickSortPalette" class="tool-action-btn" style="padding: 2px 6px; font-size: 0.72rem;" title="Ordenar paleta activa por tono">
+                <span>↕️</span>
+              </button>
+              <button id="btnQuickClearPalette" class="tool-action-btn" style="padding: 2px 6px; font-size: 0.72rem;" title="Vaciar muestras de la paleta activa">
+                <span>🧹</span>
               </button>
               <button id="btnOpenFullSwatches" class="tool-action-btn" style="padding: 2px 8px; font-size: 0.72rem;" title="Ir a la pestaña completa de Bibliotecas y Catálogos">
-                <span>📂</span> Ver Bibliotecas Completas
+                <span>📂</span> Ver Bibliotecas
               </button>
             </div>
           </div>
@@ -1736,12 +1744,18 @@
               <div class="panel-title" style="font-size: 0.88rem; font-weight: 700;">
                 <span>📚</span> Bibliotecas & Catálogos
               </div>
-              <div class="panel-header-actions">
+              <div class="panel-header-actions" style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button id="btnCreatePalette" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem;" title="Crear nueva paleta de usuario">
                   <span>+</span> Nueva Paleta
                 </button>
                 <button id="btnAutoGeneratePalette" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem;" title="Crear paleta armónica automática">
                   <span>✨</span> Auto Paleta
+                </button>
+                <button id="btnImportPaletteModal" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem;" title="Importar paleta desde texto, códigos HEX, CSS o JSON">
+                  <span>📥</span> Importar
+                </button>
+                <button id="btnExportAllPalettes" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem;" title="Copia de seguridad completa en JSON de todas tus paletas">
+                  <span>📤</span> Backup
                 </button>
               </div>
             </div>
@@ -1756,12 +1770,18 @@
           </div>
 
           <!-- Catalog Filter Tabs -->
-          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px;" id="catalogFilterTabs">
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;" id="catalogFilterTabs">
             <button class="chip-select active-toggle" data-cat="all">Todas las Colecciones</button>
             <button class="chip-select" data-cat="user">Mis Paletas Guardadas</button>
             <button class="chip-select" data-cat="copic_system">Marcadores Copic Sketch (72+)</button>
             <button class="chip-select" data-cat="pantone_coated">Pantone Formula Guide (PMS)</button>
             <button class="chip-select" data-cat="prismacolor_premier">Prismacolor Premier</button>
+          </div>
+
+          <!-- Palette Search & Filter Bar -->
+          <div style="position: relative; margin-bottom: 14px;">
+            <input type="text" id="paletteSearchInput" class="palette-search-input" placeholder="🔍 Buscar paleta por nombre o color (#HEX, Copic, Pantone)...">
+            <button id="btnClearPaletteSearch" class="search-clear-btn" style="display: none;" title="Limpiar búsqueda">✕</button>
           </div>
 
           <!-- Palettes and Swatches Container (Uncapped, Drag & Drop Enabled) -->
@@ -2188,6 +2208,48 @@
 
         <div style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.4; border-top: 1px solid var(--border-subtle); padding-top: 8px;">
           💡 Al importar un respaldo, tus paletas existentes no se borran: se fusionan de forma inteligente evitando duplicados.
+        </div>
+      </div>
+    </div>
+  <!-- MODAL: IMPORTAR PALETA INTELIGENTE -->
+  <div id="importPaletteModal" class="master-modal-backdrop" style="display: none;">
+    <div class="master-modal-container compact" style="max-width: 540px;">
+      <div class="master-modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="master-modal-badge">📥 Importador</span>
+          <span style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Importar Paleta de Colores Inteligente</span>
+        </div>
+        <button id="btnCloseImportPaletteModal" class="modal-close-btn" title="Cerrar modal (Esc)">✕</button>
+      </div>
+
+      <div class="shortcuts-modal-body" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+          Pega cualquier lista de códigos HEX (<code>#FF0055, #00FFCC</code>), variables CSS (<code>--color: #ABC;</code>), JSON de tokens o formato GPL. El extractor detectará automáticamente todos los colores válidos.
+        </div>
+        
+        <div>
+          <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Nombre de la Paleta:</label>
+          <input type="text" id="importPaletteNameInput" class="palette-search-input" placeholder="Ej: Mi Paleta de Concept Art" />
+        </div>
+
+        <div>
+          <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Pega tus colores o código:</label>
+          <textarea id="importPaletteTextarea" class="palette-import-textarea" rows="5" placeholder="#2B1B17, #5C2C16, #C25925, #E69C24, #F4D06F&#10;o pega variables CSS :root { --c1: #... }"></textarea>
+        </div>
+
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 6px;">
+            <span style="color: var(--text-muted);">Muestras detectadas:</span>
+            <span id="importPaletteCount" style="color: var(--accent-cyan); font-weight: 700;">0 colores</span>
+          </div>
+          <div id="importPaletteLivePreview" style="display: flex; gap: 6px; flex-wrap: wrap; min-height: 36px; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px dashed var(--border-subtle); align-items: center;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); padding: 4px;">Sin colores detectados todavía</span>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+          <button id="btnCancelImportPalette" class="tool-action-btn" style="padding: 6px 14px; font-size: 0.78rem;">Cancelar</button>
+          <button id="btnConfirmImportPalette" class="ai-gen-btn" style="padding: 6px 18px; font-size: 0.78rem;" disabled>Crear Paleta</button>
         </div>
       </div>
     </div>

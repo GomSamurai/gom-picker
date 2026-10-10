@@ -10,8 +10,36 @@ export class SwatchManager {
   constructor(storageKey = 'gom_picker_palettes') {
     this.storageKey = storageKey;
     this.historyKey = 'gom_picker_history';
+    this.activeKey = 'gom_picker_active_palette_id';
     this.palettes = this.loadPalettes();
     this.history = this.loadHistory();
+    this.activePaletteId = this.loadActivePaletteId();
+    this.lastDeleted = null;
+  }
+
+  loadActivePaletteId() {
+    try {
+      const saved = localStorage.getItem(this.activeKey);
+      if (saved && this.palettes.some(p => p.id === saved)) return saved;
+    } catch (e) {}
+    return this.palettes[0]?.id || null;
+  }
+
+  getActivePalette() {
+    if (!this.palettes || this.palettes.length === 0) return null;
+    const found = this.palettes.find(p => p.id === this.activePaletteId);
+    return found || this.palettes[0];
+  }
+
+  setActivePalette(id) {
+    if (this.palettes.some(p => p.id === id)) {
+      this.activePaletteId = id;
+      try {
+        localStorage.setItem(this.activeKey, id);
+      } catch (e) {}
+      return this.getActivePalette();
+    }
+    return null;
   }
 
   // Load saved palettes from LocalStorage
@@ -55,16 +83,246 @@ export class SwatchManager {
     const newPal = {
       id: 'pal_' + Date.now(),
       name: name.trim() || 'Mi Paleta ' + (this.palettes.length + 1),
-      colors: hexColors.map(c => c.toUpperCase())
+      colors: hexColors.map(c => this._normalizeHex(c))
     };
     this.palettes.unshift(newPal);
+    this.setActivePalette(newPal.id);
     this.savePalettes();
     return newPal;
   }
 
   deletePalette(id) {
     this.palettes = this.palettes.filter(p => p.id !== id);
+    if (this.activePaletteId === id) {
+      this.activePaletteId = this.palettes[0]?.id || null;
+      try {
+        localStorage.setItem(this.activeKey, this.activePaletteId || '');
+      } catch (e) {}
+    }
     this.savePalettes();
+  }
+
+  // --- SWATCH-LEVEL MUTATIONS & REORDERING ---
+
+  removeColorFromPalette(paletteId, index) {
+    const pal = this.palettes.find(p => p.id === paletteId);
+    if (!pal || !Array.isArray(pal.colors) || index < 0 || index >= pal.colors.length) {
+      return null;
+    }
+    const removedHex = pal.colors[index];
+    pal.colors.splice(index, 1);
+    this.lastDeleted = {
+      paletteId: pal.id,
+      paletteName: pal.name,
+      index,
+      hex: removedHex,
+      timestamp: Date.now()
+    };
+    this.savePalettes();
+    return { success: true, removedColor: removedHex, palette: pal };
+  }
+
+  undoLastDelete() {
+    if (!this.lastDeleted) return null;
+    const { paletteId, index, hex, paletteName } = this.lastDeleted;
+    const pal = this.palettes.find(p => p.id === paletteId);
+    if (!pal) return null;
+
+    const insertIdx = Math.min(Math.max(0, index), pal.colors.length);
+    pal.colors.splice(insertIdx, 0, hex);
+    this.savePalettes();
+
+    const restored = { ...this.lastDeleted };
+    this.lastDeleted = null;
+    return restored;
+  }
+
+  addColorToPalette(paletteId, hex, index = -1) {
+    const pal = this.palettes.find(p => p.id === paletteId);
+    if (!pal) return null;
+    const cleanHex = this._normalizeHex(hex);
+    if (index >= 0 && index <= pal.colors.length) {
+      pal.colors.splice(index, 0, cleanHex);
+    } else {
+      pal.colors.push(cleanHex);
+    }
+    this.savePalettes();
+    return pal;
+  }
+
+  reorderColorInPalette(paletteId, fromIndex, toIndex) {
+    const pal = this.palettes.find(p => p.id === paletteId);
+    if (!pal || !Array.isArray(pal.colors)) return null;
+    if (fromIndex < 0 || fromIndex >= pal.colors.length) return null;
+    if (toIndex < 0 || toIndex >= pal.colors.length) return null;
+    if (fromIndex === toIndex) return pal;
+
+    const [moved] = pal.colors.splice(fromIndex, 1);
+    pal.colors.splice(toIndex, 0, moved);
+    this.savePalettes();
+    return pal;
+  }
+
+  renamePalette(paletteId, newName) {
+    const pal = this.palettes.find(p => p.id === paletteId);
+    if (!pal) return null;
+    const trimmed = (newName || '').trim();
+    if (trimmed) {
+      pal.name = trimmed;
+      this.savePalettes();
+    }
+    return pal;
+  }
+
+  duplicatePalette(paletteId, fallbackSource = null) {
+    let pal = this.palettes.find(p => p.id === paletteId);
+    if (!pal && fallbackSource) {
+      pal = fallbackSource;
+    }
+    if (!pal) return null;
+
+    const colors = Array.isArray(pal.colors) 
+      ? pal.colors.map(c => typeof c === 'string' ? c : c.hex)
+      : [];
+
+    const clone = {
+      id: 'pal_' + Date.now(),
+      name: `${pal.name} (Copia)`,
+      category: 'Paleta Personalizada',
+      colors: [...colors]
+    };
+
+    this.palettes.unshift(clone);
+    this.setActivePalette(clone.id);
+    this.savePalettes();
+    return clone;
+  }
+
+  sortPalette(paletteId, criterion = 'hue') {
+    const pal = this.palettes.find(p => p.id === paletteId);
+    if (!pal || !Array.isArray(pal.colors) || pal.colors.length < 2) return pal;
+
+    if (criterion === 'reverse') {
+      pal.colors.reverse();
+    } else {
+      pal.colors.sort((hexA, hexB) => {
+        const rgbA = ColorMath.hexToRgb(hexA);
+        const rgbB = ColorMath.hexToRgb(hexB);
+        const hsvA = ColorMath.rgbToHsv(rgbA.r, rgbA.g, rgbA.b);
+        const hsvB = ColorMath.rgbToHsv(rgbB.r, rgbB.g, rgbB.b);
+        const lumA = ColorMath.getLuminance(rgbA.r, rgbA.g, rgbA.b);
+        const lumB = ColorMath.getLuminance(rgbB.r, rgbB.g, rgbB.b);
+
+        switch (criterion) {
+          case 'hue':
+            if (Math.abs(hsvA.h - hsvB.h) > 1) return hsvA.h - hsvB.h;
+            if (Math.abs(hsvA.s - hsvB.s) > 1) return hsvA.s - hsvB.s;
+            return hsvA.v - hsvB.v;
+          case 'lum-asc':
+            return lumA - lumB; // Más oscuro a más claro
+          case 'lum-desc':
+            return lumB - lumA; // Más claro a más oscuro
+          case 'sat-desc':
+            return hsvB.s - hsvA.s; // Más saturado a más neutro
+          case 'sat-asc':
+            return hsvA.s - hsvB.s;
+          default:
+            return 0;
+        }
+      });
+    }
+
+    this.savePalettes();
+    return pal;
+  }
+
+  invertColorsInPalette(paletteId) {
+    const pal = this.palettes.find(p => p.id === paletteId);
+    if (!pal || !Array.isArray(pal.colors)) return pal;
+    pal.colors = pal.colors.map(hex => {
+      const rgb = ColorMath.hexToRgb(hex);
+      return ColorMath.rgbToHex(255 - rgb.r, 255 - rgb.g, 255 - rgb.b);
+    });
+    this.savePalettes();
+    return pal;
+  }
+
+  clearPaletteColors(paletteId) {
+    const pal = this.palettes.find(p => p.id === paletteId);
+    if (!pal) return null;
+    pal.colors = [];
+    this.savePalettes();
+    return pal;
+  }
+
+  // Smart parser: extracts hexes from pasted text, CSS, GPL, or JSON
+  importFromText(text, paletteName = '') {
+    if (!text || typeof text !== 'string') return null;
+    const hexRegex = /#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g;
+    const matches = text.match(hexRegex) || [];
+    const validHexes = [];
+
+    matches.forEach(rawHex => {
+      let hex = rawHex.toUpperCase();
+      if (hex.length === 4) {
+        hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+      }
+      if (!validHexes.includes(hex)) {
+        validHexes.push(hex);
+      }
+    });
+
+    if (validHexes.length === 0) return null;
+
+    const name = (paletteName || '').trim() || `Paleta Importada (${validHexes.length} colores)`;
+    return this.addPalette(name, validHexes);
+  }
+
+  exportAllPalettesAsJson() {
+    const payload = {
+      app: 'GOM Color Picker Studio',
+      exportedAt: new Date().toISOString(),
+      version: '2.0',
+      palettes: this.palettes
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    this._downloadBlob(blob, `gom_palettes_collection_${Date.now()}.json`);
+  }
+
+  importPalettesFromJson(jsonStr) {
+    try {
+      const data = JSON.parse(jsonStr);
+      const incoming = Array.isArray(data) ? data : (data.palettes || []);
+      if (!Array.isArray(incoming) || incoming.length === 0) return 0;
+
+      let added = 0;
+      incoming.forEach(p => {
+        if (p && p.name && Array.isArray(p.colors) && p.colors.length > 0) {
+          this.palettes.push({
+            id: 'pal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            name: p.name,
+            category: p.category || 'Importada',
+            colors: p.colors.map(c => this._normalizeHex(typeof c === 'string' ? c : c.hex))
+          });
+          added++;
+        }
+      });
+      if (added > 0) this.savePalettes();
+      return added;
+    } catch (e) {
+      console.error('Error importing palettes JSON', e);
+      return 0;
+    }
+  }
+
+  _normalizeHex(hex) {
+    let clean = (hex || '').trim().toUpperCase();
+    if (!clean.startsWith('#')) clean = '#' + clean;
+    if (clean.length === 4) {
+      clean = '#' + clean[1] + clean[1] + clean[2] + clean[2] + clean[3] + clean[3];
+    }
+    return clean;
   }
 
   // Color picking history trail
@@ -79,7 +337,7 @@ export class SwatchManager {
   }
 
   addToHistory(hex) {
-    const cleanHex = hex.toUpperCase();
+    const cleanHex = this._normalizeHex(hex);
     this.history = [cleanHex, ...this.history.filter(h => h !== cleanHex)].slice(0, 32);
     try {
       localStorage.setItem(this.historyKey, JSON.stringify(this.history));
