@@ -25,6 +25,7 @@ import { TooltipEngine } from './tooltipEngine.js';
 import { CompanionBands } from './companionBands.js';
 import { PaletteCatalogs } from './paletteCatalogs.js';
 import { BrandPigments } from './brandPigments.js';
+import { AIChatStudio } from './aiChat.js';
 
 class GomPickerApp {
   constructor() {
@@ -41,6 +42,7 @@ class GomPickerApp {
     this.colorWheel = null;
     this.tooltipEngine = null;
     this.currentAiPalette = null;
+    this.aiChat = null;
     this.activeCatalogFilter = 'all';
     this.broadcastChannel = null;
     this.batchResults = null;
@@ -238,6 +240,9 @@ class GomPickerApp {
     // Live reactive theme & WCAG contrast update
     this.updateLiveAccentTheme(hex, rgb);
     this.updateWcagBadge();
+    if (this.aiChat) {
+      this.aiChat.updateContextDisplay();
+    }
     this.pushColorHistory(false);
   }
 
@@ -3206,6 +3211,39 @@ class GomPickerApp {
           this.showToast(`✓ Paleta guardada en tu biblioteca con ${colors.length} muestras`);
         }
       });
+    }
+
+    // AI Subtabs Toggle (60-30-10 Synthesizer vs Art Master Chat Studio)
+    const tabSynth = document.getElementById('tabBtnAiSynth');
+    const tabChat = document.getElementById('tabBtnAiChat');
+    const panelSynth = document.getElementById('aiSynthContainer');
+    const panelChat = document.getElementById('aiChatContainer');
+
+    if (tabSynth && tabChat && panelSynth && panelChat) {
+      tabSynth.addEventListener('click', () => {
+        tabSynth.classList.add('active');
+        tabChat.classList.remove('active');
+        panelSynth.style.display = 'block';
+        panelChat.style.display = 'none';
+      });
+
+      tabChat.addEventListener('click', () => {
+        tabChat.classList.add('active');
+        tabSynth.classList.remove('active');
+        panelSynth.style.display = 'none';
+        panelChat.style.display = 'flex';
+        if (this.aiChat) {
+          this.aiChat.updateContextDisplay();
+          this.aiChat._scrollToBottom();
+        }
+      });
+    }
+
+    // Initialize AIChatStudio Hybrid Engine
+    if (!this.aiChat) {
+      this.aiChat = new AIChatStudio(this);
+      this.aiChat.init();
+      this.aiChat.updateContextDisplay();
     }
   }
 

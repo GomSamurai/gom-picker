@@ -117,7 +117,61 @@ export const AIAdvisor = {
     'magia': [-0.1, 0.55, 0.85, 0.6, 0.4],
     'epico': [0.4, 0.6, 0.8, 0.7, 0.5],
     'épico': [0.4, 0.6, 0.8, 0.7, 0.5],
-    'delicado': [0.1, 0.85, 0.25, 0.1, 0.7]
+    'delicado': [0.1, 0.85, 0.25, 0.1, 0.7],
+
+    // Explicit Colors & Pigments
+    'rojo': [0.95, 0.45, 0.95, 0.8, 0.2],
+    'carmesi': [0.9, 0.38, 0.9, 0.7, 0.4],
+    'carmesí': [0.9, 0.38, 0.9, 0.7, 0.4],
+    'bermellon': [0.96, 0.52, 0.98, 0.8, 0.2],
+    'bermellón': [0.96, 0.52, 0.98, 0.8, 0.2],
+    'naranja': [0.85, 0.62, 0.9, 0.5, 0.3],
+    'amarillo': [0.8, 0.88, 0.95, 0.3, 0.3],
+    'ocre': [0.65, 0.58, 0.65, 0.2, 0.9],
+    'siena': [0.7, 0.42, 0.68, 0.2, 0.9],
+    'verde': [-0.2, 0.5, 0.8, 0.3, 0.95],
+    'turquesa': [-0.65, 0.65, 0.85, 0.3, 0.3],
+    'cian': [-0.8, 0.75, 0.92, 0.5, 0.1],
+    'azul': [-0.85, 0.45, 0.85, 0.4, 0.3],
+    'ultramar': [-0.88, 0.35, 0.92, 0.6, 0.3],
+    'cobalto': [-0.82, 0.48, 0.88, 0.4, 0.2],
+    'indigo': [-0.75, 0.22, 0.85, 0.7, 0.4],
+    'añil': [-0.75, 0.22, 0.85, 0.7, 0.4],
+    'violeta': [-0.5, 0.38, 0.85, 0.6, 0.3],
+    'purpura': [-0.4, 0.32, 0.88, 0.7, 0.3],
+    'púrpura': [-0.4, 0.32, 0.88, 0.7, 0.3],
+    'magenta': [0.4, 0.5, 0.98, 0.85, 0.1],
+    'rosa': [0.5, 0.82, 0.55, 0.2, 0.4],
+    'blanco': [-0.1, 0.98, 0.05, 0.1, 0.1],
+    'negro': [-0.2, 0.05, 0.1, 0.8, 0.1],
+    'gris': [-0.2, 0.5, 0.08, 0.2, 0.1],
+    'plata': [-0.4, 0.8, 0.15, 0.3, 0.1],
+    'plateado': [-0.4, 0.8, 0.15, 0.3, 0.1],
+    'bronce': [0.65, 0.45, 0.6, 0.3, 0.4],
+    'cobre': [0.8, 0.52, 0.75, 0.4, 0.4],
+
+    // Great Masters & Art Styles
+    'sorolla': [0.75, 0.82, 0.85, 0.4, 0.8],
+    'monet': [-0.1, 0.76, 0.72, 0.3, 0.9],
+    'rembrandt': [0.65, 0.26, 0.65, 0.8, 0.7],
+    'caravaggio': [0.45, 0.16, 0.7, 0.95, 0.5],
+    'velazquez': [0.35, 0.36, 0.5, 0.6, 0.8],
+    'velázquez': [0.35, 0.36, 0.5, 0.6, 0.8],
+    'sargent': [0.2, 0.55, 0.6, 0.5, 0.7],
+    'vermeer': [-0.3, 0.65, 0.65, 0.3, 0.6],
+    'van gogh': [0.65, 0.72, 0.95, 0.85, 0.6],
+    'klimt': [0.82, 0.74, 0.88, 0.5, 0.4],
+    'turner': [0.75, 0.72, 0.82, 0.6, 0.7],
+    'dali': [0.5, 0.7, 0.85, 0.7, 0.4],
+    'dalí': [0.5, 0.7, 0.85, 0.7, 0.4],
+    'goya': [0.3, 0.25, 0.55, 0.85, 0.6],
+    'mucha': [0.4, 0.78, 0.65, 0.3, 0.8],
+    'hokusai': [-0.65, 0.58, 0.75, 0.5, 0.7],
+    'bouguereau': [0.3, 0.65, 0.45, 0.3, 0.8],
+    'impresionismo': [0.2, 0.75, 0.75, 0.3, 0.85],
+    'barroco': [0.5, 0.28, 0.65, 0.8, 0.7],
+    'renacimiento': [0.3, 0.52, 0.55, 0.4, 0.75],
+    'acuarela': [-0.1, 0.85, 0.45, 0.2, 0.8]
   },
 
   /**
@@ -132,8 +186,20 @@ export const AIAdvisor = {
     let vec = [0.1, 0.5, 0.6, 0.4, 0.5];
     let matchedCount = 0;
 
+    // Detect explicit color mentions
+    const explicitHueMap = {
+      'rojo': 0, 'carmesi': 350, 'carmesí': 350, 'bermellon': 10, 'bermellón': 10,
+      'naranja': 28, 'ambar': 40, 'ámbar': 40, 'amarillo': 55, 'dorado': 45,
+      'ocre': 38, 'verde': 130, 'esmeralda': 155, 'turquesa': 175, 'cian': 190,
+      'azul': 220, 'cobalto': 225, 'ultramar': 235, 'indigo': 255, 'añil': 255,
+      'violeta': 275, 'purpura': 295, 'púrpura': 295, 'magenta': 320, 'rosa': 340
+    };
+
+    const explicitHues = [];
     rawTokens.forEach(t => {
-      // Direct or partial match in semantic lexicon
+      if (explicitHueMap[t] !== undefined) {
+        explicitHues.push(explicitHueMap[t]);
+      }
       for (const [key, val] of Object.entries(this.LEXICON)) {
         if (t === key || t.startsWith(key) || key.startsWith(t)) {
           for (let i = 0; i < 5; i++) {
@@ -145,7 +211,6 @@ export const AIAdvisor = {
       }
     });
 
-    // If no direct words matched, derive pseudorandom deterministic vector from text hash
     if (matchedCount === 0) {
       let hash = 0;
       for (let i = 0; i < promptText.length; i++) hash = (hash << 5) - hash + promptText.charCodeAt(i);
@@ -157,55 +222,49 @@ export const AIAdvisor = {
 
     const [thermal, valueKey, saturation, tension, organicity] = vec;
 
-    // Derive Base Hue from thermal axis:
-    // Warm (>0): maps from fiery red-orange (12°) at high thermal to warm amber-gold (44°) at lower thermal
-    // Cool (<0): maps from deep cyan-blue (210°) to electric cobalt (235°)
     let baseHue;
-    if (thermal >= 0) {
-      baseHue = Math.round(12 + (1 - thermal) * 32); // 12° (fire/dragon red) to 44° (amber gold)
+    if (explicitHues.length > 0) {
+      baseHue = explicitHues[0];
+    } else if (thermal >= 0) {
+      baseHue = Math.round(10 + (1 - thermal) * 36);
     } else {
-      baseHue = Math.round(210 + Math.abs(thermal) * 25); // 210° to 235° (cyan / cobalt)
+      baseHue = Math.round(205 + Math.abs(thermal) * 30);
     }
 
-    // Apply tension offset:
-    // Low tension: analogous / harmonious shift (e.g. 35° golden glow)
-    // High tension: powerful complementary contrast (e.g. 165° electric opposite)
-    const harmonySpread = tension > 0.72 ? 165 : (32 + tension * 40);
+    const harmonySpread = explicitHues.length > 1 
+      ? (explicitHues[1] - baseHue + 360) % 360 
+      : (tension > 0.65 ? 165 : (32 + tension * 45));
 
-    // Build 5-step scientifically calibrated palette
-    // 1. Dominant Background/Atmosphere (60% weight) - atmospheric silhouette
+    // 1. Dominant Background/Atmosphere (60% weight)
     const bgHue = (baseHue + (thermal > 0 ? -6 : 6) + 360) % 360;
-    const bgVal = ColorMath.clamp(valueKey * 0.32 + 0.06, 0.05, 0.35);
-    const bgSat = ColorMath.clamp(saturation * 0.7, 0.2, 0.9);
+    const bgVal = ColorMath.clamp(valueKey * 0.32 + 0.05, 0.04, 0.36);
+    const bgSat = ColorMath.clamp(saturation * 0.72, 0.18, 0.92);
     const cDominant = ColorMath.hsvToRgb(bgHue, bgSat, bgVal);
 
-    // 2. Secondary Main Body / Midtone Structure (30% weight) - anatomy / shapes
+    // 2. Secondary Main Body / Midtone Structure (30% weight)
     const secHue = (baseHue + (thermal >= 0 ? 18 : -18) + 360) % 360;
-    const secVal = ColorMath.clamp(valueKey * 0.72 + 0.2, 0.25, 0.76);
-    const secSat = ColorMath.clamp(saturation * (organicity > 0.6 ? 0.75 : 0.9), 0.25, 0.95);
+    const secVal = ColorMath.clamp(valueKey * 0.72 + 0.18, 0.22, 0.78);
+    const secSat = ColorMath.clamp(saturation * (organicity > 0.6 ? 0.75 : 0.92), 0.22, 0.96);
     const cSecondary = ColorMath.hsvToRgb(secHue, secSat, secVal);
 
-    // 3. Primary Accent Focal Point (10% weight - high contrast focal anchor)
+    // 3. Primary Accent Focal Point (10% weight)
     const accHue = (baseHue + harmonySpread + 360) % 360;
-    const accSat = ColorMath.clamp(saturation * 1.2, 0.6, 1.0);
-    const accVal = ColorMath.clamp(1.15 - valueKey * 0.3, 0.75, 0.99);
+    const accSat = ColorMath.clamp(saturation * 1.25, 0.65, 1.0);
+    const accVal = ColorMath.clamp(1.15 - valueKey * 0.28, 0.78, 1.0);
     const cAccent = ColorMath.hsvToRgb(accHue, accSat, accVal);
 
-    // 4. Specular / Rim Light (Edge definition)
+    // 4. Specular / Rim Light
     const rimHue = (accHue + 15) % 360;
-    const rimSat = ColorMath.clamp(accSat * 0.22, 0.05, 0.3);
+    const rimSat = ColorMath.clamp(accSat * 0.2, 0.04, 0.28);
     const rimVal = 0.98;
     const cRim = ColorMath.hsvToRgb(rimHue, rimSat, rimVal);
 
     // 5. Transitional Halftone / SSS Bridge
-    // Adds organic warmth between shadow and light
-    const bridgeHue = (baseHue + (thermal > 0 ? 14 : -15) + 360) % 360;
-    const bridgeSat = ColorMath.clamp(saturation * 1.05, 0.3, 0.95);
-    const bridgeVal = ColorMath.clamp(valueKey * 0.8 + 0.16, 0.28, 0.8);
+    const bridgeHue = (baseHue + (thermal > 0 ? 16 : -16) + 360) % 360;
+    const bridgeSat = ColorMath.clamp(saturation * 1.08, 0.32, 0.96);
+    const bridgeVal = ColorMath.clamp(valueKey * 0.8 + 0.18, 0.28, 0.82);
     const cBridge = ColorMath.hsvToRgb(bridgeHue, bridgeSat, bridgeVal);
 
-    // Crucial: strict 60-30-10 role order:
-    // 0: Dominant (60%), 1: Secondary (30%), 2: Accent (10%), 3: Highlight (Rim), 4: Terminator (SSS Bridge)
     const colors = [
       {
         rgb: cDominant,
@@ -249,7 +308,6 @@ export const AIAdvisor = {
       }
     ];
 
-    // Generate intelligent critique and lighting advice
     const critique = this.diagnosePalette(colors.map(c => c.rgb));
 
     return {

@@ -71,65 +71,9 @@ export const AIAssistant = {
     }
   ],
 
-  // Generate palette from user prompt or preset
+  // Generate palette dynamically using neural semantic vector synthesis
   generateFromPrompt(promptText) {
-    const text = (promptText || '').toLowerCase().trim();
-
-    // Check direct preset match
-    const foundPreset = this.PRESETS.find(p => 
-      text.includes(p.id) || 
-      text.includes(p.name.toLowerCase()) ||
-      p.tags.some(t => text.includes(t))
-    );
-
-    if (foundPreset && Math.random() > 0.3) {
-      return this._formatPalette(foundPreset.name, foundPreset.baseColors, foundPreset.description);
-    }
-
-    // Algorithmic Semantic Synthesis based on keyword weights
-    let baseHue = Math.floor(Math.random() * 360);
-    let satScale = 0.7;
-    let valScale = 0.8;
-    let moodTitle = 'Armonía Sugerida por IA';
-    let moodDesc = 'Composición equilibrada basada en principios de teoría del color y armonía tonal.';
-
-    if (text.includes('cálid') || text.includes('warm') || text.includes('fuego') || text.includes('sol')) {
-      baseHue = 20 + Math.floor(Math.random() * 40); // 20-60
-      moodTitle = 'Composición Cálida Radiante';
-      moodDesc = 'Enfocada en gamas de rojos, naranjas y ocres con alto impacto térmico.';
-    } else if (text.includes('frí') || text.includes('cool') || text.includes('hielo') || text.includes('nieve') || text.includes('invierno')) {
-      baseHue = 190 + Math.floor(Math.random() * 50); // 190-240
-      satScale = 0.6;
-      moodTitle = 'Composición Glacial Fría';
-      moodDesc = 'Gamas frías de azules y cianes desaturados con contrastes nítidos.';
-    } else if (text.includes('bosque') || text.includes('verde') || text.includes('selva') || text.includes('naturaleza')) {
-      baseHue = 90 + Math.floor(Math.random() * 60); // 90-150
-      moodTitle = 'Composición Botánica Orgánica';
-      moodDesc = 'Equilibrio de verdes follaje, sombras tierra y acentos dorados.';
-    } else if (text.includes('noche') || text.includes('oscur') || text.includes('misterio') || text.includes('dragón') || text.includes('cueva')) {
-      baseHue = 240 + Math.floor(Math.random() * 60); // 240-300
-      valScale = 0.35;
-      satScale = 0.85;
-      moodTitle = 'Composición Umbría Nocturna';
-      moodDesc = 'Clave tonal baja con contrastes dramáticos de brillo especular.';
-    }
-
-    // Derive 5 distinct harmonic roles
-    const c0 = ColorMath.hsvToRgb(baseHue, satScale * 0.5, valScale * 0.3); // 60% Dominant Base
-    const c1 = ColorMath.hsvToRgb((baseHue + 25) % 360, satScale * 0.75, valScale * 0.65); // 30% Secondary
-    const c2 = ColorMath.hsvToRgb((baseHue + 160) % 360, Math.min(1, satScale * 1.3), Math.min(1, valScale * 1.2)); // 10% High-Contrast Accent
-    const c3 = ColorMath.hsvToRgb((baseHue + 180) % 360, satScale * 0.25, 0.95); // Highlight
-    const c4 = ColorMath.hsvToRgb((baseHue - 35 + 360) % 360, satScale * 0.6, valScale * 0.5); // Atmosphere
-
-    const hexColors = [
-      ColorMath.rgbToHex(c0.r, c0.g, c0.b),
-      ColorMath.rgbToHex(c1.r, c1.g, c1.b),
-      ColorMath.rgbToHex(c2.r, c2.g, c2.b),
-      ColorMath.rgbToHex(c3.r, c3.g, c3.b),
-      ColorMath.rgbToHex(c4.r, c4.g, c4.b)
-    ];
-
-    return this._formatPalette(moodTitle, hexColors, moodDesc);
+    return AIAdvisor.synthesizePalette(promptText);
   },
 
   _formatPalette(title, hexColors, description) {

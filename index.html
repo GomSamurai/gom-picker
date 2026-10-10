@@ -1322,104 +1322,159 @@
           <div class="panel-header">
             <div class="panel-header-top">
               <div class="panel-title">
-                <span>🧠</span> Asesor Cromático IA
+                <span>🧠</span> Asesor Cromático & Chat IA
               </div>
-              <span style="font-size: 0.7rem; color: var(--accent-emerald); font-weight: 600; background: rgba(16,185,129,0.12); padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(16,185,129,0.25);">⚡ Heurístico Local</span>
-            </div>
-          </div>
-
-          <!-- AI Prompt Box -->
-          <div class="ai-prompt-box">
-            <input type="text" id="aiPromptInput" class="ai-prompt-input" placeholder="Describe cualquier escena, emoción o criatura..." value="dragón volcánico en cueva de obsidiana">
-            <button id="btnAiGenerate" class="ai-gen-btn">
-              <span>Sintetizar Esquema</span>
-            </button>
-          </div>
-
-          <!-- Quick Suggestion Chips -->
-          <div class="ai-prompt-chips">
-            <button class="ai-chip-prompt" data-prompt="dragón volcánico en cueva de obsidiana">🐉 Dragón Volcánico</button>
-            <button class="ai-chip-prompt" data-prompt="cyberpunk neotokyo noche de neón">🌃 Cyberpunk</button>
-            <button class="ai-chip-prompt" data-prompt="bosque de otoño ambarino y musgo">🌲 Bosque Místico</button>
-            <button class="ai-chip-prompt" data-prompt="atardecer golden hour en el mar">🌅 Golden Hour</button>
-            <button class="ai-chip-prompt" data-prompt="dark fantasy alquimia y magia gótica">⚔️ Dark Fantasy</button>
-            <button class="ai-chip-prompt" data-prompt="abismo oceánico bioluminiscente">🌊 Abismo Marino</button>
-          </div>
-
-          <!-- Psychological Semantic Vectors -->
-          <div id="semanticGaugesBox" class="semantic-gauges-box">
-            <div class="semantic-gauges-title">VECTORES PSICOLÓGICOS DEL COLOR</div>
-            <div id="semanticGaugesList" class="semantic-gauges-grid">
-              <!-- Rendered by AIAdvisor -->
-            </div>
-          </div>
-
-          <!-- Composition Preview with 6 Selectable Scenes -->
-          <div class="ai-composition-card">
-            
-            <div class="ai-composition-header">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 0.8rem; font-weight: 600; color: #FFFFFF;">Maqueta de Composición Visual:</span>
-                <select id="aiSceneSelect" class="chip-select" style="font-size: 0.74rem;">
-                  <option value="creature" selected>🐉 Criatura / Dragón en Caverna</option>
-                  <option value="landscape">🏞️ Paisaje Natural y Domo Celeste</option>
-                  <option value="portrait">👤 Retrato y Figura Humana</option>
-                  <option value="poster">📐 Cartel Gráfico y Branding (Bauhaus)</option>
-                  <option value="cyberpunk">🌃 Escena Sci-Fi / Cyberpunk Nocturna</option>
-                  <option value="still_life">🏺 Bodegón Clásico / Naturaleza Muerta</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- SVG Composition Canvas Viewport -->
-            <div id="aiCompositionViewport" class="composition-preview-viewport" style="height: 220px;">
-              <!-- SVG rendered by AIAssistant -->
-            </div>
-
-            <!-- 60-30-10 Rule Breakdown -->
-            <div class="composition-ratios-breakdown" style="margin-top: 10px;">
-              <div id="ratioBar" class="ratio-bar">
-                <!-- Colored segments -->
-              </div>
-              <div id="ratioLegend" class="ratio-legend">
-                <!-- Dynamic dots and labels -->
-              </div>
-            </div>
-
-            <!-- Working Dynamic Modifiers Ribbon -->
-            <div class="modifier-buttons-ribbon" style="margin-top: 10px;">
-              <button class="modifier-btn" data-mod="warm" title="Vira la paleta hacia calidez solar dorada">☀️ Cálido</button>
-              <button class="modifier-btn" data-mod="cool" title="Vira la paleta hacia tonos fríos azulados">❄️ Frío</button>
-              <button class="modifier-btn" data-mod="vibrant" title="Aumenta la saturación y viveza cromática">⚡ Vibrante</button>
-              <button class="modifier-btn" data-mod="mute" title="Atenúa y desatura con tono cinematográfico">🌫️ Muted</button>
-              <button class="modifier-btn" data-mod="invert_values" title="Invierte valores tonales (Claves bajas a altas)">🔄 Invertir Valores</button>
-            </div>
-          </div>
-
-          <!-- Dedicated AI Palette Swatches & Library Integration -->
-          <div class="ai-swatches-section">
-            <div class="ai-swatches-header">
-              <span class="ai-swatches-title">🎨 MUESTRAS DE LA PALETA (60 • 30 • 10)</span>
-              <button id="btnAiSaveToLibrary" class="ai-save-btn" title="Guardar esta paleta completa en tu biblioteca de muestras">
-                💾 Guardar en Biblioteca
+              <button id="btnAiConfigKey" class="tool-action-btn" style="font-size: 0.72rem; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px;" title="Configurar proveedor IA (Local / Google Gemini / OpenAI)">
+                <span>⚙️</span> <span id="aiEngineLabel" style="font-weight: 600; color: #A5B4FC;">Local Offline</span>
               </button>
             </div>
-            <div id="aiSwatchesGrid" class="ai-swatches-grid">
-              <!-- Dynamically rendered 5 swatches with FG/BG and copy -->
+            <!-- Sub-tabs navigation between Synthesizer and Chat Studio -->
+            <div class="ai-subtabs-nav" style="display: flex; gap: 6px; margin-top: 10px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+              <button id="tabBtnAiSynth" class="ai-subtab-btn active" style="flex: 1; padding: 6px 10px; font-size: 0.76rem; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <span>🎨</span> Sintetizador 60-30-10
+              </button>
+              <button id="tabBtnAiChat" class="ai-subtab-btn" style="flex: 1; padding: 6px 10px; font-size: 0.76rem; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <span>💬</span> Chat con el Maestro IA
+              </button>
             </div>
           </div>
 
-          <!-- Real-Time Clinical Palette Diagnostic & Art Direction Critique -->
-          <div id="aiDiagnosticBox" style="margin-top: 12px; background: rgba(0,0,0,0.35); border: 1px solid var(--border-accent); border-radius: 8px; padding: 12px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 0.8rem; font-weight: 700; color: #A5B4FC;">Diagnóstico Académico y Dirección de Arte:</span>
-              <span id="diagnosticScore" style="font-family: var(--font-mono); font-size: 0.75rem; background: rgba(99,102,241,0.25); color: #C7D2FE; padding: 2px 8px; border-radius: 4px;">92/100 Pts</span>
+          <!-- SUBVIEW 1: SINTETIZADOR 60-30-10 -->
+          <div id="aiSynthContainer" class="ai-subview-panel">
+            <!-- AI Prompt Box -->
+            <div class="ai-prompt-box">
+              <input type="text" id="aiPromptInput" class="ai-prompt-input" placeholder="Describe cualquier escena, emoción o criatura..." value="dragón volcánico en cueva de obsidiana">
+              <button id="btnAiGenerate" class="ai-gen-btn">
+                <span>Sintetizar Esquema</span>
+              </button>
             </div>
-            <div id="diagnosticFindings" style="font-size: 0.74rem; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 4px;">
-              <!-- Dynamic findings -->
+
+            <!-- Quick Suggestion Chips -->
+            <div class="ai-prompt-chips">
+              <button class="ai-chip-prompt" data-prompt="dragón volcánico en cueva de obsidiana">🐉 Dragón Volcánico</button>
+              <button class="ai-chip-prompt" data-prompt="cyberpunk neotokyo noche de neón">🌃 Cyberpunk</button>
+              <button class="ai-chip-prompt" data-prompt="bosque de otoño ambarino y musgo">🌲 Bosque Místico</button>
+              <button class="ai-chip-prompt" data-prompt="atardecer golden hour en el mar">🌅 Golden Hour</button>
+              <button class="ai-chip-prompt" data-prompt="dark fantasy alquimia y magia gótica">⚔️ Dark Fantasy</button>
+              <button class="ai-chip-prompt" data-prompt="abismo oceánico bioluminiscente">🌊 Abismo Marino</button>
             </div>
-            <div id="diagnosticAdvice" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-subtle); font-size: 0.74rem; color: var(--accent-cyan); line-height: 1.45;">
-              <!-- Actionable advice -->
+
+            <!-- Psychological Semantic Vectors -->
+            <div id="semanticGaugesBox" class="semantic-gauges-box">
+              <div class="semantic-gauges-title">VECTORES PSICOLÓGICOS DEL COLOR</div>
+              <div id="semanticGaugesList" class="semantic-gauges-grid">
+                <!-- Rendered by AIAdvisor -->
+              </div>
+            </div>
+
+            <!-- Composition Preview with 6 Selectable Scenes -->
+            <div class="ai-composition-card">
+              <div class="ai-composition-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 0.8rem; font-weight: 600; color: #FFFFFF;">Maqueta de Composición Visual:</span>
+                  <select id="aiSceneSelect" class="chip-select" style="font-size: 0.74rem;">
+                    <option value="creature" selected>🐉 Criatura / Dragón en Caverna</option>
+                    <option value="landscape">🏞️ Paisaje Natural y Domo Celeste</option>
+                    <option value="portrait">👤 Retrato y Figura Humana</option>
+                    <option value="poster">📐 Cartel Gráfico y Branding (Bauhaus)</option>
+                    <option value="cyberpunk">🌃 Escena Sci-Fi / Cyberpunk Nocturna</option>
+                    <option value="still_life">🏺 Bodegón Clásico / Naturaleza Muerta</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- SVG Composition Canvas Viewport -->
+              <div id="aiCompositionViewport" class="composition-preview-viewport" style="height: 220px;">
+                <!-- SVG rendered by AIAssistant -->
+              </div>
+
+              <!-- 60-30-10 Rule Breakdown -->
+              <div class="composition-ratios-breakdown" style="margin-top: 10px;">
+                <div id="ratioBar" class="ratio-bar">
+                  <!-- Colored segments -->
+                </div>
+                <div id="ratioLegend" class="ratio-legend">
+                  <!-- Dynamic dots and labels -->
+                </div>
+              </div>
+
+              <!-- Working Dynamic Modifiers Ribbon -->
+              <div class="modifier-buttons-ribbon" style="margin-top: 10px;">
+                <button class="modifier-btn" data-mod="warm" title="Vira la paleta hacia calidez solar dorada">☀️ Cálido</button>
+                <button class="modifier-btn" data-mod="cool" title="Vira la paleta hacia tonos fríos azulados">❄️ Frío</button>
+                <button class="modifier-btn" data-mod="vibrant" title="Aumenta la saturación y viveza cromática">⚡ Vibrante</button>
+                <button class="modifier-btn" data-mod="mute" title="Atenúa y desatura con tono cinematográfico">🌫️ Muted</button>
+                <button class="modifier-btn" data-mod="invert_values" title="Invierte valores tonales (Claves bajas a altas)">🔄 Invertir Valores</button>
+              </div>
+            </div>
+
+            <!-- Dedicated AI Palette Swatches & Library Integration -->
+            <div class="ai-swatches-section">
+              <div class="ai-swatches-header">
+                <span class="ai-swatches-title">🎨 MUESTRAS DE LA PALETA (60 • 30 • 10)</span>
+                <button id="btnAiSaveToLibrary" class="ai-save-btn" title="Guardar esta paleta completa en tu biblioteca de muestras">
+                  💾 Guardar en Biblioteca
+                </button>
+              </div>
+              <div id="aiSwatchesGrid" class="ai-swatches-grid">
+                <!-- Dynamically rendered 5 swatches with FG/BG and copy -->
+              </div>
+            </div>
+
+            <!-- Real-Time Clinical Palette Diagnostic & Art Direction Critique -->
+            <div id="aiDiagnosticBox" style="margin-top: 12px; background: rgba(0,0,0,0.35); border: 1px solid var(--border-accent); border-radius: 8px; padding: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.8rem; font-weight: 700; color: #A5B4FC;">Diagnóstico Académico y Dirección de Arte:</span>
+                <span id="diagnosticScore" style="font-family: var(--font-mono); font-size: 0.75rem; background: rgba(99,102,241,0.25); color: #C7D2FE; padding: 2px 8px; border-radius: 4px;">92/100 Pts</span>
+              </div>
+              <div id="diagnosticFindings" style="font-size: 0.74rem; color: var(--text-secondary); line-height: 1.5; display: flex; flex-direction: column; gap: 4px;">
+                <!-- Dynamic findings -->
+              </div>
+              <div id="diagnosticAdvice" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-subtle); font-size: 0.74rem; color: var(--accent-cyan); line-height: 1.45;">
+                <!-- Actionable advice -->
+              </div>
+            </div>
+          </div>
+
+          <!-- SUBVIEW 2: CHAT CON EL MAESTRO IA -->
+          <div id="aiChatContainer" class="ai-subview-panel" style="display: none;">
+            <!-- Active Color Context Bar -->
+            <div class="chat-context-bar">
+              <div class="chat-context-left">
+                <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Color Activo:</span>
+                <span id="chatActiveColorPill" class="chat-active-pill" style="background-color: #6366F1;"></span>
+                <span id="chatActiveHex" class="chat-active-hex">#6366F1</span>
+              </div>
+              <button id="btnChatInjectActiveColor" class="chat-context-action-btn" title="Preguntar al Maestro IA cómo armonizar y pintar con este color">
+                ⚡ Analizar este color
+              </button>
+            </div>
+
+            <!-- Messages Stream -->
+            <div id="aiChatMessages" class="ai-chat-messages">
+              <!-- Rendered by AIChatStudio -->
+            </div>
+
+            <!-- Quick Artistic Questions -->
+            <div class="chat-quick-section">
+              <div class="chat-quick-title">CONSULTAS RÁPIDAS DE ARTE & COLOR:</div>
+              <div class="chat-quick-chips">
+                <button class="chat-quick-q" data-q="¿Cómo puedo armonizar mi color activo y qué tonos sugieres para sombras y luces?">🎯 Armonizar color activo</button>
+                <button class="chat-quick-q" data-q="¿Cómo mezclo tonos de piel luminosos y creíbles sin que queden apagados?">👤 Tonos de piel (Flesh)</button>
+                <button class="chat-quick-q" data-q="¿Cuáles son las claves de la técnica de Joaquín Sorolla para capturar la luz solar?">☀️ Luz de Sorolla</button>
+                <button class="chat-quick-q" data-q="¿Cómo aplico la regla 60-30-10 para jerarquizar una ilustración o pintura?">📐 Regla 60-30-10</button>
+                <button class="chat-quick-q" data-q="¿Cómo evitar los colores barro (muddy colors) al mezclar pigmentos?">🚫 Evitar colores barro</button>
+                <button class="chat-quick-q" data-q="¿Cómo funciona el Gamut Masking de James Gurney y cómo aplicarlo?">🎭 Gamut Masking</button>
+                <button class="chat-quick-q" data-q="¿Cómo construían Rembrandt y Caravaggio el claroscuro y tenebrismo?">🕯️ Claroscuro Rembrandt</button>
+              </div>
+            </div>
+
+            <!-- Chat Input Box -->
+            <div class="ai-chat-input-bar">
+              <textarea id="aiChatInput" class="ai-chat-input" rows="2" placeholder="Pregunta sobre color, pintura, maestros, pigmentos, composición... (Enter para enviar)"></textarea>
+              <button id="btnAiChatSend" class="ai-chat-send-btn" title="Enviar pregunta al Maestro IA">
+                <span>Enviar</span> ➔
+              </button>
             </div>
           </div>
 
@@ -1743,6 +1798,49 @@
           <div class="shortcut-group-title">Modales & Ayuda</div>
           <div class="shortcut-row"><span>Ver esta hoja de atajos</span><kbd>?</kbd></div>
           <div class="shortcut-row"><span>Cerrar cualquier ventana / modal</span><kbd>Esc</kbd></div>
+        </div>
+      </div>
+    </div>
+  <!-- AI CONFIGURATION MODAL (LOCAL VS GEMINI / OPENAI) -->
+  <div id="aiConfigModal" class="master-modal-backdrop" style="display: none;">
+    <div class="master-modal-container compact" style="max-width: 540px;">
+      <div class="master-modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="master-modal-badge">🧠 IA Inteligente</span>
+          <span style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Configuración del Asesor y Chat de Arte</span>
+        </div>
+        <button id="btnCloseAiConfigModal" class="modal-close-btn" title="Cerrar modal (Esc)">✕</button>
+      </div>
+
+      <div class="shortcuts-modal-body" style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">
+          GOM Picker Pro incluye un <strong>Motor Experto de Arte 100% Local</strong> que funciona offline sin requerir claves ni conexión externa. Opcionalmente, puedes vincular una API Key gratuita de <strong>Google Gemini</strong> o de <strong>OpenAI</strong> para enriquecer el razonamiento libre en lenguaje natural.
+        </div>
+
+        <div class="setting-field-group">
+          <label style="display: block; font-size: 0.76rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">
+            Proveedor de Inteligencia Artificial:
+          </label>
+          <select id="aiProviderSelect" class="chip-select" style="width: 100%; padding: 8px; font-size: 0.8rem; background: rgba(0,0,0,0.4); border: 1px solid var(--border-accent); border-radius: 6px; color: #FFFFFF;">
+            <option value="local">⚡ Motor Experto Local (Offline, Gratuito, Sin Clave)</option>
+            <option value="gemini">✨ Google Gemini Cloud (Gratuito con tu API Key - gemini-1.5-flash)</option>
+            <option value="openai">🤖 OpenAI Cloud (gpt-4o-mini con tu API Key)</option>
+          </select>
+        </div>
+
+        <div id="aiApiKeyField" class="setting-field-group" style="display: none;">
+          <label style="display: block; font-size: 0.76rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">
+            API Key:
+          </label>
+          <input type="password" id="aiApiKeyInput" class="ai-prompt-input" placeholder="Pega aquí tu API Key (se guarda solo en tu navegador)..." style="width: 100%; box-sizing: border-box;" autocomplete="off" />
+          <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
+            Tu clave se almacena de forma privada y segura exclusivamente en el almacenamiento local (localStorage) de tu navegador.
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+          <button id="btnCancelAiConfig" class="tool-action-btn" style="padding: 6px 14px; font-size: 0.78rem;">Cancelar</button>
+          <button id="btnSaveAiConfig" class="ai-gen-btn" style="padding: 6px 16px; font-size: 0.78rem;">Guardar Configuración</button>
         </div>
       </div>
     </div>
