@@ -49,6 +49,16 @@ class GomPickerApp {
     this.activeMasterCatalog = 'all';
     this.batchItems = [];
     this.isAppendBatchMode = false;
+
+    // Undo/Redo history stack
+    this.colorHistory = [];
+    this.colorHistoryIndex = -1;
+    this.historyDebounceTimer = null;
+
+    // Command palette & shortcuts state
+    this.commandPaletteOpen = false;
+    this.commandPaletteIndex = 0;
+    this.filteredCommands = [];
   }
 
   init() {
@@ -126,6 +136,10 @@ class GomPickerApp {
     safeBind('_bindGlobalSwatchDragAndDrop', this._bindGlobalSwatchDragAndDrop);
     safeBind('_bindHistoryControls', this._bindHistoryControls);
     safeBind('_bindKeyboardShortcuts', this._bindKeyboardShortcuts);
+    safeBind('_bindCommandPalette', this._bindCommandPalette);
+    safeBind('_bindShortcutsModal', this._bindShortcutsModal);
+    safeBind('_bindEyeDropper', this._bindEyeDropper);
+    safeBind('_restoreSavedSession', this._restoreSavedSession);
 
     // 6. Initial Renderings and Trigger Sync
     safeBind('renderHistoryRibbon', this.renderHistoryRibbon);
@@ -137,6 +151,9 @@ class GomPickerApp {
     safeBind('renderFlorentFarges', () => this.renderFlorentFarges(this.fgColor));
     safeBind('generateInitialAiPalette', this.generateInitialAiPalette);
     safeBind('loadSampleImage', () => this.loadSampleImage('assets/samples/monet.png'));
+    safeBind('updateWcagBadge', this.updateWcagBadge);
+    safeBind('updateLiveAccentTheme', () => this.updateLiveAccentTheme(this.fgColor.hex, this.fgColor));
+    safeBind('initialHistoryPush', () => this.pushColorHistory(true));
 
     console.log('[GOM Picker Pro] Inicializado con éxito. Todos los sistemas operativos.');
   }
@@ -217,6 +234,11 @@ class GomPickerApp {
     } else {
       UXPBridge.setBackgroundColor(rgb.r, rgb.g, rgb.b);
     }
+
+    // Live reactive theme & WCAG contrast update
+    this.updateLiveAccentTheme(hex, rgb);
+    this.updateWcagBadge();
+    this.pushColorHistory(false);
   }
 
   checkGamut(rgb) {
@@ -274,6 +296,7 @@ class GomPickerApp {
 
     this.swatchManager.addToHistory(hex);
     this.renderHistoryRibbon();
+    this.pushColorHistory(true);
   }
 
   // --- HERO ACTIVE COLOR DISPLAY & RELATIVE COMPANION BANDS ---
@@ -3894,50 +3917,514 @@ class GomPickerApp {
     }
   }
 
+  // --- NEXT LEVEL UTILITIES & ENHANCEMENTS ---
+
+  updateLiveAccentTheme(hex, rgb) {
+    if (!hex || !rgb) return;
+    document.documentElement.style.setProperty('--live-accent', hex);
+    document.documentElement.style.setProperty('--live-accent-glow', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.35)`);
+    document.documentElement.style.setProperty('--live-accent-subtle', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.12)`);
+  }
+
+  updateWcagBadge() {
+    const badge = document.getElementById('heroWcagBadge');
+    if (!badge || !this.fgColor || !this.bgColor) return;
+    const ratio = ColorMath.getContrastRatio(this.fgColor, this.bgColor);
+    const formatted = ratio.toFixed(1) + ':1';
+    let compliance = 'Fail';
+    let cls = 'wcag-fail';
+    if (ratio >= 7.0) {
+      compliance = 'AAA';
+      cls = 'wcag-aaa';
+    } else if (ratio >= 4.5) {
+      compliance = 'AA';
+      cls = 'wcag-aa';
+    } else if (ratio >= 3.0) {
+      compliance = 'AA Lg';
+      cls = 'wcag-aa';
+    }
+    badge.className = `hero-wcag-badge ${cls}`;
+    badge.textContent = `${formatted} (${compliance})`;
+    badge.title = `Contraste WCAG 2.1 entre FG (${this.fgColor.hex}) y BG (${this.bgColor.hex}): ${formatted} (${compliance})`;
+  }
+
+  pushColorHistory(immediate = false) {
+    const record = () => {
+      const state = {
+        fg: { ...this.fgColor },
+        bg: { ...this.bgColor },
+        activeWell: this.activeWell
+      };
+      if (this.colorHistory.length > 0 && this.colorHistoryIndex >= 0) {
+        const prev = this.colorHistory[this.colorHistoryIndex];
+        if (prev.fg.hex === state.fg.hex && prev.bg.hex === state.bg.hex && prev.activeWell === state.activeWell) {
+          return;
+        }
+      }
+      if (this.colorHistoryIndex < this.colorHistory.length - 1) {
+        this.colorHistory = this.colorHistory.slice(0, this.colorHistoryIndex + 1);
+      }
+      this.colorHistory.push(state);
+      if (this.colorHistory.length > 50) this.colorHistory.shift();
+      this.colorHistoryIndex = this.colorHistory.length - 1;
+      this._saveSession();
+    };
+
+    if (immediate) {
+      record();
+    } else {
+      clearTimeout(this.historyDebounceTimer);
+      this.historyDebounceTimer = setTimeout(record, 250);
+    }
+  }
+
+  undoColor() {
+    if (this.colorHistoryIndex > 0) {
+      this.colorHistoryIndex--;
+      const state = this.colorHistory[this.colorHistoryIndex];
+      this._applyHistoryState(state);
+      this.showToast(`Deshacer: Color restaurado (${state.activeWell === 'fg' ? state.fg.hex : state.bg.hex})`, 'info');
+    } else {
+      this.showToast('No hay más cambios anteriores para deshacer', 'warn');
+    }
+  }
+
+  redoColor() {
+    if (this.colorHistoryIndex < this.colorHistory.length - 1) {
+      this.colorHistoryIndex++;
+      const state = this.colorHistory[this.colorHistoryIndex];
+      this._applyHistoryState(state);
+      this.showToast(`Rehacer: Color restaurado (${state.activeWell === 'fg' ? state.fg.hex : state.bg.hex})`, 'info');
+    } else {
+      this.showToast('No hay más cambios posteriores para rehacer', 'warn');
+    }
+  }
+
+  _applyHistoryState(state) {
+    this.fgColor = { ...state.fg };
+    this.bgColor = { ...state.bg };
+    this.activeWell = state.activeWell;
+    const fg = document.getElementById('fgWell');
+    const bg = document.getElementById('bgWell');
+    if (fg) {
+      fg.style.backgroundColor = this.fgColor.hex;
+      if (this.activeWell === 'fg') fg.classList.add('active'); else fg.classList.remove('active');
+    }
+    if (bg) {
+      bg.style.backgroundColor = this.bgColor.hex;
+      if (this.activeWell === 'bg') bg.classList.add('active'); else bg.classList.remove('active');
+    }
+    const target = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+    this.setColorDirectly(target);
+  }
+
+  resetDefaultColors() {
+    this.fgColor = { r: 0, g: 0, b: 0, hex: '#000000' };
+    this.bgColor = { r: 255, g: 255, b: 255, hex: '#FFFFFF' };
+    this.baseFgColor = { ...this.fgColor };
+    this.baseBgColor = { ...this.bgColor };
+    this.activeWell = 'fg';
+    const fg = document.getElementById('fgWell');
+    const bg = document.getElementById('bgWell');
+    if (fg) { fg.style.backgroundColor = '#000000'; fg.classList.add('active'); }
+    if (bg) { bg.style.backgroundColor = '#FFFFFF'; bg.classList.remove('active'); }
+    this.setColorDirectly(this.fgColor);
+    this.pushColorHistory(true);
+    this.showToast('Colores restablecidos a Blanco y Negro por defecto (D)', 'info');
+  }
+
+  async triggerEyeDropper() {
+    if (window.EyeDropper) {
+      try {
+        const eyeDropper = new window.EyeDropper();
+        const result = await eyeDropper.open();
+        if (result && result.sRGBHex) {
+          const rgb = ColorMath.hexToRgb(result.sRGBHex);
+          this.setColorDirectly(rgb);
+          this.pushColorHistory(true);
+          this.showToast(`Pipeta: Color capturado ${result.sRGBHex}`, 'success');
+        }
+      } catch (err) {
+        // Cancelled by user
+      }
+    } else {
+      this.showToast('La Pipeta nativa (EyeDropper) está disponible en navegadores Chrome / Edge', 'warn');
+    }
+  }
+
+  _saveSession() {
+    try {
+      const activeTabBtn = document.querySelector('.nav-tab-btn.active');
+      const session = {
+        fg: this.fgColor,
+        bg: this.bgColor,
+        activeWell: this.activeWell,
+        tab: activeTabBtn ? activeTabBtn.dataset.tab : 'studio',
+        wheelMode: document.getElementById('wheelModeSelect')?.value || 'triangle'
+      };
+      localStorage.setItem('gom_picker_session_v1', JSON.stringify(session));
+    } catch (_) {}
+  }
+
+  _restoreSavedSession() {
+    try {
+      const raw = localStorage.getItem('gom_picker_session_v1');
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.fg && data.fg.r !== undefined) {
+        this.fgColor = data.fg;
+        this.baseFgColor = { ...data.fg };
+      }
+      if (data.bg && data.bg.r !== undefined) {
+        this.bgColor = data.bg;
+        this.baseBgColor = { ...data.bg };
+      }
+      if (data.activeWell) this.activeWell = data.activeWell;
+      if (data.wheelMode && this.colorWheel) {
+        const sel = document.getElementById('wheelModeSelect');
+        if (sel) sel.value = data.wheelMode;
+        this.colorWheel.setMode(data.wheelMode);
+      }
+      if (data.tab && data.tab !== 'studio') {
+        const btn = document.querySelector(`.nav-tab-btn[data-tab="${data.tab}"]`);
+        if (btn) btn.click();
+      }
+    } catch (_) {}
+  }
+
+  switchTab(tabKey) {
+    const btn = document.querySelector(`.nav-tab-btn[data-tab="${tabKey}"]`);
+    if (btn) btn.click();
+  }
+
+  _bindEyeDropper() {
+    const btn = document.getElementById('btnEyeDropper');
+    if (btn) {
+      btn.addEventListener('click', () => this.triggerEyeDropper());
+    }
+  }
+
+  _bindShortcutsModal() {
+    const modal = document.getElementById('shortcutsModal');
+    const btnClose = document.getElementById('btnCloseShortcutsModal');
+    const btnOpen = document.getElementById('btnShortcutsHelp');
+
+    const open = () => { if (modal) modal.style.display = 'flex'; };
+    const close = () => { if (modal) modal.style.display = 'none'; };
+
+    if (btnOpen) btnOpen.addEventListener('click', open);
+    if (btnClose) btnClose.addEventListener('click', close);
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+      });
+    }
+
+    this.openShortcutsModal = open;
+    this.closeShortcutsModal = close;
+  }
+
+  _bindCommandPalette() {
+    const modal = document.getElementById('commandPaletteModal');
+    const input = document.getElementById('commandPaletteInput');
+    const results = document.getElementById('commandPaletteResults');
+    const btnOpen = document.getElementById('btnCommandPalette');
+
+    if (!modal || !input || !results) return;
+
+    const commands = [
+      // Navegación
+      { title: 'Ir a Estudio Cromático', category: 'Espacio', icon: '🎨', action: () => this.switchTab('studio') },
+      { title: 'Ir a Máscaras de Gama & Munsell', category: 'Espacio', icon: '🎯', action: () => this.switchTab('gamut_munsell') },
+      { title: 'Ir a Chromilla: Catálogo de Tubos', category: 'Espacio', icon: '🧪', action: () => this.switchTab('chromilla') },
+      { title: 'Ir a Teoría del Color de Florent Farges', category: 'Espacio', icon: '👨‍🎨', action: () => this.switchTab('florent') },
+      { title: 'Ir a Modificador Dinámico de Atmósfera', category: 'Espacio', icon: '🌅', action: () => this.switchTab('atmosphere') },
+      { title: 'Ir a Paletas de Grandes Maestros', category: 'Espacio', icon: '🏛️', action: () => this.switchTab('masters') },
+      { title: 'Ir a Extractor K-Means & Análisis de Lote', category: 'Espacio', icon: '📷', action: () => this.switchTab('extractor') },
+      { title: 'Ir a Asesor Cromático IA Local', category: 'Espacio', icon: '🧠', action: () => this.switchTab('ai') },
+      { title: 'Ir a Bibliotecas & Exportación .ASE', category: 'Espacio', icon: '📚', action: () => this.switchTab('swatches') },
+
+      // Herramientas
+      { title: 'Pipeta de Pantalla Completa (EyeDropper)', category: 'Herramienta', icon: '💉', action: () => this.triggerEyeDropper() },
+      { title: 'Intercambiar Frontal / Fondo (Tecla X)', category: 'Color', icon: '🔄', action: () => this.swapWells() },
+      { title: 'Restaurar Blanco y Negro por defecto (Tecla D)', category: 'Color', icon: '⬛', action: () => this.resetDefaultColors() },
+      { title: 'Inspección Tonal B/N Grayscale (Tecla V)', category: 'Herramienta', icon: '👁️', action: () => document.getElementById('btnValueCheck')?.click() },
+      { title: 'Copiar código HEX actual', category: 'Portapapeles', icon: '📋', action: () => this.copyToClipboard(this.activeWell === 'fg' ? this.fgColor.hex : this.bgColor.hex) },
+      { title: 'Deshacer cambio de color (Ctrl+Z)', category: 'Historial', icon: '↩️', action: () => this.undoColor() },
+      { title: 'Rehacer cambio de color (Ctrl+Y)', category: 'Historial', icon: '↪️', action: () => this.redoColor() },
+      { title: 'Ver Atajos de Teclado (?)', category: 'Ayuda', icon: '⌨️', action: () => this.openShortcutsModal() },
+      { title: 'Alternar Barra Lateral (Colapsar/Expandir)', category: 'Vista', icon: '◀', action: () => document.getElementById('btnToggleSidebar')?.click() },
+      { title: 'Abrir Ventana Flotante UXP Independiente', category: 'Herramienta', icon: '🪟', action: () => document.getElementById('btnCompactMode')?.click() },
+
+      // Paletas Históricas
+      { title: 'Cargar Paleta Zorn (Ocre, Bermellón, Negro, Blanco)', category: 'Paleta', icon: '🎨', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('zorn'); } },
+      { title: 'Cargar Paleta Apeles de la Antigua Grecia', category: 'Paleta', icon: '🏛️', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('apelles'); } },
+      { title: 'Cargar Paleta William Bouguereau', category: 'Paleta', icon: '🖼️', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('bouguereau'); } },
+      { title: 'Cargar Paleta Velázquez (Tenebrismo & Retrato)', category: 'Paleta', icon: '🎭', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('velazquez'); } },
+      { title: 'Cargar Paleta Sorolla (Luminismo Mediterráneo)', category: 'Paleta', icon: '🏖️', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('sorolla'); } },
+      { title: 'Cargar Paleta Monet (Impresionismo & Sombras)', category: 'Paleta', icon: '🌸', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('monet'); } },
+      { title: 'Cargar Paleta Rembrandt (Claroscuro Cálido)', category: 'Paleta', icon: '🕯️', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('rembrandt'); } }
+    ];
+
+    const openPalette = () => {
+      this.commandPaletteOpen = true;
+      modal.style.display = 'flex';
+      input.value = '';
+      this.commandPaletteIndex = 0;
+      renderResults(commands);
+      setTimeout(() => input.focus(), 50);
+    };
+
+    const closePalette = () => {
+      this.commandPaletteOpen = false;
+      modal.style.display = 'none';
+    };
+
+    const renderResults = (list) => {
+      this.filteredCommands = list;
+      if (list.length === 0) {
+        results.innerHTML = '<div class="command-palette-empty">No se encontraron comandos coincidentes</div>';
+        return;
+      }
+
+      results.innerHTML = list.map((cmd, idx) => `
+        <div class="command-item ${idx === this.commandPaletteIndex ? 'active' : ''}" data-idx="${idx}">
+          <div class="command-item-left">
+            <span class="command-item-icon">${cmd.icon}</span>
+            <div>
+              <div class="command-item-title">${cmd.title}</div>
+            </div>
+          </div>
+          <span class="command-item-category">${cmd.category}</span>
+        </div>
+      `).join('');
+
+      results.querySelectorAll('.command-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const idx = parseInt(item.dataset.idx, 10);
+          if (this.filteredCommands[idx]) {
+            closePalette();
+            this.filteredCommands[idx].action();
+          }
+        });
+      });
+
+      const activeEl = results.querySelector('.command-item.active');
+      if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+    };
+
+    if (btnOpen) btnOpen.addEventListener('click', openPalette);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closePalette();
+    });
+
+    input.addEventListener('input', () => {
+      const query = input.value.trim().toLowerCase();
+      this.commandPaletteIndex = 0;
+      if (!query) {
+        renderResults(commands);
+        return;
+      }
+      const filtered = commands.filter(cmd => 
+        cmd.title.toLowerCase().includes(query) ||
+        cmd.category.toLowerCase().includes(query)
+      );
+      renderResults(filtered);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (this.filteredCommands.length > 0) {
+          this.commandPaletteIndex = (this.commandPaletteIndex + 1) % this.filteredCommands.length;
+          renderResults(this.filteredCommands);
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (this.filteredCommands.length > 0) {
+          this.commandPaletteIndex = (this.commandPaletteIndex - 1 + this.filteredCommands.length) % this.filteredCommands.length;
+          renderResults(this.filteredCommands);
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (this.filteredCommands[this.commandPaletteIndex]) {
+          const action = this.filteredCommands[this.commandPaletteIndex].action;
+          closePalette();
+          action();
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closePalette();
+      }
+    });
+
+    this.openCommandPalette = openPalette;
+    this.closeCommandPalette = closePalette;
+  }
+
   _bindKeyboardShortcuts() {
     window.addEventListener('keydown', (e) => {
-      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
+        if (e.key === 'Escape') e.target.blur();
+        return;
+      }
 
-      if (e.key === 'x' || e.key === 'X') {
-        this.swapWells();
-      } else if (e.key === 'v' || e.key === 'V') {
-        const btnVal = document.getElementById('btnValueCheck');
-        if (btnVal) btnVal.click();
-      } else if (e.key === ' ') {
+      // Command Palette (Ctrl+K or Cmd+K)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
-        const btnGen = document.getElementById('btnAiGenerate');
-        if (btnGen) btnGen.click();
+        if (this.openCommandPalette) this.openCommandPalette();
+        return;
+      }
+
+      // Undo (Ctrl+Z)
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        this.undoColor();
+        return;
+      }
+
+      // Redo (Ctrl+Y or Ctrl+Shift+Z)
+      if (((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) ||
+          ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'z' || e.key === 'Z'))) {
+        e.preventDefault();
+        this.redoColor();
+        return;
+      }
+
+      // Escape closes open modals
+      if (e.key === 'Escape') {
+        if (this.commandPaletteOpen && this.closeCommandPalette) {
+          this.closeCommandPalette();
+          return;
+        }
+        if (this.closeShortcutsModal) this.closeShortcutsModal();
+        const lightBox = document.getElementById('lightBoxModal');
+        if (lightBox && lightBox.style.display !== 'none') lightBox.style.display = 'none';
+        const addArtModal = document.getElementById('addArtModal');
+        if (addArtModal && addArtModal.style.display !== 'none') addArtModal.style.display = 'none';
+        const newCatModal = document.getElementById('newCatalogModal');
+        if (newCatModal && newCatModal.style.display !== 'none') newCatModal.style.display = 'none';
+        return;
+      }
+
+      // Tab toggles sidebar
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        document.getElementById('btnToggleSidebar')?.click();
+        return;
+      }
+
+      // EyeDropper (I)
+      if (e.key === 'i' || e.key === 'I') {
+        e.preventDefault();
+        this.triggerEyeDropper();
+        return;
+      }
+
+      // Reset to Default Black / White (D)
+      if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault();
+        this.resetDefaultColors();
+        return;
+      }
+
+      // Swap Wells (X)
+      if (e.key === 'x' || e.key === 'X') {
+        e.preventDefault();
+        this.swapWells();
+        return;
+      }
+
+      // Value check (V)
+      if (e.key === 'v' || e.key === 'V') {
+        e.preventDefault();
+        document.getElementById('btnValueCheck')?.click();
+        return;
+      }
+
+      // Help shortcuts (?)
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        if (this.openShortcutsModal) this.openShortcutsModal();
+        return;
+      }
+
+      // Space generates AI palette
+      if (e.key === ' ') {
+        e.preventDefault();
+        document.getElementById('btnAiGenerate')?.click();
+        return;
+      }
+
+      // Number keys 1-7 for instant tabs
+      if (e.key >= '1' && e.key <= '7' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        const tabKeys = ['studio', 'gamut_munsell', 'chromilla', 'florent', 'atmosphere', 'masters', 'extractor'];
+        const targetTab = tabKeys[parseInt(e.key, 10) - 1];
+        if (targetTab) {
+          e.preventDefault();
+          this.switchTab(targetTab);
+        }
       }
     });
   }
 
-  copyToClipboard(text) {
+  copyToClipboard(text, customMsg = null) {
+    const doToast = () => {
+      this.showToast(customMsg || `Copiado: ${text}`, 'success');
+    };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text);
+      navigator.clipboard.writeText(text).then(doToast).catch(() => {
+        this._fallbackCopy(text);
+        doToast();
+      });
     } else {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
+      this._fallbackCopy(text);
+      doToast();
     }
   }
 
-  showToast(message, type = 'info') {
+  _fallbackCopy(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try { document.execCommand('copy'); } catch (_) {}
+    document.body.removeChild(textarea);
+  }
+
+  showToast(message, type = 'info', duration = 2800) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
+
+    const icons = {
+      info: '💡',
+      success: '✔️',
+      warn: '⚠️',
+      error: '❌'
+    };
+
     const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.innerHTML = `<span>✨</span><span>${message}</span>`;
+    toast.className = `toast toast--${type}`;
+    toast.innerHTML = `<span style="font-size: 1.1rem; line-height: 1;">${icons[type] || '✨'}</span><span>${message}</span>`;
+    toast.onclick = () => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(10px)';
+      setTimeout(() => toast.remove(), 200);
+    };
+
     container.appendChild(toast);
 
     setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateY(10px)';
-      toast.style.transition = 'all 0.25s ease';
-      setTimeout(() => toast.remove(), 250);
-    }, 2400);
+      if (toast.parentElement) {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.25s ease';
+        setTimeout(() => toast.remove(), 250);
+      }
+    }, duration);
   }
 }
 

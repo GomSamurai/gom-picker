@@ -4,8 +4,8 @@
   "description": "The Definitive Color Picker & Harmony Suite for Adobe Photoshop and Digital Artists",
   "main": "index.html",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node local-server.js",
+    "dev": "node local-server.js"
   },
   "keywords": [
     "color-picker",

@@ -122,6 +122,17 @@
       </div>
 
       <div class="workspace-topbar-actions">
+        <button id="btnEyeDropper" class="tool-action-btn" title="Pipeta de pantalla completa (Tecla I)">
+          <span>🧪</span>
+          <span class="btn-tool-text">Pipeta (I)</span>
+        </button>
+        <button id="btnCommandPalette" class="tool-action-btn" title="Paleta de Comandos (Ctrl+K)">
+          <span>⌘</span>
+          <span class="btn-tool-text">Ctrl+K</span>
+        </button>
+        <button id="btnShortcutsHelp" class="tool-action-btn" title="Atajos de teclado y ayuda (Tecla ?)">
+          <span>⌨️</span>
+        </button>
         <button id="btnToggleSwatchPopups" class="tool-action-btn btn-toggle-swatch-popups active-toggle" title="Activar/Desactivar popups informativos sobre las muestras">
           <span>💬</span>
           <span class="btn-tool-text">Popups: ON</span>
@@ -195,6 +206,7 @@
               <div class="hero-subdata-row">
                 <span id="displayMunsell" class="hero-munsell-badge" title="Notación Albert Munsell (Matiz Valor/Croma)">5PB 4.2/10</span>
                 <span id="heroTempBadge" class="hero-temp-badge" title="Temperatura cromática estimada">Frío Espectral</span>
+                <span id="heroWcagBadge" class="hero-wcag-badge wcag-aa" title="Ratio de contraste WCAG 2.1 entre Color Frontal y Color de Fondo">4.8:1 (AA)</span>
               </div>
             </div>
           </div>
@@ -1662,6 +1674,75 @@
           <button id="btnConfirmCreateCat" class="tool-action-btn active-toggle" style="padding: 6px 16px;">
             <span>➕</span> Crear Catálogo
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMMAND PALETTE MODAL (Ctrl + K) -->
+  <div id="commandPaletteModal" class="command-palette-backdrop" style="display: none;">
+    <div class="command-palette-container">
+      <div class="command-palette-input-wrap">
+        <span class="command-palette-icon">🔍</span>
+        <input type="text" id="commandPaletteInput" class="command-palette-input" placeholder="Buscar comando, paleta histórica, maestro o herramienta... (Esc)" autocomplete="off">
+        <kbd class="command-palette-kbd">ESC</kbd>
+      </div>
+      <div class="command-palette-results" id="commandPaletteResults">
+        <!-- Dynamically populated in app.js -->
+      </div>
+      <div class="command-palette-footer">
+        <span>Navega con <b>↑</b> <b>↓</b></span>
+        <span>Ejecutar con <b>↵ Enter</b></span>
+        <span>Cerrar con <b>Esc</b></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- KEYBOARD SHORTCUTS CHEAT SHEET MODAL (?) -->
+  <div id="shortcutsModal" class="master-modal-backdrop" style="display: none;">
+    <div class="master-modal-container compact" style="max-width: 640px;">
+      <div class="master-modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="master-modal-badge">⌨️ Teclado</span>
+          <span style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Atajos de Teclado Profesionales</span>
+        </div>
+        <button id="btnCloseShortcutsModal" class="modal-close-btn" title="Cerrar modal (Esc)">✕</button>
+      </div>
+
+      <div class="shortcuts-modal-body">
+        <div class="shortcut-group">
+          <div class="shortcut-group-title">Color & Rueda</div>
+          <div class="shortcut-row"><span>Intercambiar Frontal / Fondo</span><kbd>X</kbd></div>
+          <div class="shortcut-row"><span>Restaurar Blanco y Negro por defecto</span><kbd>D</kbd></div>
+          <div class="shortcut-row"><span>Pipeta de Pantalla Completa (EyeDropper)</span><kbd>I</kbd></div>
+          <div class="shortcut-row"><span>Inspección Tonal B/N (Valor)</span><kbd>V</kbd></div>
+          <div class="shortcut-row"><span>Deshacer último cambio de color</span><kbd>Ctrl + Z</kbd></div>
+          <div class="shortcut-row"><span>Rehacer cambio de color</span><kbd>Ctrl + Y</kbd></div>
+        </div>
+
+        <div class="shortcut-group">
+          <div class="shortcut-group-title">Navegación & Suite</div>
+          <div class="shortcut-row"><span>Abrir Paleta de Comandos</span><kbd>Ctrl + K</kbd></div>
+          <div class="shortcut-row"><span>Pestaña Estudio Cromático</span><kbd>1</kbd></div>
+          <div class="shortcut-row"><span>Pestaña Máscaras & Munsell</span><kbd>2</kbd></div>
+          <div class="shortcut-row"><span>Pestaña Tubos Chromilla</span><kbd>3</kbd></div>
+          <div class="shortcut-row"><span>Pestaña Florent Farges</span><kbd>4</kbd></div>
+          <div class="shortcut-row"><span>Pestaña Atmósfera & Sombras</span><kbd>5</kbd></div>
+          <div class="shortcut-row"><span>Pestaña Grandes Maestros</span><kbd>6</kbd></div>
+          <div class="shortcut-row"><span>Pestaña Extractor K-Means</span><kbd>7</kbd></div>
+        </div>
+
+        <div class="shortcut-group">
+          <div class="shortcut-group-title">Inteligencia & Generación</div>
+          <div class="shortcut-row"><span>Generar nueva armonía IA</span><kbd>Espacio</kbd></div>
+          <div class="shortcut-row"><span>Copiar código HEX actual</span><kbd>Click HEX</kbd></div>
+          <div class="shortcut-row"><span>Alternar Barra Lateral</span><kbd>Tab</kbd></div>
+        </div>
+
+        <div class="shortcut-group">
+          <div class="shortcut-group-title">Modales & Ayuda</div>
+          <div class="shortcut-row"><span>Ver esta hoja de atajos</span><kbd>?</kbd></div>
+          <div class="shortcut-row"><span>Cerrar cualquier ventana / modal</span><kbd>Esc</kbd></div>
         </div>
       </div>
     </div>

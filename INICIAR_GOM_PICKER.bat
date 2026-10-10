@@ -14,7 +14,7 @@ if %errorlevel% neq 0 (
     exit /b
 )
 
-node server.js
+node local-server.js
 if %errorlevel% neq 0 (
     echo.
     echo El servidor se ha detenido.
