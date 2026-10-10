@@ -1,7 +1,7 @@
 /**
  * GOM Picker - Wet Paint Palette & Digital Palette Knife Mixer
- * Interactive physical paint mixing canvas with subtractive pigment dynamics.
- * Allows artists to deposit paint dabs, blend them with a virtual palette knife,
+ * Interactive physical paint mixing canvas with authentic subtractive Kubelka-Munk pigment dynamics.
+ * Allows artists to deposit thick oil/acrylic paint dabs, blend them with a virtual palette knife,
  * and sample nuanced transitional colors with an integrated eyedropper.
  */
 
@@ -14,23 +14,28 @@ export class WetMixerEngine {
     this.ctx = null;
     this.width = 680;
     this.height = 420;
-    
+
+    // Dedicated offscreen pure-pigment paint layer (avoids blending dark palette background)
+    this.paintCanvas = document.createElement('canvas');
+    this.paintCtx = this.paintCanvas.getContext('2d', { willReadFrequently: true });
+
     this.tool = 'blend'; // 'blend' | 'dab' | 'pipette'
     this.brushSize = 36;
-    this.blendStrength = 0.55;
+    this.blendStrength = 0.65;
     this.isDrawing = false;
     this.lastX = null;
     this.lastY = null;
-    
-    // Virtual knife paint pickup
-    this.knifeColor = null; // { r, g, b, amount }
+
+    // Virtual knife blade paint reservoir
+    this.knifeColor = null; // { r, g, b }
+    this.knifeAmount = 0.0;
   }
 
   init(canvasId = 'wetMixerCanvas') {
     this.canvas = document.getElementById(canvasId);
     if (!this.canvas) return;
     this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
-    
+
     this._setupCanvasResolution();
     this.clearPalette();
     this._bindEvents();
@@ -41,18 +46,32 @@ export class WetMixerEngine {
     const rect = this.canvas.getBoundingClientRect();
     const w = rect.width || 680;
     const h = rect.height || 420;
+
     this.canvas.width = w;
     this.canvas.height = h;
+    this.paintCanvas.width = w;
+    this.paintCanvas.height = h;
+
     this.width = w;
     this.height = h;
   }
 
   clearPalette() {
-    if (!this.ctx) return;
+    if (!this.ctx || !this.paintCtx) return;
+
+    // Clear paint pigment buffer
+    this.paintCtx.clearRect(0, 0, this.width, this.height);
+    this.knifeColor = null;
+    this.knifeAmount = 0.0;
+
+    this._renderToScreen();
+  }
+
+  _renderBackground() {
     // Elegant artist studio glass palette background
     const grad = this.ctx.createRadialGradient(
       this.width / 2, this.height / 2, 40,
-      this.width / 2, this.height / 2, Math.max(this.width, this.height) * 0.7
+      this.width / 2, this.height / 2, Math.max(this.width, this.height) * 0.75
     );
     grad.addColorStop(0, '#1E202B');
     grad.addColorStop(1, '#111218');
@@ -60,7 +79,7 @@ export class WetMixerEngine {
     this.ctx.fillRect(0, 0, this.width, this.height);
 
     // Subtle wooden/glass palette texture grid
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
     this.ctx.lineWidth = 1;
     const step = 40;
     for (let x = 0; x < this.width; x += step) {
@@ -75,67 +94,89 @@ export class WetMixerEngine {
       this.ctx.lineTo(this.width, y);
       this.ctx.stroke();
     }
+  }
 
-    this.knifeColor = null;
+  // Composite pure paint layer onto glass palette with realistic impasto depth
+  _renderToScreen() {
+    if (!this.ctx) return;
+    this._renderBackground();
+
+    // Soft drop shadow beneath the oil paint mass
+    this.ctx.save();
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+    this.ctx.shadowBlur = 10;
+    this.ctx.shadowOffsetY = 4;
+    this.ctx.drawImage(this.paintCanvas, 0, 0);
+    this.ctx.restore();
+
+    // Draw pristine pigment layer on top
+    this.ctx.drawImage(this.paintCanvas, 0, 0);
   }
 
   _depositInitialDabs() {
-    // Deposit 3 sample dabs to invite immediate interaction
-    this.depositDab(this.width * 0.28, this.height * 0.45, { r: 245, g: 158, b: 11 }, 48); // Golden Yellow
-    this.depositDab(this.width * 0.72, this.height * 0.45, { r: 59, g: 130, b: 246 }, 48);  // Cobalt Blue
-    this.depositDab(this.width * 0.50, this.height * 0.75, { r: 244, g: 63, b: 94 }, 42);  // Crimson Rose
+    // Deposit sample artist primaries: Cadmium Yellow, Cobalt Blue, Crimson
+    this.depositDab(this.width * 0.35, this.height * 0.45, { r: 246, g: 255, b: 0 }, 48); // Pure Bright Yellow
+    this.depositDab(this.width * 0.65, this.height * 0.45, { r: 26, g: 69, b: 255 }, 48);  // Rich Cobalt Blue
+    this.depositDab(this.width * 0.50, this.height * 0.76, { r: 244, g: 63, b: 94 }, 42);  // Crimson Rose
   }
 
-  // Deposit a dab of thick paint
+  // Deposit a generous mound of opaque oil paint
   depositDab(x, y, rgb, radius = this.brushSize) {
-    if (!this.ctx) return;
-    this.ctx.save();
-    
-    // Substantive impasto paint drop with soft feathered edges
-    const radGrad = this.ctx.createRadialGradient(x, y, radius * 0.1, x, y, radius);
-    const hex = ColorMath.rgbToHex(rgb.r, rgb.g, rgb.b);
+    if (!this.paintCtx) return;
+    this.paintCtx.save();
+
+    // Opaque paint core with soft feathered edge
+    const radGrad = this.paintCtx.createRadialGradient(x, y, radius * 0.2, x, y, radius);
     radGrad.addColorStop(0, `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
-    radGrad.addColorStop(0.75, `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
-    radGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    radGrad.addColorStop(0.85, `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
+    radGrad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
 
-    this.ctx.beginPath();
-    this.ctx.arc(x, y, radius, 0, Math.PI * 2);
-    this.ctx.fillStyle = radGrad;
-    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
-    this.ctx.shadowBlur = 8;
-    this.ctx.shadowOffsetY = 3;
-    this.ctx.fill();
+    this.paintCtx.beginPath();
+    this.paintCtx.arc(x, y, radius, 0, Math.PI * 2);
+    this.paintCtx.fillStyle = radGrad;
+    this.paintCtx.fill();
 
-    // Specular highlight on the fresh oil paint mound
-    this.ctx.beginPath();
-    this.ctx.arc(x - radius * 0.25, y - radius * 0.25, radius * 0.28, 0, Math.PI * 2);
-    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
-    this.ctx.shadowBlur = 0;
-    this.ctx.fill();
+    // Specular light sheen on fresh oil paint body
+    this.paintCtx.beginPath();
+    this.paintCtx.arc(x - radius * 0.22, y - radius * 0.22, radius * 0.24, 0, Math.PI * 2);
+    this.paintCtx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+    this.paintCtx.fill();
 
-    this.ctx.restore();
+    this.paintCtx.restore();
+    this._renderToScreen();
   }
 
-  // Subtractive physical paint blending between two RGB colors (Kubelka-Munk CMY approximation)
+  // Draw continuous stroke when dragging with the paint dab tool
+  _strokeDab(x0, y0, x1, y1, rgb, radius = this.brushSize) {
+    if (!this.paintCtx) return;
+    const dist = Math.hypot(x1 - x0, y1 - y0);
+    const stepDist = Math.max(2, radius * 0.22);
+    const steps = Math.max(1, Math.ceil(dist / stepDist));
+
+    this.paintCtx.save();
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const cx = x0 + (x1 - x0) * t;
+      const cy = y0 + (y1 - y0) * t;
+
+      const radGrad = this.paintCtx.createRadialGradient(cx, cy, radius * 0.2, cx, cy, radius);
+      radGrad.addColorStop(0, `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
+      radGrad.addColorStop(0.82, `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
+      radGrad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+
+      this.paintCtx.beginPath();
+      this.paintCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+      this.paintCtx.fillStyle = radGrad;
+      this.paintCtx.fill();
+    }
+    this.paintCtx.restore();
+    this._renderToScreen();
+  }
+
+  // Authentic Subtractive Physical Paint Blending via 8-Band Kubelka-Munk
+  // Yields true artist greens for Yellow + Blue, warm orange for Red + Yellow, etc.
   static blendSubtractive(c1, c2, weight = 0.5) {
-    // Convert to CMY spectral absorption
-    const cmy1 = { c: 1 - c1.r / 255, m: 1 - c1.g / 255, y: 1 - c1.b / 255 };
-    const cmy2 = { c: 1 - c2.r / 255, m: 1 - c2.g / 255, y: 1 - c2.b / 255 };
-
-    // Subtractive logarithmic dye absorption
-    const w1 = 1 - weight;
-    const w2 = weight;
-
-    // Density weighted geometric mean
-    const c = 1 - Math.pow(Math.max(0, 1 - cmy1.c), w1) * Math.pow(Math.max(0, 1 - cmy2.c), w2);
-    const m = 1 - Math.pow(Math.max(0, 1 - cmy1.m), w1) * Math.pow(Math.max(0, 1 - cmy2.m), w2);
-    const y = 1 - Math.pow(Math.max(0, 1 - cmy1.y), w1) * Math.pow(Math.max(0, 1 - cmy2.y), w2);
-
-    return {
-      r: Math.round(ColorMath.clamp((1 - c) * 255, 0, 255)),
-      g: Math.round(ColorMath.clamp((1 - m) * 255, 0, 255)),
-      b: Math.round(ColorMath.clamp((1 - y) * 255, 0, 255))
-    };
+    return ColorMath.mixPigments(c1, c2, weight);
   }
 
   _bindEvents() {
@@ -161,18 +202,23 @@ export class WetMixerEngine {
       if (this.tool === 'pipette') {
         this.sampleColorAt(pos.x, pos.y);
       } else if (this.tool === 'dab') {
-        const rgb = this.app.fgColor ? this.app.fgColor : { r: 99, g: 102, b: 241 };
+        const rgb = this.app.fgColor ? this.app.fgColor : { r: 246, g: 255, b: 0 };
         this.depositDab(pos.x, pos.y, rgb, this.brushSize);
       } else if (this.tool === 'blend') {
-        // Pick up initial paint on knife tip
-        this._knifeSmudge(pos.x, pos.y);
+        // Knife tip touches surface and picks up paint if present
+        const sample = this.getColorAt(pos.x, pos.y);
+        if (sample) {
+          this.knifeColor = { r: sample.r, g: sample.g, b: sample.b };
+          this.knifeAmount = 1.0;
+        } else {
+          this.knifeColor = null;
+          this.knifeAmount = 0.0;
+        }
       }
     };
 
     const onMove = (e) => {
       const pos = getPos(e);
-      
-      // Update mixer tooltip preview
       this._updatePreviewCoordinates(pos.x, pos.y);
 
       if (!this.isDrawing) return;
@@ -181,13 +227,8 @@ export class WetMixerEngine {
       if (this.tool === 'blend') {
         this._knifeStroke(this.lastX, this.lastY, pos.x, pos.y);
       } else if (this.tool === 'dab') {
-        const dist = Math.hypot(pos.x - this.lastX, pos.y - this.lastY);
-        if (dist > this.brushSize * 0.45) {
-          const rgb = this.app.fgColor ? this.app.fgColor : { r: 99, g: 102, b: 241 };
-          this.depositDab(pos.x, pos.y, rgb, this.brushSize * 0.85);
-          this.lastX = pos.x;
-          this.lastY = pos.y;
-        }
+        const rgb = this.app.fgColor ? this.app.fgColor : { r: 246, g: 255, b: 0 };
+        this._strokeDab(this.lastX, this.lastY, pos.x, pos.y, rgb, this.brushSize);
       } else if (this.tool === 'pipette') {
         this.sampleColorAt(pos.x, pos.y);
       }
@@ -210,78 +251,93 @@ export class WetMixerEngine {
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onUp);
 
-    // Resize observer for responsive canvas scaling
     if (window.ResizeObserver) {
       new ResizeObserver(() => {
         this._setupCanvasResolution();
+        this._renderToScreen();
       }).observe(this.canvas);
     }
   }
 
-  _knifeSmudge(x, y) {
-    const sample = this.getColorAt(x, y);
-    if (sample) {
-      this.knifeColor = { ...sample, amount: 1.0 };
-    }
-  }
-
+  // Digital Palette Knife Stroke with Subtractive Pigment Smearing
   _knifeStroke(x0, y0, x1, y1) {
+    if (!this.paintCtx) return;
+
     const dist = Math.hypot(x1 - x0, y1 - y0);
-    const steps = Math.max(1, Math.ceil(dist / (this.brushSize * 0.25)));
-    
+    const stepDist = Math.max(3, this.brushSize * 0.18);
+    const steps = Math.max(1, Math.ceil(dist / stepDist));
+
+    this.paintCtx.save();
+
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
       const cx = x0 + (x1 - x0) * t;
       const cy = y0 + (y1 - y0) * t;
 
       const surfaceCol = this.getColorAt(cx, cy);
-      if (!surfaceCol) continue;
 
-      if (!this.knifeColor) {
-        this.knifeColor = { ...surfaceCol, amount: 0.8 };
-        continue;
+      if (surfaceCol) {
+        // Palette knife touches wet paint on canvas
+        if (this.knifeColor) {
+          // Authentic subtractive Kubelka-Munk blend between knife blade paint and surface paint!
+          const mixed = WetMixerEngine.blendSubtractive(this.knifeColor, surfaceCol, 0.5);
+
+          // Stamp mixed pigment onto paint buffer
+          const r = this.brushSize * 0.9;
+          const grad = this.paintCtx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r);
+          grad.addColorStop(0, `rgb(${mixed.r}, ${mixed.g}, ${mixed.b})`);
+          grad.addColorStop(0.75, `rgba(${mixed.r}, ${mixed.g}, ${mixed.b}, 0.92)`);
+          grad.addColorStop(1, `rgba(${mixed.r}, ${mixed.g}, ${mixed.b}, 0)`);
+
+          this.paintCtx.beginPath();
+          this.paintCtx.arc(cx, cy, r, 0, Math.PI * 2);
+          this.paintCtx.fillStyle = grad;
+          this.paintCtx.fill();
+
+          // Knife blade absorbs the newly mixed color
+          this.knifeColor = mixed;
+          this.knifeAmount = Math.min(1.0, this.knifeAmount + 0.15);
+        } else {
+          // Pick up surface paint on the clean blade
+          this.knifeColor = { r: surfaceCol.r, g: surfaceCol.g, b: surfaceCol.b };
+          this.knifeAmount = 1.0;
+        }
+      } else {
+        // Knife moves across dry/empty palette glass:
+        // Leaves a streak of carried paint if blade has paint
+        if (this.knifeColor && this.knifeAmount > 0.05) {
+          const r = this.brushSize * 0.75 * this.knifeAmount;
+          const k = this.knifeColor;
+
+          const grad = this.paintCtx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r);
+          grad.addColorStop(0, `rgba(${k.r}, ${k.g}, ${k.b}, ${this.knifeAmount * 0.85})`);
+          grad.addColorStop(1, `rgba(${k.r}, ${k.g}, ${k.b}, 0)`);
+
+          this.paintCtx.beginPath();
+          this.paintCtx.arc(cx, cy, r, 0, Math.PI * 2);
+          this.paintCtx.fillStyle = grad;
+          this.paintCtx.fill();
+
+          this.knifeAmount *= 0.93; // Gradually deplete knife paint
+        }
       }
-
-      // Blend knife tip with surface paint using real subtractive pigment model
-      const mixed = WetMixerEngine.blendSubtractive(this.knifeColor, surfaceCol, 0.45);
-      
-      // Paint onto canvas
-      this.ctx.save();
-      const r = this.brushSize * (0.65 + Math.random() * 0.2);
-      const grad = this.ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      grad.addColorStop(0, `rgba(${mixed.r}, ${mixed.g}, ${mixed.b}, ${this.blendStrength})`);
-      grad.addColorStop(0.8, `rgba(${mixed.r}, ${mixed.g}, ${mixed.b}, ${this.blendStrength * 0.6})`);
-      grad.addColorStop(1, 'rgba(0,0,0,0)');
-
-      this.ctx.beginPath();
-      this.ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      this.ctx.fillStyle = grad;
-      this.ctx.fill();
-      this.ctx.restore();
-
-      // Knife picks up mixed paint for continuous dragging
-      this.knifeColor = {
-        r: mixed.r,
-        g: mixed.g,
-        b: mixed.b,
-        amount: Math.max(0.2, this.knifeColor.amount * 0.96)
-      };
     }
+
+    this.paintCtx.restore();
+    this._renderToScreen();
   }
 
+  // Samples pigment strictly from the offscreen paint buffer (never from the dark background)
   getColorAt(x, y) {
-    if (!this.ctx || x < 0 || x >= this.width || y < 0 || y >= this.height) return null;
-    const pixel = this.ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
-    if (pixel[3] < 10) return null; // Transparent background
+    if (!this.paintCtx || x < 0 || x >= this.width || y < 0 || y >= this.height) return null;
+    const pixel = this.paintCtx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
+    if (pixel[3] < 15) return null; // No paint deposited here
     return { r: pixel[0], g: pixel[1], b: pixel[2] };
   }
 
   sampleColorAt(x, y) {
     const col = this.getColorAt(x, y);
     if (!col) return;
-    
-    // Ignore background dark canvas pixels
-    if (col.r < 35 && col.g < 35 && col.b < 45) return;
 
     if (this.app) {
       this.app.setColorDirectly(col);

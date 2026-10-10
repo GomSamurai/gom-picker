@@ -374,37 +374,86 @@ export const ColorMath = {
     };
   },
 
-  // Realistic Spectral Pigment Blending (Kubelka-Munk Approximation)
-  // Instead of blending light additively (which turns yellow + blue into muddy gray),
-  // simulates physical subtractive pigment mixing (yielding authentic greens!).
+  // Realistic Spectral Pigment Blending (Kubelka-Munk Spectral Reflectance Model)
+  // Simulates authentic physical pigment mixing:
+  // - Yellow + Blue = Rich Natural Green (Sap / Viridian / Forest Green)
+  // - Red + Yellow = Vibrant Warm Orange
+  // - Red + Blue = Deep Violet / Purple
+  // - Ultramarine + Burnt Sienna = Pearlescent Neutral Gray
   mixPigments(color1, color2, weight = 0.5) {
-    const w1 = 1 - weight;
-    const w2 = weight;
+    const w = ColorMath.clamp(weight, 0, 1);
+    return ColorMath.blendKubelkaMunk(color1, color2, w);
+  },
 
-    // Convert both to approximate reflectance curves
-    const r1 = color1.r / 255;
-    const g1 = color1.g / 255;
-    const b1 = color1.b / 255;
+  // 8-Band Kubelka-Munk Spectral Pigment Mixing Engine
+  blendKubelkaMunk(c1, c2, w = 0.5) {
+    const ks1 = this._rgbToPigmentAbsorption(c1.r, c1.g, c1.b);
+    const ks2 = this._rgbToPigmentAbsorption(c2.r, c2.g, c2.b);
+    const ksMix = new Float32Array(8);
+    for (let i = 0; i < 8; i++) {
+      ksMix[i] = (1 - w) * ks1[i] + w * ks2[i];
+    }
+    return this._pigmentAbsorptionToRgb(ksMix);
+  },
 
-    const r2 = color2.r / 255;
-    const g2 = color2.g / 255;
-    const b2 = color2.b / 255;
+  _rgbToPigmentAbsorption(r255, g255, b255) {
+    const r = r255 / 255;
+    const g = g255 / 255;
+    const b = b255 / 255;
 
-    // Subtractive geometric mean with absorption coefficient
-    const mixChannel = (c1, c2) => {
-      // Small epsilon to avoid zero division
-      const eps = 0.005;
-      const k1 = (1 - c1 + eps) / (c1 + eps);
-      const k2 = (1 - c2 + eps) / (c2 + eps);
-      const kmix = Math.pow(k1, w1) * Math.pow(k2, w2);
-      const result = 1 / (1 + kmix);
-      return ColorMath.clamp255(result * 255);
-    };
+    // Estimate 8 spectral reflectance bands R(lambda)
+    // 0: Violet (420nm), 1: Blue (460nm), 2: Cyan (490nm), 3: Green (530nm),
+    // 4: Yellow (580nm), 5: Orange (610nm), 6: Red (650nm), 7: Deep Red (680nm)
+    const R = new Float32Array(8);
+
+    // Violet (420nm):
+    R[0] = b * 0.90 + r * 0.10 * (1 - g);
+    // Blue (460nm):
+    R[1] = b * 0.95 + g * 0.08;
+    // Cyan (490nm):
+    R[2] = b * 0.65 + g * 0.55;
+    // Green (530nm):
+    // In physical pigments, Yellow reflects heavily across green and red wavelengths (absorbs only blue).
+    // Blue pigments have a secondary reflectance window in cyan/green.
+    const yellowTail = Math.min(r, g) * Math.max(0, 1 - b * 1.2);
+    const blueTail = b * Math.max(0, 1 - r) * 0.28;
+    R[3] = g * 0.75 + yellowTail * 0.65 + blueTail;
+    // Yellow (580nm):
+    R[4] = Math.min(1, (r * 0.65 + g * 0.60) * Math.max(0, 1 - b * 0.85));
+    // Orange (610nm):
+    R[5] = r * 0.85 + g * 0.30 * Math.max(0, 1 - b);
+    // Red (650nm):
+    R[6] = r * 0.95;
+    // Deep Red (680nm):
+    R[7] = r * 0.90 + b * 0.05 * (1 - g);
+
+    // Convert to Kubelka-Munk K/S (Absorption/Scattering):
+    // K/S = (1 - R)^2 / (2 * R)
+    const ks = new Float32Array(8);
+    for (let i = 0; i < 8; i++) {
+      const refl = Math.max(0.015, Math.min(0.985, R[i]));
+      ks[i] = Math.pow(1 - refl, 2) / (2 * refl);
+    }
+    return ks;
+  },
+
+  _pigmentAbsorptionToRgb(ksMix) {
+    // Invert Kubelka-Munk equation: R = 1 + ks - sqrt(ks^2 + 2*ks)
+    const R = new Float32Array(8);
+    for (let i = 0; i < 8; i++) {
+      const k = ksMix[i];
+      R[i] = 1 + k - Math.sqrt(k * k + 2 * k);
+    }
+
+    // Synthesize sRGB based on CIE standard observer spectral response
+    let r = R[4] * 0.25 + R[5] * 0.35 + R[6] * 0.50 + R[7] * 0.25;
+    let g = R[2] * 0.20 + R[3] * 0.85 + R[4] * 0.30;
+    let b = R[0] * 0.40 + R[1] * 0.75 + R[2] * 0.15;
 
     return {
-      r: mixChannel(r1, r2),
-      g: mixChannel(g1, g2),
-      b: mixChannel(b1, b2)
+      r: Math.round(ColorMath.clamp(r * 255, 0, 255)),
+      g: Math.round(ColorMath.clamp(g * 255, 0, 255)),
+      b: Math.round(ColorMath.clamp(b * 255, 0, 255))
     };
   }
 };

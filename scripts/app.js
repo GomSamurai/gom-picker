@@ -4520,7 +4520,7 @@ class GomPickerApp {
       btnDepFg.addEventListener('click', () => {
         if (!this.wetMixer) this._initWetMixer();
         const rgb = this.fgColor;
-        this.wetMixer.depositDab(this.wetMixer.width * 0.45, this.wetMixer.height * 0.45, rgb, this.wetMixer.brushSize * 1.2);
+        this.wetMixer.depositDab(this.wetMixer.width * 0.38, this.wetMixer.height * 0.45, rgb, this.wetMixer.brushSize * 1.2);
         this.showToast(`Mancha de color frontal depositada: ${this.fgColor.hex}`);
       });
     }
@@ -4529,7 +4529,7 @@ class GomPickerApp {
       btnDepBg.addEventListener('click', () => {
         if (!this.wetMixer) this._initWetMixer();
         const rgb = this.bgColor;
-        this.wetMixer.depositDab(this.wetMixer.width * 0.58, this.wetMixer.height * 0.45, rgb, this.wetMixer.brushSize * 1.2);
+        this.wetMixer.depositDab(this.wetMixer.width * 0.62, this.wetMixer.height * 0.45, rgb, this.wetMixer.brushSize * 1.2);
         this.showToast(`Mancha de color de fondo depositada: ${this.bgColor.hex}`);
       });
     }
