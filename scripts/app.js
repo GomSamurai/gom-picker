@@ -4480,6 +4480,8 @@ class GomPickerApp {
     textarea.select();
     try { document.execCommand('copy'); } catch (_) {}
     document.body.removeChild(textarea);
+  }
+
   // --- 1. WET PAINT PALETTE & DIGITAL PALETTE KNIFE (WET MIXER) ---
 
   _bindWetMixerControls() {
