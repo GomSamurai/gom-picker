@@ -806,16 +806,265 @@ export const SwatchSheetExporter = {
     }
   },
 
+  /**
+   * Unified, highly structured specimen card engine.
+   * Guarantees 100% vertical space utilization with ZERO empty void,
+   * generous legible typography, and beautiful modular panels.
+   */
+  _renderEnrichedSpecimenCard(ctx, x, y, width, height, sp, theme, config, s, isTechnical = false, idx = 0) {
+    // 1. Card Container
+    ctx.fillStyle = theme.cardBg;
+    this._roundRect(ctx, x, y, width, height, Math.round(12 * s));
+    ctx.fill();
+    ctx.strokeStyle = theme.cardBorder;
+    ctx.lineWidth = 1.5 * s;
+    ctx.stroke();
+
+    const padX = x + Math.round(14 * s);
+    const maxW = width - Math.round(28 * s);
+
+    // 2. Identify active content modules
+    const hasRecipe = Boolean(config.showPaintRecipe && sp.recipeString);
+    const hasPigment = Boolean(config.showPigments && sp.pigmentTube);
+    const hasTip = Boolean(config.showTips && sp.tip);
+    const hasRoles = Boolean(config.showRoles);
+    const hasMicroRamp = Boolean(config.showMicroRamp);
+    const hasComplementary = Boolean(config.showComplementary && sp.compHex);
+
+    // Build Technical Metrics lines
+    const techLines = [];
+    if (config.showHexRgb) {
+      techLines.push({ label: 'sRGB:', val: `${sp.rgb.r}, ${sp.rgb.g}, ${sp.rgb.b}`, color: '#38BDF8' });
+    }
+    if (config.showCmyk) {
+      const tac = sp.cmyk.c + sp.cmyk.m + sp.cmyk.y + sp.cmyk.k;
+      techLines.push({ label: 'CMYK:', val: `C${sp.cmyk.c}% M${sp.cmyk.m}% Y${sp.cmyk.y}% K${sp.cmyk.k}%`, tac: `${tac}%`, color: '#F59E0B' });
+    }
+    if (config.showMunsell) {
+      techLines.push({ label: 'Munsell:', val: sp.munsell.notation, color: theme.goldColor, isBold: true });
+    }
+    if (config.showLumTemp) {
+      techLines.push({ label: 'Luminancia:', val: `${sp.luminancePct}% Y  •  ${sp.temperature.label}`, color: '#93C5FD' });
+    }
+    if (config.showWcag) {
+      techLines.push({ label: 'WCAG 2.1:', val: `Blanco ${sp.contrastWhite}:1  •  Negro ${sp.contrastBlack}:1`, color: '#CBD5E1' });
+    }
+
+    // 3. Compute Heights & Dynamic Vertical Balancing
+    const titleBlockH = Math.round(44 * s);
+    const techLineStep = Math.round(24 * s);
+    const techBlockH = techLines.length > 0 ? (techLines.length * techLineStep + Math.round(4 * s)) : 0;
+    const recipeBoxH = hasRecipe ? Math.round(104 * s) : 0;
+    const pigmentBoxH = hasPigment ? Math.round(62 * s) : 0;
+    const tipBoxH = hasTip ? Math.round(72 * s) : 0;
+
+    const sections = [
+      { name: 'title', h: titleBlockH },
+      { name: 'tech', h: techBlockH },
+      { name: 'recipe', h: recipeBoxH },
+      { name: 'pigment', h: pigmentBoxH },
+      { name: 'tip', h: tipBoxH }
+    ].filter(sec => sec.h > 0);
+
+    const numSections = sections.length;
+    const totalBoxesH = sections.reduce((sum, sec) => sum + sec.h, 0);
+
+    // Initial base gap between sections
+    const baseGap = Math.round(12 * s);
+    const baseGapsTotal = numSections * baseGap;
+
+    // Remaining vertical space for the top color well
+    const availableForWell = height - totalBoxesH - baseGapsTotal - Math.round(16 * s);
+
+    // Well should be between 28% and 52% of total card height
+    let wellH = Math.max(Math.round(height * 0.28), Math.min(Math.round(height * 0.52), availableForWell));
+
+    // Distribute any extra space across the gaps so BOTTOM VOID IS ZERO
+    const extraSpace = Math.max(0, height - (wellH + totalBoxesH + baseGapsTotal + Math.round(16 * s)));
+    const gapBonus = numSections > 0 ? Math.floor(extraSpace / (numSections + 1)) : 0;
+    const effectiveGap = baseGap + gapBonus;
+
+    // 4. Render Color Well
+    const wellInset = Math.round(7 * s);
+    ctx.fillStyle = sp.hex;
+    this._roundRect(ctx, x + wellInset, y + wellInset, width - wellInset * 2, wellH, Math.round(8 * s));
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = 1 * s;
+    ctx.stroke();
+
+    // 4A. Role Badge (Top-Left inside well)
+    if (hasRoles) {
+      const roleStr = sp.role || (idx === 0 ? '60% Base' : idx === 1 ? '30% Forma' : idx === 2 ? '10% Foco' : 'Acento');
+      this._drawBadge(ctx, roleStr, x + Math.round(14 * s), y + Math.round(14 * s), 'rgba(0, 0, 0, 0.85)', '#FFFFFF', `bold ${Math.round(12 * s)}px -apple-system`, 10 * s, 5 * s, 4 * s);
+    }
+
+    // 4B. Direct Complementary Badge (Top-Right inside well)
+    if (hasComplementary) {
+      const compW = Math.round(142 * s);
+      const compH = Math.round(26 * s);
+      const compX = x + width - Math.round(14 * s) - compW;
+      const compY = y + Math.round(14 * s);
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+      this._roundRect(ctx, compX, compY, compW, compH, Math.round(4 * s));
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.lineWidth = 1 * s;
+      ctx.stroke();
+
+      // Dot
+      ctx.fillStyle = sp.compHex;
+      ctx.beginPath();
+      ctx.arc(compX + Math.round(14 * s), compY + compH / 2, Math.round(6.5 * s), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 1 * s;
+      ctx.stroke();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `bold ${Math.round(11 * s)}px "SF Mono", monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`COMP: ${sp.compHex}`, compX + Math.round(80 * s), compY + compH / 2);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    // 4C. Micro-ramp at bottom of well
+    if (hasMicroRamp) {
+      const rampH = Math.max(22, Math.round(28 * s));
+      this._drawMicroRamp(ctx, x + Math.round(12 * s), y + wellH - rampH - Math.round(4 * s), width - Math.round(24 * s), rampH, sp.rgb, 5, 4);
+    }
+
+    // 5. Render Structured Content Body
+    let curY = y + wellH + effectiveGap;
+
+    // 5A. Title Block (HEX + Color Name + Hairline)
+    if (titleBlockH > 0) {
+      ctx.fillStyle = theme.textPrimary;
+      ctx.font = `bold ${Math.round(26 * s)}px "SF Mono", monospace`;
+      ctx.fillText(sp.hex, padX, curY + Math.round(20 * s));
+
+      const hexW = ctx.measureText(sp.hex).width;
+      const nameX = padX + hexW + Math.round(12 * s);
+      const availNameW = width - (nameX - x) - Math.round(14 * s);
+
+      if (availNameW >= Math.round(80 * s)) {
+        ctx.fillStyle = '#F1F5F9';
+        ctx.font = `bold ${Math.round(14 * s)}px -apple-system, sans-serif`;
+        this._drawSafeText(ctx, sp.name || 'Muestra Cromática', nameX, curY + Math.round(18 * s), availNameW, Math.round(14 * s));
+        curY += Math.round(30 * s);
+      } else {
+        curY += Math.round(28 * s);
+        ctx.fillStyle = '#F1F5F9';
+        ctx.font = `bold ${Math.round(13 * s)}px -apple-system, sans-serif`;
+        this._drawSafeText(ctx, sp.name || 'Muestra Cromática', padX, curY + Math.round(12 * s), maxW, Math.round(13 * s));
+        curY += Math.round(18 * s);
+      }
+
+      // Divider Line
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 1 * s;
+      ctx.beginPath();
+      ctx.moveTo(padX, curY);
+      ctx.lineTo(padX + maxW, curY);
+      ctx.stroke();
+
+      curY += effectiveGap;
+    }
+
+    // 5B. Technical Metrics List
+    if (techLines.length > 0) {
+      techLines.forEach(line => {
+        ctx.fillStyle = line.color;
+        ctx.font = line.isBold ? `bold ${Math.round(15 * s)}px "SF Mono", monospace` : `${Math.round(15 * s)}px "SF Mono", monospace`;
+
+        if (line.tac) {
+          const mainText = `${line.label} ${line.val}`;
+          this._drawSafeText(ctx, mainText, padX, curY + Math.round(14 * s), maxW - Math.round(85 * s), Math.round(15 * s), '"SF Mono", monospace');
+          // TAC badge on the right
+          this._drawBadge(ctx, `TAC ${line.tac}`, padX + maxW - Math.round(75 * s), curY + Math.round(2 * s), 'rgba(245, 158, 11, 0.2)', '#F59E0B', `bold ${Math.round(11 * s)}px monospace`, 6 * s, 3 * s, 3 * s);
+        } else {
+          const fullText = `${line.label} ${line.val}`;
+          this._drawSafeText(ctx, fullText, padX, curY + Math.round(14 * s), maxW, Math.round(15 * s), '"SF Mono", monospace');
+        }
+
+        curY += techLineStep;
+      });
+      curY += effectiveGap;
+    }
+
+    // 5C. Physical Paint Mixing Recipe Box
+    if (hasRecipe) {
+      ctx.fillStyle = 'rgba(99, 102, 241, 0.14)';
+      ctx.strokeStyle = 'rgba(129, 140, 248, 0.45)';
+      ctx.lineWidth = 1.5 * s;
+      this._roundRect(ctx, padX, curY, maxW, recipeBoxH, Math.round(8 * s));
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#C7D2FE';
+      ctx.font = `bold ${Math.round(13 * s)}px -apple-system, sans-serif`;
+      ctx.fillText('🎨 RECETA DE TUBOS EN PALETA (%):', padX + Math.round(10 * s), curY + Math.round(20 * s));
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `bold ${Math.round(14 * s)}px -apple-system, sans-serif`;
+      this._drawWrappedText(ctx, sp.recipeString, padX + Math.round(10 * s), curY + Math.round(42 * s), maxW - Math.round(20 * s), Math.round(20 * s), 3);
+
+      curY += recipeBoxH + effectiveGap;
+    }
+
+    // 5D. Genuine Artist Pigment Tube Box
+    if (hasPigment) {
+      const pt = sp.pigmentTube;
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.09)';
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.35)';
+      ctx.lineWidth = 1 * s;
+      this._roundRect(ctx, padX, curY, maxW, pigmentBoxH, Math.round(6 * s));
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#6EE7B7';
+      ctx.font = `bold ${Math.round(14 * s)}px -apple-system, sans-serif`;
+      this._drawSafeText(ctx, `🏛️ ${pt.brandName}: ${pt.name}`, padX + Math.round(10 * s), curY + Math.round(20 * s), maxW - Math.round(20 * s), Math.round(14 * s));
+
+      ctx.fillStyle = '#A7F3D0';
+      ctx.font = `${Math.round(13 * s)}px "SF Mono", monospace`;
+      this._drawSafeText(ctx, `CI: ${pt.ci}  •  ${pt.opacity}  •  ${pt.lightfastness}`, padX + Math.round(10 * s), curY + Math.round(42 * s), maxW - Math.round(20 * s), Math.round(13 * s), '"SF Mono", monospace');
+
+      curY += pigmentBoxH + effectiveGap;
+    }
+
+    // 5E. Composition Tip Box
+    if (hasTip) {
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.09)';
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
+      ctx.lineWidth = 1 * s;
+      this._roundRect(ctx, padX, curY, maxW, tipBoxH, Math.round(6 * s));
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#FDE047';
+      const roleName = sp.role || (idx === 0 ? 'Base 60%' : idx === 1 ? 'Forma 30%' : 'Foco 10%');
+      ctx.font = `bold ${Math.round(12 * s)}px -apple-system, sans-serif`;
+      ctx.fillText(`💡 FUNCIÓN Y CONSEJO (${roleName.toUpperCase()}):`, padX + Math.round(10 * s), curY + Math.round(20 * s));
+
+      ctx.fillStyle = '#F8FAFC';
+      ctx.font = `italic ${Math.round(13 * s)}px -apple-system, sans-serif`;
+      this._drawWrappedText(ctx, sp.tip, padX + Math.round(10 * s), curY + Math.round(40 * s), maxW - Math.round(20 * s), Math.round(18 * s), 2);
+    }
+  },
+
   // =========================================================================
   // TEMPLATE 4: TECHNICAL PRINT / BRAND GUIDELINES & PRE-PRESS
   // =========================================================================
 
   _renderTechnicalPrintTemplate(ctx, width, height, title, specimens, theme, config) {
     const s = this._getScale(width);
-    const marginX = Math.round(width * 0.04);
+    const marginX = Math.round(width * 0.035);
     const headerY = Math.round(height * 0.08);
 
-    // Swiss Technical Header
     this._drawStudioHeader(ctx, width, title, 'FICHA TÉCNICA DE PRODUCCIÓN • CMYK / RGB / WCAG 2.1 / PRE-PRENSA', theme, marginX, headerY);
 
     const n = specimens.length;
@@ -829,142 +1078,7 @@ export const SwatchSheetExporter = {
 
     specimens.forEach((sp, idx) => {
       const x = marginX + idx * (colW + gap);
-
-      // Card Container
-      ctx.fillStyle = theme.cardBg;
-      this._roundRect(ctx, x, startY, colW, availHeight, Math.round(10 * s));
-      ctx.fill();
-      ctx.strokeStyle = theme.cardBorder;
-      ctx.lineWidth = 1.5 * s;
-      ctx.stroke();
-
-      // Color Block (30% of card)
-      const blockH = Math.round(availHeight * 0.30);
-      ctx.fillStyle = sp.hex;
-      this._roundRect(ctx, x + Math.round(8 * s), startY + Math.round(8 * s), colW - Math.round(16 * s), blockH, Math.round(8 * s));
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-      ctx.lineWidth = 1 * s;
-      ctx.stroke();
-
-      // Role Pill (top-left inside well)
-      if (config.showRoles) {
-        const roleStr = sp.role || (idx === 0 ? '60% Base' : idx === 1 ? '30% Forma' : idx === 2 ? '10% Foco' : 'Acento');
-        this._drawBadge(ctx, roleStr, x + Math.round(16 * s), startY + Math.round(16 * s), 'rgba(0,0,0,0.65)', '#FFFFFF', `bold ${Math.round(12 * s)}px -apple-system`, 8 * s, 4 * s, 4 * s);
-      }
-
-      // Micro-ramp inside well at bottom
-      if (config.showMicroRamp) {
-        const rampH = Math.max(16, Math.round(blockH * 0.16));
-        this._drawMicroRamp(ctx, x + Math.round(14 * s), startY + blockH - rampH - Math.round(4 * s), colW - Math.round(28 * s), rampH, sp.rgb, 5, 4);
-      }
-
-      // Card Content Y cursor with dynamic scaling
-      let curY = startY + blockH + Math.round(26 * s);
-      const padX = x + Math.round(18 * s);
-      const maxW = colW - Math.round(36 * s);
-      const lineStep = Math.round(24 * s);
-
-      // 1. HEX (Large & bold monospace)
-      ctx.fillStyle = theme.textPrimary;
-      ctx.font = `bold ${Math.round(24 * s)}px "SF Mono", monospace`;
-      ctx.fillText(sp.hex, padX, curY);
-
-      // Complementary mini dot on the right of HEX
-      if (config.showComplementary && sp.compHex) {
-        ctx.fillStyle = sp.compHex;
-        ctx.beginPath();
-        ctx.arc(x + colW - Math.round(24 * s), curY - Math.round(8 * s), Math.round(8 * s), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 1 * s;
-        ctx.stroke();
-      }
-      curY += lineStep + Math.round(4 * s);
-
-      // 2. RGB Table
-      if (config.showHexRgb) {
-        ctx.fillStyle = '#38BDF8';
-        ctx.font = `${Math.round(15 * s)}px "SF Mono", monospace`;
-        ctx.fillText(`sRGB: ${sp.rgb.r}, ${sp.rgb.g}, ${sp.rgb.b}`, padX, curY);
-        curY += lineStep;
-      }
-
-      // 3. CMYK Print Values
-      if (config.showCmyk) {
-        const cmyk = sp.cmyk;
-        ctx.fillStyle = '#F59E0B';
-        ctx.font = `${Math.round(15 * s)}px "SF Mono", monospace`;
-        ctx.fillText(`C:${cmyk.c}% M:${cmyk.m}% Y:${cmyk.y}% K:${cmyk.k}%`, padX, curY);
-        curY += lineStep;
-
-        // 4. Total Ink Limit (TAC) & Gamut Warning Badge
-        const tac = cmyk.c + cmyk.m + cmyk.y + cmyk.k;
-        const isOut = sp.cmykGamut?.isOutOfGamut || tac > 320;
-        const gamutBadge = isOut ? '⚠️ Fuera Gama' : '✓ En Gama SWOP';
-        const gamutColor = isOut ? '#EF4444' : '#10B981';
-        this._drawBadge(ctx, `TAC: ${tac}% • ${gamutBadge}`, padX, curY, isOut ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)', gamutColor, `bold ${Math.round(12 * s)}px monospace`, 8 * s, 4 * s, 4 * s);
-        curY += lineStep + Math.round(6 * s);
-      }
-
-      // 5. Munsell Scientific Notation
-      if (config.showMunsell) {
-        ctx.fillStyle = theme.goldColor;
-        ctx.font = `bold ${Math.round(15 * s)}px "SF Mono", monospace`;
-        ctx.fillText(`Munsell: ${sp.munsell.notation}`, padX, curY);
-        curY += lineStep;
-      }
-
-      // 6. Luminance & Thermal Temp
-      if (config.showLumTemp) {
-        ctx.fillStyle = theme.textSecondary;
-        ctx.font = `${Math.round(14 * s)}px "SF Mono", monospace`;
-        ctx.fillText(`Lum: ${sp.luminancePct}% • ${sp.temperature.label}`, padX, curY);
-        curY += lineStep;
-      }
-
-      // 7. Complementary Color Info
-      if (config.showComplementary && sp.compHex) {
-        ctx.fillStyle = '#FB7185';
-        ctx.font = `${Math.round(13 * s)}px "SF Mono", monospace`;
-        ctx.fillText(`Complementario: ${sp.compHex}`, padX, curY);
-        curY += lineStep;
-      }
-
-      // 8. Real Pigment Tube
-      if (config.showPigments && sp.pigmentTube) {
-        ctx.fillStyle = theme.accentColor;
-        ctx.font = `bold ${Math.round(13 * s)}px -apple-system, sans-serif`;
-        this._drawSafeText(ctx, `Tubo: ${sp.pigmentTube.name} (${sp.pigmentTube.ci})`, padX, curY, maxW, Math.round(13 * s));
-        curY += lineStep;
-      }
-
-      // 9. Physical Mix Recipe (%)
-      if (config.showPaintRecipe && sp.recipeString) {
-        ctx.fillStyle = '#C084FC';
-        ctx.font = `bold ${Math.round(12 * s)}px -apple-system, sans-serif`;
-        ctx.fillText('🎨 Receta de Tubos (%):', padX, curY);
-        curY += Math.round(18 * s);
-        ctx.fillStyle = '#E2E8F0';
-        ctx.font = `${Math.round(12 * s)}px -apple-system, sans-serif`;
-        this._drawWrappedText(ctx, sp.recipeString, padX, curY, maxW, Math.round(16 * s), 2);
-        curY += Math.round(36 * s);
-      }
-
-      // 10. WCAG Accessibility
-      if (config.showWcag) {
-        ctx.fillStyle = theme.textMuted;
-        ctx.font = `${Math.round(13 * s)}px -apple-system, sans-serif`;
-        ctx.fillText(`Contraste: Blanco ${sp.contrastWhite}:1 • Negro ${sp.contrastBlack}:1`, padX, curY);
-        curY += lineStep;
-      }
-
-      // 11. Composition tip
-      if (config.showTips && sp.tip && curY + Math.round(24 * s) < startY + availHeight) {
-        ctx.fillStyle = theme.textMuted;
-        ctx.font = `italic ${Math.round(12 * s)}px -apple-system, sans-serif`;
-        this._drawWrappedText(ctx, `💡 ${sp.tip}`, padX, curY, maxW, Math.round(16 * s), 2);
-      }
+      this._renderEnrichedSpecimenCard(ctx, x, startY, colW, availHeight, sp, theme, config, s, true, idx);
     });
 
     if (config.showGradientStrip) {
@@ -987,160 +1101,36 @@ export const SwatchSheetExporter = {
     const marginX = Math.round(width * 0.035);
     const headerY = Math.round(height * 0.08);
 
-    // Studio Header
     this._drawStudioHeader(ctx, width, title, 'ENCICLOPEDIA CROMÁTICA INTEGRAL • ANÁLISIS CIENTÍFICO & FÓRMULAS DE TALLER', theme, marginX, headerY);
 
     const n = specimens.length;
     const startY = Math.round(height * 0.16);
-    const bottomReserve = config.showGradientStrip ? Math.round(height * 0.13) : Math.round(height * 0.07);
+    const bottomReserve = config.showGradientStrip ? Math.round(height * 0.12) : Math.round(height * 0.07);
     const availWidth = width - marginX * 2;
     const availHeight = height - startY - bottomReserve;
 
     const gap = Math.round(14 * s);
     const colW = (availWidth - (n - 1) * gap) / n;
 
+    // In Ultimate Encyclopedia, activate all informative modules so the card is completely filled
+    const fullConfig = {
+      ...config,
+      showHexRgb: true,
+      showCmyk: true,
+      showMunsell: true,
+      showLumTemp: true,
+      showComplementary: true,
+      showPaintRecipe: true,
+      showPigments: true,
+      showMicroRamp: true,
+      showRoles: true,
+      showTips: true,
+      showWcag: true
+    };
+
     specimens.forEach((sp, idx) => {
       const x = marginX + idx * (colW + gap);
-
-      // Card Container
-      ctx.fillStyle = theme.cardBg;
-      this._roundRect(ctx, x, startY, colW, availHeight, Math.round(12 * s));
-      ctx.fill();
-      ctx.strokeStyle = theme.cardBorder;
-      ctx.lineWidth = 1.5 * s;
-      ctx.stroke();
-
-      // Top Color Well (27% height)
-      const wellH = Math.round(availHeight * 0.27);
-      ctx.fillStyle = sp.hex;
-      this._roundRect(ctx, x + Math.round(8 * s), startY + Math.round(8 * s), colW - Math.round(16 * s), wellH, Math.round(8 * s));
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-      ctx.lineWidth = 1 * s;
-      ctx.stroke();
-
-      // 1. Role Pill inside well (top-left)
-      const roleStr = sp.role || (idx === 0 ? '60% Base' : idx === 1 ? '30% Forma' : idx === 2 ? '10% Foco' : 'Acento');
-      this._drawBadge(ctx, roleStr, x + Math.round(16 * s), startY + Math.round(16 * s), 'rgba(0,0,0,0.7)', '#FFFFFF', `bold ${Math.round(12 * s)}px -apple-system`, 8 * s, 4 * s, 4 * s);
-
-      // 2. Direct Complementary Pill inside well (top-right)
-      if (sp.compHex) {
-        const compW = Math.round(112 * s);
-        const compH = Math.round(24 * s);
-        const compX = x + colW - Math.round(16 * s) - compW;
-        const compY = startY + Math.round(16 * s);
-
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        this._roundRect(ctx, compX, compY, compW, compH, Math.round(4 * s));
-        ctx.fill();
-
-        // Dot
-        ctx.fillStyle = sp.compHex;
-        ctx.beginPath();
-        ctx.arc(compX + Math.round(12 * s), compY + compH / 2, Math.round(6 * s), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 1 * s;
-        ctx.stroke();
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = `bold ${Math.round(11 * s)}px monospace`;
-        ctx.fillText(sp.compHex, compX + Math.round(24 * s), compY + compH / 2 + Math.round(4 * s));
-      }
-
-      // 3. 5-Step Micro-Ramp at bottom of well
-      const rampH = Math.max(16, Math.round(wellH * 0.16));
-      this._drawMicroRamp(ctx, x + Math.round(14 * s), startY + wellH - rampH - Math.round(4 * s), colW - Math.round(28 * s), rampH, sp.rgb, 5, 4);
-
-      // Card Information Body
-      let curY = startY + wellH + Math.round(24 * s);
-      const padX = x + Math.round(16 * s);
-      const maxW = colW - Math.round(32 * s);
-      const lineStep = Math.round(23 * s);
-
-      // A. Large HEX (Prominent, High Contrast)
-      ctx.fillStyle = theme.textPrimary;
-      ctx.font = `bold ${Math.round(22 * s)}px "SF Mono", monospace`;
-      ctx.fillText(sp.hex, padX, curY);
-
-      // Sub-label name
-      ctx.fillStyle = theme.textSecondary;
-      ctx.font = `500 ${Math.round(13 * s)}px -apple-system, sans-serif`;
-      ctx.fillText(sp.name || 'Muestra de Arte', padX + Math.round(120 * s), curY);
-      curY += lineStep + Math.round(2 * s);
-
-      // B. RGB & CMYK Metrics
-      ctx.fillStyle = '#38BDF8';
-      ctx.font = `${Math.round(14 * s)}px "SF Mono", monospace`;
-      ctx.fillText(`sRGB: ${sp.rgb.r}, ${sp.rgb.g}, ${sp.rgb.b}`, padX, curY);
-      curY += lineStep;
-
-      const cmyk = sp.cmyk;
-      const tac = cmyk.c + cmyk.m + cmyk.y + cmyk.k;
-      ctx.fillStyle = '#F59E0B';
-      ctx.font = `${Math.round(14 * s)}px "SF Mono", monospace`;
-      ctx.fillText(`CMYK: C${cmyk.c}% M${cmyk.m}% Y${cmyk.y}% K${cmyk.k}% (TAC ${tac}%)`, padX, curY);
-      curY += lineStep;
-
-      // C. Scientific Munsell System
-      ctx.fillStyle = theme.goldColor;
-      ctx.font = `bold ${Math.round(14 * s)}px "SF Mono", monospace`;
-      ctx.fillText(`Munsell: ${sp.munsell.notation}`, padX, curY);
-      curY += lineStep;
-
-      // D. Photometric Luminance & Thermal Temp
-      ctx.fillStyle = theme.textSecondary;
-      ctx.font = `${Math.round(13 * s)}px "SF Mono", monospace`;
-      ctx.fillText(`Lum: ${sp.luminancePct}% Y • ${sp.temperature.label} (${sp.temperature.tempK})`, padX, curY);
-      curY += lineStep + Math.round(6 * s);
-
-      // E. Physical Paint Recipe (% by Tube)
-      if (sp.recipeString) {
-        const recBoxH = Math.round(58 * s);
-        ctx.fillStyle = 'rgba(99, 102, 241, 0.12)';
-        ctx.strokeStyle = 'rgba(99, 102, 241, 0.35)';
-        ctx.lineWidth = 1 * s;
-        this._roundRect(ctx, padX - Math.round(4 * s), curY - Math.round(14 * s), maxW + Math.round(8 * s), recBoxH, Math.round(6 * s));
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = '#C7D2FE';
-        ctx.font = `bold ${Math.round(12 * s)}px -apple-system, sans-serif`;
-        ctx.fillText('🎨 RECETA DE TUBOS EN PALETA (%):', padX, curY);
-        curY += Math.round(18 * s);
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = `${Math.round(12 * s)}px -apple-system, sans-serif`;
-        this._drawWrappedText(ctx, sp.recipeString, padX, curY, maxW, Math.round(15 * s), 2);
-        curY += Math.round(36 * s);
-      }
-
-      // F. Genuine Fine Art Tube (Color Index & Properties)
-      if (sp.pigmentTube) {
-        const pt = sp.pigmentTube;
-        ctx.fillStyle = theme.accentColor;
-        ctx.font = `bold ${Math.round(13 * s)}px -apple-system, sans-serif`;
-        this._drawSafeText(ctx, `🏛️ ${pt.brandName}: ${pt.name}`, padX, curY, maxW, Math.round(13 * s));
-        curY += Math.round(18 * s);
-
-        ctx.fillStyle = theme.textMuted;
-        ctx.font = `${Math.round(12 * s)}px "SF Mono", monospace`;
-        this._drawSafeText(ctx, `CI: ${pt.ci} • ${pt.opacity} • ${pt.lightfastness}`, padX, curY, maxW, Math.round(12 * s));
-        curY += lineStep;
-      }
-
-      // G. WCAG 2.1 Contrast
-      ctx.fillStyle = theme.textMuted;
-      ctx.font = `${Math.round(12 * s)}px -apple-system, sans-serif`;
-      ctx.fillText(`Contraste: Blanco ${sp.contrastWhite}:1 • Negro ${sp.contrastBlack}:1`, padX, curY);
-      curY += Math.round(20 * s);
-
-      // H. Practical Artist Tip
-      if (sp.tip && curY + Math.round(20 * s) < startY + availHeight) {
-        ctx.fillStyle = theme.textSecondary;
-        ctx.font = `italic ${Math.round(12 * s)}px -apple-system, sans-serif`;
-        this._drawWrappedText(ctx, `💡 ${sp.tip}`, padX, curY, maxW, Math.round(15 * s), 2);
-      }
+      this._renderEnrichedSpecimenCard(ctx, x, startY, colW, availHeight, sp, theme, fullConfig, s, false, idx);
     });
 
     if (config.showGradientStrip) {
@@ -1160,183 +1150,23 @@ export const SwatchSheetExporter = {
 
   _renderCustomUserTemplate(ctx, width, height, title, specimens, theme, config) {
     const s = this._getScale(width);
-    const marginX = Math.round(width * 0.04);
+    const marginX = Math.round(width * 0.035);
     const headerY = Math.round(height * 0.08);
 
-    // Header
     this._drawStudioHeader(ctx, width, title, 'PLANTILLA PERSONALIZADA • COMPOSICIÓN MODULAR DEL ARTISTA', theme, marginX, headerY);
 
     const n = specimens.length;
     const startY = Math.round(height * 0.16);
-    const bottomReserve = config.showGradientStrip ? Math.round(height * 0.13) : Math.round(height * 0.07);
+    const bottomReserve = config.showGradientStrip ? Math.round(height * 0.12) : Math.round(height * 0.07);
     const availWidth = width - marginX * 2;
     const availHeight = height - startY - bottomReserve;
 
     const gap = Math.round(14 * s);
     const colW = (availWidth - (n - 1) * gap) / n;
 
-    // Count active data modules to adapt vertical layout dynamically
-    const modules = [
-      config.showHexRgb,
-      config.showCmyk,
-      config.showMunsell,
-      config.showLumTemp,
-      config.showComplementary,
-      config.showPaintRecipe,
-      config.showPigments,
-      config.showWcag,
-      config.showTips
-    ].filter(Boolean);
-    const modCount = modules.length;
-
-    // Adapt well height: if few modules, larger well; if many, compact well
-    let wellPct = 0.32;
-    let baseFontSize = 14;
-    let lineStep = Math.round(24 * s);
-
-    if (modCount <= 3) {
-      wellPct = 0.46;
-      baseFontSize = 17;
-      lineStep = Math.round(36 * s);
-    } else if (modCount <= 6) {
-      wellPct = 0.36;
-      baseFontSize = 15;
-      lineStep = Math.round(28 * s);
-    } else {
-      wellPct = 0.28;
-      baseFontSize = 13;
-      lineStep = Math.round(22 * s);
-    }
-
-    const wellH = Math.round(availHeight * wellPct);
-
     specimens.forEach((sp, idx) => {
       const x = marginX + idx * (colW + gap);
-
-      // Card Container
-      ctx.fillStyle = theme.cardBg;
-      this._roundRect(ctx, x, startY, colW, availHeight, Math.round(12 * s));
-      ctx.fill();
-      ctx.strokeStyle = theme.cardBorder;
-      ctx.lineWidth = 1.5 * s;
-      ctx.stroke();
-
-      // Color Well
-      ctx.fillStyle = sp.hex;
-      this._roundRect(ctx, x + Math.round(8 * s), startY + Math.round(8 * s), colW - Math.round(16 * s), wellH, Math.round(8 * s));
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-      ctx.lineWidth = 1 * s;
-      ctx.stroke();
-
-      // Role Pill (if enabled)
-      if (config.showRoles) {
-        const roleStr = sp.role || (idx === 0 ? '60% Base' : idx === 1 ? '30% Forma' : idx === 2 ? '10% Foco' : 'Acento');
-        this._drawBadge(ctx, roleStr, x + Math.round(16 * s), startY + Math.round(16 * s), 'rgba(0,0,0,0.7)', '#FFFFFF', `bold ${Math.round(12 * s)}px -apple-system`, 8 * s, 4 * s, 4 * s);
-      }
-
-      // Micro-ramp (if enabled)
-      if (config.showMicroRamp) {
-        const rampH = Math.max(14, Math.round(wellH * 0.16));
-        this._drawMicroRamp(ctx, x + Math.round(14 * s), startY + wellH - rampH - Math.round(4 * s), colW - Math.round(28 * s), rampH, sp.rgb, 5, 4);
-      }
-
-      // Information Body
-      let curY = startY + wellH + Math.round(26 * s);
-      const padX = x + Math.round(16 * s);
-      const maxW = colW - Math.round(32 * s);
-
-      // 1. HEX (Always prominent)
-      ctx.fillStyle = theme.textPrimary;
-      ctx.font = `bold ${Math.round((baseFontSize + 7) * s)}px "SF Mono", monospace`;
-      ctx.fillText(sp.hex, padX, curY);
-      curY += lineStep + Math.round(4 * s);
-
-      // 2. RGB Table
-      if (config.showHexRgb) {
-        ctx.fillStyle = '#38BDF8';
-        ctx.font = `${Math.round(baseFontSize * s)}px "SF Mono", monospace`;
-        ctx.fillText(`sRGB: ${sp.rgb.r}, ${sp.rgb.g}, ${sp.rgb.b}`, padX, curY);
-        curY += lineStep;
-      }
-
-      // 3. CMYK Print
-      if (config.showCmyk) {
-        const cmyk = sp.cmyk;
-        ctx.fillStyle = '#F59E0B';
-        ctx.font = `${Math.round(baseFontSize * s)}px "SF Mono", monospace`;
-        ctx.fillText(`CMYK: C${cmyk.c}% M${cmyk.m}% Y${cmyk.y}% K${cmyk.k}%`, padX, curY);
-        curY += lineStep;
-      }
-
-      // 4. Munsell
-      if (config.showMunsell) {
-        ctx.fillStyle = theme.goldColor;
-        ctx.font = `bold ${Math.round(baseFontSize * s)}px "SF Mono", monospace`;
-        ctx.fillText(`Munsell: ${sp.munsell.notation}`, padX, curY);
-        curY += lineStep;
-      }
-
-      // 5. Lum & Temp
-      if (config.showLumTemp) {
-        ctx.fillStyle = theme.textSecondary;
-        ctx.font = `${Math.round((baseFontSize - 1) * s)}px "SF Mono", monospace`;
-        ctx.fillText(`Lum: ${sp.luminancePct}% • ${sp.temperature.label}`, padX, curY);
-        curY += lineStep;
-      }
-
-      // 6. Direct Complementary
-      if (config.showComplementary && sp.compHex) {
-        ctx.fillStyle = '#FB7185';
-        ctx.font = `${Math.round(baseFontSize * s)}px "SF Mono", monospace`;
-        ctx.fillText(`Complementario: ${sp.compHex}`, padX, curY);
-
-        ctx.fillStyle = sp.compHex;
-        ctx.beginPath();
-        ctx.arc(padX + maxW - Math.round(10 * s), curY - Math.round(5 * s), Math.round(7 * s), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 1 * s;
-        ctx.stroke();
-
-        curY += lineStep;
-      }
-
-      // 7. Paint Recipe
-      if (config.showPaintRecipe && sp.recipeString) {
-        ctx.fillStyle = '#C084FC';
-        ctx.font = `bold ${Math.round((baseFontSize - 1) * s)}px -apple-system, sans-serif`;
-        ctx.fillText('🎨 Receta de Tubos (%):', padX, curY);
-        curY += Math.round(18 * s);
-
-        ctx.fillStyle = '#E2E8F0';
-        ctx.font = `${Math.round((baseFontSize - 1) * s)}px -apple-system, sans-serif`;
-        this._drawWrappedText(ctx, sp.recipeString, padX, curY, maxW, Math.round(16 * s), 2);
-        curY += Math.round(36 * s);
-      }
-
-      // 8. Genuine Pigments
-      if (config.showPigments && sp.pigmentTube) {
-        ctx.fillStyle = theme.accentColor;
-        ctx.font = `bold ${Math.round(baseFontSize * s)}px -apple-system, sans-serif`;
-        this._drawSafeText(ctx, `Tubo: ${sp.pigmentTube.name} (${sp.pigmentTube.ci})`, padX, curY, maxW, Math.round(baseFontSize * s));
-        curY += lineStep;
-      }
-
-      // 9. WCAG
-      if (config.showWcag) {
-        ctx.fillStyle = theme.textMuted;
-        ctx.font = `${Math.round((baseFontSize - 1) * s)}px -apple-system, sans-serif`;
-        ctx.fillText(`Contraste: Blanco ${sp.contrastWhite}:1 • Negro ${sp.contrastBlack}:1`, padX, curY);
-        curY += lineStep;
-      }
-
-      // 10. Tips
-      if (config.showTips && sp.tip && curY + Math.round(20 * s) < startY + availHeight) {
-        ctx.fillStyle = theme.textMuted;
-        ctx.font = `italic ${Math.round((baseFontSize - 1) * s)}px -apple-system, sans-serif`;
-        this._drawWrappedText(ctx, `💡 ${sp.tip}`, padX, curY, maxW, Math.round(16 * s), 2);
-      }
+      this._renderEnrichedSpecimenCard(ctx, x, startY, colW, availHeight, sp, theme, config, s, false, idx);
     });
 
     if (config.showGradientStrip) {
@@ -1688,23 +1518,16 @@ export const SwatchSheetExporter = {
   },
 
   /**
-   * Safe text drawing guaranteed to NEVER clip or spill outside maxWidth
+   * Safe text drawing guaranteed to NEVER clip or spill outside maxWidth,
+   * without arbitrarily shrinking font size between neighbor cards.
    */
   _drawSafeText(ctx, text, x, y, maxWidth, baseFontSize = 14, fontFace = '-apple-system, sans-serif') {
     if (!text || maxWidth <= 10) return;
 
-    let fontSize = baseFontSize;
-    ctx.font = `${fontSize}px ${fontFace}`;
+    ctx.font = `${baseFontSize}px ${fontFace}`;
     let textWidth = ctx.measureText(text).width;
 
-    // Scale down if overflowing up to 25%
-    if (textWidth > maxWidth && fontSize > 10) {
-      fontSize = Math.max(9, Math.round(fontSize * (maxWidth / textWidth)));
-      ctx.font = `${fontSize}px ${fontFace}`;
-      textWidth = ctx.measureText(text).width;
-    }
-
-    // If still too wide, truncate cleanly with ellipsis
+    // Truncate cleanly with ellipsis if it exceeds maxWidth at the same font size
     if (textWidth > maxWidth) {
       let truncated = text;
       while (truncated.length > 3 && ctx.measureText(truncated + '…').width > maxWidth) {
@@ -1717,7 +1540,7 @@ export const SwatchSheetExporter = {
   },
 
   _drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) {
-    if (!text) return;
+    if (!text || maxWidth <= 10) return y;
     const words = text.split(' ');
     let line = '';
     let curY = y;
@@ -1732,10 +1555,14 @@ export const SwatchSheetExporter = {
         curY += lineHeight;
         linesDrawn++;
         if (linesDrawn >= maxLines - 1) {
-          // Truncate remainder
+          // Truncate remainder on last line at the same font
           const rest = words.slice(n).join(' ');
-          this._drawSafeText(ctx, rest, x, curY, maxWidth, 10);
-          return;
+          let truncated = rest;
+          while (truncated.length > 3 && ctx.measureText(truncated + '…').width > maxWidth) {
+            truncated = truncated.slice(0, -1);
+          }
+          ctx.fillText(truncated + '…', x, curY);
+          return curY + lineHeight;
         }
       } else {
         line = testLine;
@@ -1743,7 +1570,9 @@ export const SwatchSheetExporter = {
     }
     if (line) {
       ctx.fillText(line.trim(), x, curY);
+      curY += lineHeight;
     }
+    return curY;
   },
 
   _roundRect(ctx, x, y, width, height, radius) {
