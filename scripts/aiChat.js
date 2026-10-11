@@ -16,6 +16,8 @@ export class AIChatStudio {
     this.provider = (typeof localStorage !== 'undefined' ? localStorage.getItem('gom_ai_provider') : null) || 'local'; // 'local' | 'gemini' | 'openai'
     this.apiKey = (typeof localStorage !== 'undefined' ? localStorage.getItem('gom_ai_api_key') : null) || '';
     this.isGenerating = false;
+    this.isExpanded = false;
+    this.customHeight = typeof localStorage !== 'undefined' ? localStorage.getItem('gom_ai_chat_custom_height') : null;
   }
 
   init() {
@@ -28,7 +30,29 @@ export class AIChatStudio {
     const sendBtn = document.getElementById('btnAiChatSend');
     const quickChips = document.querySelectorAll('.chat-quick-q');
     const injectActiveBtn = document.getElementById('btnChatInjectActiveColor');
-    const btnConfig = document.getElementById('btnAiConfigKey');
+    const btnExpand = document.getElementById('btnAiChatExpand');
+    const btnClear = document.getElementById('btnAiChatClear');
+    const btnToggleQuick = document.getElementById('btnToggleQuickChips');
+    const btnQuickInject = document.getElementById('btnAiChatQuickInject');
+    const resizerHandle = document.getElementById('chatResizerHandle');
+    const backdrop = document.getElementById('aiChatBackdrop');
+    const chatContainer = document.getElementById('aiChatContainer');
+    const messagesEl = document.getElementById('aiChatMessages');
+    const quickSection = document.querySelector('.chat-quick-section');
+
+    // Restore custom height if saved
+    if (this.customHeight && messagesEl) {
+      messagesEl.style.height = `${this.customHeight}px`;
+      messagesEl.style.flex = 'none';
+    }
+
+    // Restore quick chips collapsed state
+    const quickCollapsed = typeof localStorage !== 'undefined' && localStorage.getItem('gom_ai_quick_chips_collapsed') === 'true';
+    if (quickCollapsed && quickSection) {
+      quickSection.classList.add('collapsed');
+      const icon = document.getElementById('quickChipsToggleIcon');
+      if (icon) icon.textContent = '▼';
+    }
 
     if (sendBtn) {
       sendBtn.addEventListener('click', () => this.handleSendMessage());
@@ -60,6 +84,122 @@ export class AIChatStudio {
       });
     }
 
+    if (btnQuickInject) {
+      btnQuickInject.addEventListener('click', () => {
+        const hex = this.app.fgColor ? this.app.fgColor.hex : '#6366F1';
+        if (chatInput) {
+          const start = chatInput.selectionStart || 0;
+          const end = chatInput.selectionEnd || 0;
+          const val = chatInput.value;
+          chatInput.value = val.substring(0, start) + hex + ' ' + val.substring(end);
+          chatInput.focus();
+          chatInput.selectionStart = chatInput.selectionEnd = start + hex.length + 1;
+        }
+      });
+    }
+
+    // Toggle Quick Chips section
+    if (btnToggleQuick && quickSection) {
+      btnToggleQuick.addEventListener('click', () => {
+        const isCollapsed = quickSection.classList.toggle('collapsed');
+        const icon = document.getElementById('quickChipsToggleIcon');
+        if (icon) icon.textContent = isCollapsed ? '▼' : '▲';
+        localStorage.setItem('gom_ai_quick_chips_collapsed', isCollapsed);
+      });
+    }
+
+    // Clear Conversation
+    if (btnClear) {
+      btnClear.addEventListener('click', () => {
+        if (confirm('¿Deseas reiniciar la conversación con el Maestro IA?')) {
+          this.messages = [];
+          if (messagesEl) messagesEl.innerHTML = '';
+          this._loadInitialGreeting();
+          if (this.app?.showToast) {
+            this.app.showToast('Conversación reiniciada', 'info');
+          }
+        }
+      });
+    }
+
+    // Expand / Fullscreen Studio Toggle
+    const toggleExpand = () => {
+      if (!chatContainer) return;
+      this.isExpanded = !this.isExpanded;
+      if (this.isExpanded) {
+        chatContainer.classList.add('expanded-studio');
+        if (backdrop) backdrop.style.display = 'block';
+        if (btnExpand) {
+          btnExpand.textContent = '🗗';
+          btnExpand.title = 'Restaurar tamaño lateral (Esc)';
+        }
+      } else {
+        chatContainer.classList.remove('expanded-studio');
+        if (backdrop) backdrop.style.display = 'none';
+        if (btnExpand) {
+          btnExpand.textContent = '⛶';
+          btnExpand.title = 'Modo Estudio Ampliado / Pantalla Completa (⛶)';
+        }
+      }
+      this._scrollToBottom();
+    };
+
+    if (btnExpand) btnExpand.addEventListener('click', toggleExpand);
+    if (backdrop) backdrop.addEventListener('click', toggleExpand);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.isExpanded) {
+        toggleExpand();
+      }
+    });
+
+    // Height Resizer Logic
+    if (resizerHandle && messagesEl) {
+      let isDragging = false;
+      let startY = 0;
+      let startH = 0;
+
+      resizerHandle.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startY = e.clientY;
+        startH = messagesEl.getBoundingClientRect().height;
+        resizerHandle.classList.add('resizing');
+        document.body.style.cursor = 'row-resize';
+        document.body.style.userSelect = 'none';
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const delta = e.clientY - startY;
+        const newH = Math.max(160, Math.min(800, startH + delta));
+        messagesEl.style.height = `${newH}px`;
+        messagesEl.style.flex = 'none';
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false;
+          resizerHandle.classList.remove('resizing');
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+          const finalH = Math.round(messagesEl.getBoundingClientRect().height);
+          this.customHeight = finalH;
+          localStorage.setItem('gom_ai_chat_custom_height', finalH);
+        }
+      });
+
+      // Double-click to reset to dynamic vertical flex
+      resizerHandle.addEventListener('dblclick', () => {
+        messagesEl.style.height = '';
+        messagesEl.style.flex = '1';
+        this.customHeight = null;
+        localStorage.removeItem('gom_ai_chat_custom_height');
+        if (this.app?.showToast) {
+          this.app.showToast('Altura restaurada al ajuste vertical dinámico', 'info');
+        }
+      });
+    }
+
     // Modal de configuración de proveedor / API Key
     this._bindConfigModal();
     this._updateProviderBadge();
@@ -74,6 +214,8 @@ export class AIChatStudio {
     const providerSelect = document.getElementById('aiProviderSelect');
     const keyField = document.getElementById('aiApiKeyField');
     const keyInput = document.getElementById('aiApiKeyInput');
+    const btnTest = document.getElementById('btnTestAiConnection');
+    const testResult = document.getElementById('aiConnectionTestResult');
 
     if (!modal) return;
 
@@ -81,6 +223,10 @@ export class AIChatStudio {
       if (providerSelect) providerSelect.value = this.provider;
       if (keyInput) keyInput.value = this.apiKey;
       if (keyField) keyField.style.display = this.provider === 'local' ? 'none' : 'block';
+      if (testResult) {
+        testResult.style.display = 'none';
+        testResult.innerHTML = '';
+      }
       modal.style.display = 'flex';
     };
 
@@ -96,6 +242,37 @@ export class AIChatStudio {
       providerSelect.onchange = (e) => {
         if (keyField) {
           keyField.style.display = e.target.value === 'local' ? 'none' : 'block';
+        }
+        if (testResult) testResult.style.display = 'none';
+      };
+    }
+
+    if (btnTest) {
+      btnTest.onclick = async () => {
+        const prov = providerSelect ? providerSelect.value : 'local';
+        const key = keyInput ? keyInput.value.trim() : this.apiKey;
+        if (testResult) {
+          testResult.style.display = 'block';
+          testResult.style.background = 'rgba(99, 102, 241, 0.15)';
+          testResult.style.border = '1px solid rgba(99, 102, 241, 0.35)';
+          testResult.style.color = '#C7D2FE';
+          testResult.innerHTML = '<span>⏳ Conectando y probando API...</span>';
+        }
+        btnTest.disabled = true;
+        const res = await this.testApiConnection(prov, key);
+        btnTest.disabled = false;
+        if (testResult) {
+          if (res.success) {
+            testResult.style.background = 'rgba(16, 185, 129, 0.15)';
+            testResult.style.border = '1px solid rgba(16, 185, 129, 0.4)';
+            testResult.style.color = '#6EE7B7';
+            testResult.innerHTML = res.message;
+          } else {
+            testResult.style.background = 'rgba(239, 68, 68, 0.15)';
+            testResult.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+            testResult.style.color = '#FCA5A5';
+            testResult.innerHTML = res.message;
+          }
         }
       };
     }
@@ -155,10 +332,12 @@ Puedo ayudarte a resolver cualquier duda sobre:
   updateContextDisplay() {
     const pill = document.getElementById('chatActiveColorPill');
     const hexEl = document.getElementById('chatActiveHex');
+    const inputDot = document.getElementById('chatInputActiveDot');
     if (this.app && this.app.fgColor) {
       const hex = this.app.fgColor.hex;
       if (pill) pill.style.backgroundColor = hex;
       if (hexEl) hexEl.textContent = hex;
+      if (inputDot) inputDot.style.backgroundColor = hex;
     }
   }
 
@@ -227,19 +406,83 @@ Puedo ayudarte a resolver cualquier duda sobre:
     // Parse Markdown basic (bold, italic, code, lists, color chips)
     const formattedHtml = this._formatMessageText(msg.text);
 
+    // Header with copy button
+    const copyBtnHtml = !isUser
+      ? `<button class="chat-copy-msg-btn" title="Copiar respuesta al portapapeles">📋 Copiar</button>`
+      : '';
+
+    // Extract all distinct hex colors for palette action
+    const hexRegex = /#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})\b/g;
+    const matches = msg.text.match(hexRegex) || [];
+    const uniqueColors = Array.from(new Set(matches.map(c => c.toUpperCase())));
+
+    let paletteActionHtml = '';
+    if (!isUser && uniqueColors.length >= 2) {
+      const swatchesHtml = uniqueColors
+        .slice(0, 10)
+        .map(hex => `<span class="chat-palette-swatch-mini" style="background-color: ${hex};" title="${hex}"></span>`)
+        .join('');
+      paletteActionHtml = `
+        <div class="chat-msg-palette-action">
+          <div class="chat-palette-preview">
+            ${swatchesHtml}
+          </div>
+          <button class="chat-btn-create-palette" title="Crear una nueva paleta con estos colores en Bibliotecas">
+            <span>🎨</span> Crear Paleta en Estudio (${uniqueColors.length} tonos)
+          </button>
+        </div>
+      `;
+    }
+
     item.innerHTML = `
       <div class="chat-msg-header">
-        <span class="chat-msg-avatar">${avatar}</span>
-        <span class="chat-msg-author">${authorName}</span>
+        <div class="chat-msg-meta">
+          <span class="chat-msg-avatar">${avatar}</span>
+          <span class="chat-msg-author">${authorName}</span>
+        </div>
+        ${copyBtnHtml}
       </div>
       <div class="chat-msg-body">
         ${formattedHtml}
       </div>
+      ${paletteActionHtml}
     `;
 
-    // Bind color chips click to apply into workspace
+    // Copy button listener
+    const copyBtn = item.querySelector('.chat-copy-msg-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(msg.text);
+          copyBtn.textContent = '✅ Copiado';
+          setTimeout(() => { copyBtn.textContent = '📋 Copiar'; }, 2000);
+          if (this.app?.showToast) this.app.showToast('Respuesta copiada al portapapeles', 'info');
+        } catch (e) {
+          copyBtn.textContent = '❌ Error';
+        }
+      });
+    }
+
+    // Bind color chips click: load into wheel, or '+' adds to palette
     item.querySelectorAll('.chat-color-chip').forEach(chip => {
       chip.addEventListener('click', (e) => {
+        // If clicking specifically the '+' add button
+        if (e.target.classList.contains('chat-chip-add')) {
+          e.stopPropagation();
+          const hex = chip.dataset.hex;
+          if (hex && this.app?.swatchManager) {
+            const activePal = this.app.swatchManager.getActivePalette() || this.app.swatchManager.palettes[0];
+            if (activePal) {
+              this.app.swatchManager.addColorToPalette(activePal.id, hex);
+              if (this.app.renderSwatches) this.app.renderSwatches();
+              if (this.app.showToast) {
+                this.app.showToast(`Color ${hex} añadido a '${activePal.name}'`, 'success');
+              }
+            }
+          }
+          return;
+        }
+
         e.stopPropagation();
         const hex = chip.dataset.hex;
         if (hex && this.app) {
@@ -251,6 +494,21 @@ Puedo ayudarte a resolver cualquier duda sobre:
         }
       });
     });
+
+    // Palette create button listener
+    const createPaletteBtn = item.querySelector('.chat-btn-create-palette');
+    if (createPaletteBtn && uniqueColors.length >= 2) {
+      createPaletteBtn.addEventListener('click', () => {
+        if (this.app?.swatchManager) {
+          const paletteTitle = `Armonía IA (${uniqueColors.length} tonos)`;
+          this.app.swatchManager.addPalette(paletteTitle, uniqueColors);
+          if (this.app.renderSwatches) this.app.renderSwatches();
+          if (this.app.showToast) {
+            this.app.showToast(`¡Paleta "${paletteTitle}" guardada con éxito en Bibliotecas!`, 'success');
+          }
+        }
+      });
+    }
 
     container.appendChild(item);
   }
@@ -273,10 +531,11 @@ Puedo ayudarte a resolver cualquier duda sobre:
 
     // Convert hex color codes into interactive visual chips
     out = out.replace(/(#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{3}))\b/g, (match, hex) => {
-      return `<button class="chat-color-chip" data-hex="${hex}" title="Click para cargar ${hex} en la rueda cromática">
+      return `<button class="chat-color-chip" data-hex="${hex}" title="Click para cargar ${hex} en la rueda cromática o [+] para guardarlo">
         <span class="chat-chip-swatch" style="background-color: ${hex};"></span>
         <span class="chat-chip-code">${hex}</span>
         <span class="chat-chip-action">↗</span>
+        <span class="chat-chip-add" title="Añadir a la paleta activa en Bibliotecas">+</span>
       </button>`;
     });
 
@@ -439,6 +698,39 @@ En pintura y teoría cromática, el secreto de una pieza memorable no radica en 
 
   // --- LLM EN LA NUBE CON GOOGLE GEMINI (API OFICIAL) ---
 
+  async _fetchGemini(apiKey, prompt, systemPrompt, model = 'gemini-1.5-flash') {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const body = {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 800 }
+    };
+    if (systemPrompt) {
+      body.systemInstruction = { parts: [{ text: systemPrompt }] };
+    }
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      const message = errData.error?.message || `HTTP ${res.status}`;
+      // Fallback: If 1.5-flash returns 404 or unsupported, retry with 2.0-flash
+      if (res.status === 404 && model === 'gemini-1.5-flash') {
+        return this._fetchGemini(apiKey, prompt, systemPrompt, 'gemini-2.0-flash');
+      }
+      throw new Error(message);
+    }
+
+    const data = await res.json();
+    const candidate = data.candidates && data.candidates[0];
+    const text = candidate?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('Respuesta vacía del modelo Gemini');
+    return { text, model };
+  }
+
   async _callGeminiAPI(userQuery) {
     const curHex = this.app.fgColor ? this.app.fgColor.hex : '#6366F1';
     const bgHex = this.app.bgColor ? this.app.bgColor.hex : '#F43F5E';
@@ -455,40 +747,8 @@ Instrucciones:
 3. Si el usuario pregunta sobre cómo aplicar o armonizar su color actual, analiza ${curHex} y ofrécele combinaciones armónicas exactas.
 4. Mantén tus respuestas concisas, dinámicas y fáciles de leer con viñetas en Markdown.`;
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`;
-
-    const body = {
-      systemInstruction: {
-        parts: [{ text: systemPrompt }]
-      },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userQuery }]
-        }
-      ],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 800
-      }
-    };
-
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error?.message || `Error HTTP ${res.status} de Gemini`);
-    }
-
-    const data = await res.json();
-    const candidate = data.candidates && data.candidates[0];
-    const text = candidate?.content?.parts?.[0]?.text;
-    if (!text) throw new Error('Respuesta vacía del modelo Gemini');
-    return text;
+    const result = await this._fetchGemini(this.apiKey, userQuery, systemPrompt, 'gemini-1.5-flash');
+    return result.text;
   }
 
   // --- LLM EN LA NUBE CON OPENAI COMPATIBLE ---
@@ -525,5 +785,84 @@ Instrucciones:
 
     const data = await res.json();
     return data.choices?.[0]?.message?.content || 'Sin respuesta';
+  }
+
+  // --- DIAGNÓSTICO Y TEST DE CONECTIVIDAD PARA API KEYS ---
+
+  async testApiConnection(provider, apiKey) {
+    if (provider === 'local') {
+      return {
+        success: true,
+        provider: 'local',
+        message: '⚡ <strong>Motor Experto Local Activo:</strong> Funciona 100% offline dentro de tu navegador. No requiere clave ni conexión a la red.'
+      };
+    }
+
+    if (!apiKey) {
+      return {
+        success: false,
+        provider,
+        message: '⚠️ <strong>Falta API Key:</strong> Introduce una clave válida para probar la conexión con el servidor.'
+      };
+    }
+
+    const startTime = performance.now();
+
+    if (provider === 'gemini') {
+      try {
+        const res = await this._fetchGemini(apiKey, 'Responde exclusivamente la palabra OK.', null, 'gemini-1.5-flash');
+        const latency = Math.round(performance.now() - startTime);
+        return {
+          success: true,
+          provider: 'gemini',
+          model: res.model,
+          latency,
+          message: `✅ <strong>¡Conexión Exitosa con Google Gemini!</strong><br>Modelo: <code>${res.model}</code> respondiendo con latencia de <strong>${latency}ms</strong>. Tu clave está activa y lista para el estudio.`
+        };
+      } catch (err) {
+        return {
+          success: false,
+          provider: 'gemini',
+          message: `❌ <strong>Error de Conexión con Gemini:</strong><br>${err.message}. Comprueba que la clave no tenga espacios iniciales/finales y tenga habilitada la API en Google AI Studio.`
+        };
+      }
+    } else if (provider === 'openai') {
+      try {
+        const endpoint = 'https://api.openai.com/v1/chat/completions';
+        const body = {
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: 'Say OK' }],
+          max_tokens: 5
+        };
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error?.message || `Error HTTP ${res.status}`);
+        }
+        const latency = Math.round(performance.now() - startTime);
+        return {
+          success: true,
+          provider: 'openai',
+          model: 'gpt-4o-mini',
+          latency,
+          message: `✅ <strong>¡Conexión Exitosa con OpenAI!</strong><br>Modelo: <code>gpt-4o-mini</code> respondiendo con latencia de <strong>${latency}ms</strong>.`
+        };
+      } catch (err) {
+        return {
+          success: false,
+          provider: 'openai',
+          message: `❌ <strong>Error de Conexión con OpenAI:</strong><br>${err.message}. Verifica tu clave y saldo disponible.`
+        };
+      }
+    }
+
+    return { success: false, message: 'Proveedor desconocido seleccionado.' };
   }
 }

@@ -1696,16 +1696,24 @@
 
           <!-- SUBVIEW 2: CHAT CON EL MAESTRO IA -->
           <div id="aiChatContainer" class="ai-subview-panel" style="display: none;">
-            <!-- Active Color Context Bar -->
+            <!-- Active Color & Controls Context Bar -->
             <div class="chat-context-bar">
               <div class="chat-context-left">
                 <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Color Activo:</span>
                 <span id="chatActiveColorPill" class="chat-active-pill" style="background-color: #6366F1;"></span>
                 <span id="chatActiveHex" class="chat-active-hex">#6366F1</span>
+                <button id="btnChatInjectActiveColor" class="chat-context-action-btn" title="Preguntar al Maestro IA cómo armonizar y pintar con este color">
+                  ⚡ Analizar
+                </button>
               </div>
-              <button id="btnChatInjectActiveColor" class="chat-context-action-btn" title="Preguntar al Maestro IA cómo armonizar y pintar con este color">
-                ⚡ Analizar este color
-              </button>
+              <div class="chat-context-right" style="display: flex; align-items: center; gap: 4px;">
+                <button id="btnAiChatClear" class="chat-icon-action-btn" title="Limpiar y reiniciar conversación">
+                  🗑️
+                </button>
+                <button id="btnAiChatExpand" class="chat-icon-action-btn" title="Modo Estudio Ampliado / Pantalla Completa (⛶)">
+                  ⛶
+                </button>
+              </div>
             </div>
 
             <!-- Messages Stream -->
@@ -1713,10 +1721,20 @@
               <!-- Rendered by AIChatStudio -->
             </div>
 
-            <!-- Quick Artistic Questions -->
+            <!-- Interactive Height Resizer Handle -->
+            <div id="chatResizerHandle" class="chat-resizer-handle" title="Arrastra para ajustar la altura de la conversación (Doble clic para restaurar altura automática)">
+              <span class="chat-resizer-line"></span>
+            </div>
+
+            <!-- Quick Artistic Questions (Collapsible) -->
             <div class="chat-quick-section">
-              <div class="chat-quick-title">CONSULTAS RÁPIDAS DE ARTE & COLOR:</div>
-              <div class="chat-quick-chips">
+              <div class="chat-quick-header">
+                <span class="chat-quick-title">CONSULTAS RÁPIDAS DE ARTE & COLOR:</span>
+                <button id="btnToggleQuickChips" class="chat-quick-toggle-btn" title="Ocultar / Mostrar sugerencias rápidas">
+                  <span id="quickChipsToggleIcon">▲</span>
+                </button>
+              </div>
+              <div id="chatQuickChipsContainer" class="chat-quick-chips">
                 <button class="chat-quick-q" data-q="¿Cómo puedo armonizar mi color activo y qué tonos sugieres para sombras y luces?">🎯 Armonizar color activo</button>
                 <button class="chat-quick-q" data-q="¿Cómo mezclo tonos de piel luminosos y creíbles sin que queden apagados?">👤 Tonos de piel (Flesh)</button>
                 <button class="chat-quick-q" data-q="¿Cuáles son las claves de la técnica de Joaquín Sorolla para capturar la luz solar?">☀️ Luz de Sorolla</button>
@@ -1729,7 +1747,13 @@
 
             <!-- Chat Input Box -->
             <div class="ai-chat-input-bar">
-              <textarea id="aiChatInput" class="ai-chat-input" rows="2" placeholder="Pregunta sobre color, pintura, maestros, pigmentos, composición... (Enter para enviar)"></textarea>
+              <div class="ai-chat-input-wrapper">
+                <textarea id="aiChatInput" class="ai-chat-input" rows="2" placeholder="Pregunta sobre color, pintura, maestros, pigmentos, composición... (Enter para enviar)"></textarea>
+                <button id="btnAiChatQuickInject" class="chat-input-quick-inject" title="Insertar color activo (#HEX) en la pregunta">
+                  <span id="chatInputActiveDot" class="chat-input-active-dot" style="background-color: #6366F1;"></span>
+                  <span>+ Color</span>
+                </button>
+              </div>
               <button id="btnAiChatSend" class="ai-chat-send-btn" title="Enviar pregunta al Maestro IA">
                 <span>Enviar</span> ➔
               </button>
@@ -2118,6 +2142,21 @@
           </div>
         </div>
 
+        <!-- Connectivity Diagnostic & Test Section -->
+        <div id="aiConnectionTestSection" style="margin-top: 4px; padding: 10px 12px; background: rgba(0,0,0,0.35); border: 1px solid var(--border-subtle); border-radius: 6px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-size: 0.75rem; color: #FFFFFF; font-weight: 600;">Diagnóstico de Conexión</span>
+              <span style="font-size: 0.68rem; color: var(--text-muted);">Verifica la validez y latencia de tu API Key activa</span>
+            </div>
+            <button id="btnTestAiConnection" type="button" class="tool-action-btn" style="padding: 5px 12px; font-size: 0.74rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+              <span>🧪</span> Probar Conexión
+            </button>
+          </div>
+          <div id="aiConnectionTestResult" style="display: none; margin-top: 8px; font-size: 0.72rem; line-height: 1.45; border-radius: 4px; padding: 8px 10px;">
+          </div>
+        </div>
+
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
           <button id="btnCancelAiConfig" class="tool-action-btn" style="padding: 6px 14px; font-size: 0.78rem;">Cancelar</button>
           <button id="btnSaveAiConfig" class="ai-gen-btn" style="padding: 6px 16px; font-size: 0.78rem;">Guardar Configuración</button>
@@ -2125,6 +2164,9 @@
       </div>
     </div>
   </div>
+
+  <!-- BACKDROP FOR EXPANDED STUDIO AI CHAT -->
+  <div id="aiChatBackdrop" class="ai-chat-backdrop" style="display: none;"></div>
 
   <!-- COLOR VISION DEFICIENCY (CVD) & ACCESSIBILITY MODAL -->
   <div id="cvdModal" class="master-modal-backdrop" style="display: none;">
