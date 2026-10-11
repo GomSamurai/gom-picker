@@ -2315,10 +2315,15 @@
                 <span class="pill-title">Estudio Pro</span>
                 <span class="pill-desc">60-30-10 & Composición</span>
               </button>
-              <button class="export-pill-btn" data-template="grid_gallery">
-                <span class="pill-icon">🗂️</span>
-                <span class="pill-title">Galería Fichas</span>
-                <span class="pill-desc">Cuadrícula Equitativa</span>
+              <button class="export-pill-btn" data-template="ultimate_encyclopedia">
+                <span class="pill-icon">📚</span>
+                <span class="pill-title">Estudio Total</span>
+                <span class="pill-desc">Toda la Info & Recetas</span>
+              </button>
+              <button class="export-pill-btn" data-template="custom_user">
+                <span class="pill-icon">⚙️</span>
+                <span class="pill-title">Personalizada</span>
+                <span class="pill-desc">Modular por Usuario</span>
               </button>
               <button class="export-pill-btn" data-template="fine_art_atelier">
                 <span class="pill-icon">🏛️</span>
@@ -2329,6 +2334,11 @@
                 <span class="pill-icon">📐</span>
                 <span class="pill-title">Ficha Técnica</span>
                 <span class="pill-desc">CMYK & Imprenta</span>
+              </button>
+              <button class="export-pill-btn" data-template="grid_gallery">
+                <span class="pill-icon">🗂️</span>
+                <span class="pill-title">Galería Fichas</span>
+                <span class="pill-desc">Cuadrícula Equitativa</span>
               </button>
               <button class="export-pill-btn" data-template="moodboard_editorial">
                 <span class="pill-icon">🎨</span>
@@ -2394,7 +2404,13 @@
 
           <!-- 5. Campos a Incluir (Checkboxes / Toggles) -->
           <div class="export-section">
-            <label class="export-section-label"><span>📋</span> Información a Incluir en las Muestras</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="export-section-label" style="margin-bottom: 0;"><span>📋</span> Información a Incluir en las Muestras</label>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" id="btnExportSelectAllToggles" class="tool-action-btn" style="padding: 2px 8px; font-size: 0.7rem; border-radius: 4px;">✓ Todos</button>
+                <button type="button" id="btnExportDeselectAllToggles" class="tool-action-btn" style="padding: 2px 8px; font-size: 0.7rem; border-radius: 4px;">✕ Ninguno</button>
+              </div>
+            </div>
             <div class="export-toggles-grid">
               <label class="export-toggle-item">
                 <input type="checkbox" id="chkExpHexRgb" checked />
@@ -2422,6 +2438,16 @@
                 <span class="toggle-text">Pigmento Real Óleo/Acrílico (CI)</span>
               </label>
               <label class="export-toggle-item">
+                <input type="checkbox" id="chkExpPaintRecipe" checked />
+                <span class="toggle-custom-box"></span>
+                <span class="toggle-text">Receta de Tubos & Mezcla (%)</span>
+              </label>
+              <label class="export-toggle-item">
+                <input type="checkbox" id="chkExpComplementary" checked />
+                <span class="toggle-custom-box"></span>
+                <span class="toggle-text">Color Complementario Directo</span>
+              </label>
+              <label class="export-toggle-item">
                 <input type="checkbox" id="chkExpMicroRamp" checked />
                 <span class="toggle-custom-box"></span>
                 <span class="toggle-text">Micro-rampas de Luz & Sombra</span>
@@ -2435,6 +2461,11 @@
                 <input type="checkbox" id="chkExpTips" checked />
                 <span class="toggle-custom-box"></span>
                 <span class="toggle-text">Consejos de Armonía & Dirección</span>
+              </label>
+              <label class="export-toggle-item">
+                <input type="checkbox" id="chkExpWcag" checked />
+                <span class="toggle-custom-box"></span>
+                <span class="toggle-text">Accesibilidad & Contraste WCAG 2.1</span>
               </label>
               <label class="export-toggle-item">
                 <input type="checkbox" id="chkExpGradientStrip" checked />

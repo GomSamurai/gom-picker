@@ -542,5 +542,22 @@ export const ColorMath = {
       default:
         return ColorMath.mixRyb(s1, s2, weight);
     }
+  },
+
+  // Relative luminance according to WCAG 2.1 (0.0 to 1.0)
+  getLuminance(r, g, b) {
+    const sRGB = [r, g, b].map(v => {
+      const c = ColorMath.clamp(v, 0, 255) / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * sRGB[0] + 0.7152 * sRGB[1] + 0.0722 * sRGB[2];
+  },
+
+  // Calculate precise WCAG 2.1 contrast ratio between two RGB colors (1.0 to 21.0)
+  calculateContrastRatio(rgb1, rgb2) {
+    if (!rgb1 || !rgb2) return 1.0;
+    const l1 = ColorMath.getLuminance(rgb1.r, rgb1.g, rgb1.b);
+    const l2 = ColorMath.getLuminance(rgb2.r, rgb2.g, rgb2.b);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
   }
 };
