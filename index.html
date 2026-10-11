@@ -1664,11 +1664,11 @@
                 <span style="display: inline-block; width: 1px; height: 16px; background: rgba(255,255,255,0.18); margin: 0 4px; vertical-align: middle;"></span>
                 <label class="hyper4d-layer-check" title="Invertir eje horizontal (X) del ratón al rotar la cámara orbital">
                   <input type="checkbox" id="chkHyper4DInvertX">
-                  <span>⇄ Invertir X</span>
+                  <span>⇄ Inv X</span>
                 </label>
                 <label class="hyper4d-layer-check" title="Invertir eje vertical (Y) del ratón al rotar la cámara orbital">
                   <input type="checkbox" id="chkHyper4DInvertY">
-                  <span>⇅ Invertir Y</span>
+                  <span>⇅ Inv Y</span>
                 </label>
               </div>
 
@@ -1837,10 +1837,26 @@
                       <span>🔄</span> Cargar FG & BG
                     </button>
                   </div>
-                  <label style="display: flex; align-items: center; gap: 5px; font-size: 0.69rem; color: var(--text-muted); cursor: pointer;" title="Si está activo, la Muestra A se actualiza automáticamente al cambiar el color principal de la suite">
+                  <label style="display: flex; align-items: center; gap: 5px; font-size: 0.69rem; color: var(--text-muted); cursor: pointer;" title="Si está activo, mover la rueda actualiza la muestra activa seleccionada">
                     <input type="checkbox" id="chkHyper4DAutoSyncSlotA" checked />
-                    <span>Auto-seguir FG</span>
+                    <span>Sincronizar Rueda</span>
                   </label>
+                </div>
+
+                <!-- Barra de Asignación Automática Rápida de Posición -->
+                <div class="hyper4d-quick-assign-row" style="display: flex; gap: 8px; align-items: center; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 6px 10px; border-radius: 6px; margin-bottom: 10px; flex-wrap: wrap;">
+                  <span style="font-size: 0.7rem; color: #94A3B8; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                    <span>📥</span> Asignar color actual a:
+                  </span>
+                  <div id="hyper4dQuickAssignSlotsContainer" style="display: flex; gap: 4px; flex-wrap: wrap;">
+                    <!-- Botones generados dinámicamente: [A], [B], [C]... -->
+                  </div>
+                  <div style="margin-left: auto; display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.68rem; color: #94A3B8;">🎯 Rueda ajusta:</span>
+                    <select id="hyper4dWheelTargetSelect" class="hyper4d-select" style="padding: 2px 6px; font-size: 0.7rem; height: 24px; min-width: 90px; background: rgba(0,0,0,0.4); border: 1px solid var(--border-subtle); color: #FFF; border-radius: 4px;">
+                      <!-- Opciones dinámicas: Muestra A, Muestra B, etc. -->
+                    </select>
+                  </div>
                 </div>
 
                 <!-- Grid Dinámico de Muestras Comparadas (Generado dinámicamente) -->

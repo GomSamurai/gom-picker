@@ -70,6 +70,8 @@ export class Hyper4DStudio {
 
     // Muestras en el Comparador Dinámico (Multimuestras A, B, C, D...)
     this.autoSyncSlotA = true;
+    this.autoSyncWheel = true;
+    this.activeTargetSlotId = 'A'; // Muestra que se ajusta en vivo al interactuar con la Rueda Cromática
     this.activeCompareSubView = 'metrics'; // 'metrics' | 'composition' | 'mix'
     this.compareSlots = [
       { id: 'A', name: 'Muestra A (Principal)', hex: '#6366F1', rgb: { r: 99, g: 102, b: 241 }, active: true },
@@ -1907,11 +1909,14 @@ export class Hyper4DStudio {
     const hsv = ColorMath.rgbToHsv(curRgb.r, curRgb.g, curRgb.b);
     const isWarm = (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320;
 
-    // Actualizar Muestra A del Comparador si autoSyncSlotA está activo
-    if (this.autoSyncSlotA && this.compareSlots && this.compareSlots[0]) {
-      this.compareSlots[0].hex = hex;
-      this.compareSlots[0].rgb = curRgb;
-      this.renderCompareSlots();
+    // Actualizar Muestra seleccionada del Comparador si autoSyncWheel está activo
+    if (this.autoSyncWheel && this.compareSlots && this.compareSlots.length > 0) {
+      const targetSlot = this.compareSlots.find(s => s.id === this.activeTargetSlotId) || this.compareSlots[0];
+      if (targetSlot) {
+        targetSlot.hex = hex;
+        targetSlot.rgb = curRgb;
+        this._updateSlotCardDOM(targetSlot.id);
+      }
     }
 
     // Actualizar Tarjeta de Inspección HTML
@@ -2150,16 +2155,27 @@ export class Hyper4DStudio {
       btnFgBg.addEventListener('click', () => this.loadFgBgIntoSlots());
     }
 
-    // 4. Checkbox Auto-sync Slot A con FG
+    // 4. Checkbox Auto-sync Rueda con la Muestra Objetivo
     const chkSync = document.getElementById('chkHyper4DAutoSyncSlotA');
     if (chkSync) {
-      chkSync.checked = this.autoSyncSlotA;
+      chkSync.checked = this.autoSyncWheel;
       chkSync.addEventListener('change', (e) => {
-        this.autoSyncSlotA = e.target.checked;
+        this.autoSyncWheel = e.target.checked;
+        if (this.app?.showToast) {
+          this.app.showToast(this.autoSyncWheel ? 'Sincronización de Rueda activada' : 'Sincronización de Rueda pausada', 'info');
+        }
       });
     }
 
-    // 5. Pestañas de Sub-vistas (Métricas, Composición, Mezcla 4D)
+    // 5. Selector de Muestra Objetivo para la Rueda
+    const selTarget = document.getElementById('hyper4dWheelTargetSelect');
+    if (selTarget) {
+      selTarget.addEventListener('change', (e) => {
+        this.setActiveTargetSlot(e.target.value);
+      });
+    }
+
+    // 6. Pestañas de Sub-vistas (Métricas, Composición, Mezcla 4D)
     const viewButtons = document.querySelectorAll('.hyper4d-comp-view-btn');
     const subViews = {
       metrics: document.getElementById('hyper4dCompViewMetrics'),
@@ -2179,6 +2195,120 @@ export class Hyper4DStudio {
     });
   }
 
+  _isValidHex(hex) {
+    if (!hex || typeof hex !== 'string') return false;
+    const clean = hex.startsWith('#') ? hex.slice(1) : hex;
+    return /^[0-9A-Fa-f]{3}$|^[0-9A-Fa-f]{4}$|^[0-9A-Fa-f]{6}$|^[0-9A-Fa-f]{8}$/.test(clean);
+  }
+
+  setActiveTargetSlot(slotId, { loadIntoWheel = false } = {}) {
+    const slot = this.compareSlots.find(s => s.id === slotId);
+    if (!slot) return;
+
+    this.activeTargetSlotId = slotId;
+
+    // Actualizar estilo de selección activa en tarjetas
+    document.querySelectorAll('.hyper4d-compare-slot-card').forEach(card => {
+      const isTarget = card.dataset.slotId === slotId;
+      card.classList.toggle('slot-is-target', isTarget);
+      const targetBadge = card.querySelector('.hyper4d-slot-target-badge');
+      if (targetBadge) {
+        targetBadge.style.display = isTarget ? 'inline-block' : 'none';
+      }
+    });
+
+    // Actualizar select de la barra
+    const select = document.getElementById('hyper4dWheelTargetSelect');
+    if (select && select.value !== slotId) {
+      select.value = slotId;
+    }
+
+    // Actualizar botones de asignación rápida
+    document.querySelectorAll('.hyper4d-assign-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.slot === slotId);
+    });
+
+    if (loadIntoWheel && this.app) {
+      this.app.setColorDirectly(slot.rgb);
+    }
+  }
+
+  assignCurrentColorToSlot(slotId, source = 'fg') {
+    let sourceRgb;
+    let sourceName;
+    if (source === 'bg') {
+      sourceRgb = this.app?.bgColor || { r: 245, g: 158, b: 11 };
+      sourceName = 'Fondo (BG)';
+    } else {
+      sourceRgb = this.app?.fgColor || { r: 99, g: 102, b: 241 };
+      sourceName = 'Frontal (FG)';
+    }
+
+    const hex = ColorMath.rgbToHex(sourceRgb.r, sourceRgb.g, sourceRgb.b).toUpperCase();
+    this.updateSlotColor(slotId, hex, { reRender: false });
+    this.setActiveTargetSlot(slotId);
+
+    if (this.app?.showToast) {
+      this.app.showToast(`Color ${hex} (${sourceName}) asignado a Muestra [${slotId}]`, 'success');
+    }
+  }
+
+  renderQuickAssignBar() {
+    const container = document.getElementById('hyper4dQuickAssignSlotsContainer');
+    const select = document.getElementById('hyper4dWheelTargetSelect');
+
+    if (container) {
+      container.innerHTML = this.compareSlots.map(slot => `
+        <button type="button" class="hyper4d-assign-btn ${slot.id === this.activeTargetSlotId ? 'active' : ''}" data-slot="${slot.id}" data-slot-id="${slot.id}" title="Click: Asignar FG actual a [${slot.id}] | Alt+Click: Asignar BG">
+          <span style="display:inline-block; width:9px; height:9px; border-radius:50%; background:${slot.hex}; vertical-align:middle; border:1px solid rgba(255,255,255,0.6);"></span>
+          <span>[${slot.id}]</span>
+        </button>
+      `).join('');
+
+      container.querySelectorAll('.hyper4d-assign-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const slotId = btn.dataset.slot || btn.dataset.slotId;
+          const source = e.altKey ? 'bg' : 'fg';
+          this.assignCurrentColorToSlot(slotId, source);
+        });
+      });
+    }
+
+    if (select) {
+      select.innerHTML = this.compareSlots.map(slot => `
+        <option value="${slot.id}" ${slot.id === this.activeTargetSlotId ? 'selected' : ''}>[${slot.id}] ${slot.name}</option>
+      `).join('');
+    }
+  }
+
+  _updateSlotCardDOM(slotId) {
+    const slot = this.compareSlots.find(s => s.id === slotId);
+    if (!slot) return;
+
+    const card = document.querySelector(`.hyper4d-compare-slot-card[data-slot-id="${slotId}"]`);
+    if (card) {
+      const swatch = card.querySelector('.hyper4d-slot-swatch');
+      if (swatch) swatch.style.backgroundColor = slot.hex;
+
+      const picker = card.querySelector('.hyper4d-slot-color-picker');
+      if (picker && picker.value.toUpperCase() !== slot.hex.toUpperCase()) {
+        picker.value = slot.hex;
+      }
+
+      const input = card.querySelector('.hyper4d-slot-hex-input');
+      if (input && document.activeElement !== input) {
+        input.value = slot.hex;
+      }
+    }
+
+    // Actualizar indicador en barra de asignación rápida
+    const assignBtnDot = document.querySelector(`.hyper4d-assign-btn[data-slot="${slotId}"] span`);
+    if (assignBtnDot) {
+      assignBtnDot.style.background = slot.hex;
+    }
+  }
+
   addCompareSlot(customHex = null, customName = null) {
     const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
     if (this.compareSlots.length >= 8) {
@@ -2191,7 +2321,6 @@ export class Hyper4DStudio {
 
     let hex = customHex;
     if (!hex) {
-      // Color armónico con salto áureo de tono
       const baseRgb = this.compareSlots[this.compareSlots.length - 1]?.rgb || { r: 99, g: 102, b: 241 };
       const hsv = ColorMath.rgbToHsv(baseRgb.r, baseRgb.g, baseRgb.b);
       const stepHue = (hsv.h + 137.5) % 360;
@@ -2209,6 +2338,7 @@ export class Hyper4DStudio {
     };
 
     this.compareSlots.push(newSlot);
+    this.activeTargetSlotId = nextLetter;
     this.renderCompareSlots();
     this._updateComparisonPanel();
 
@@ -2226,6 +2356,9 @@ export class Hyper4DStudio {
     const idx = this.compareSlots.findIndex(s => s.id === slotId);
     if (idx !== -1) {
       const removed = this.compareSlots.splice(idx, 1)[0];
+      if (this.activeTargetSlotId === slotId) {
+        this.activeTargetSlotId = this.compareSlots[0].id;
+      }
       this.renderCompareSlots();
       this._updateComparisonPanel();
       if (this.app?.showToast) {
@@ -2234,16 +2367,21 @@ export class Hyper4DStudio {
     }
   }
 
-  updateSlotColor(slotId, newHex) {
+  updateSlotColor(slotId, newHex, { reRender = false } = {}) {
     const slot = this.compareSlots.find(s => s.id === slotId);
     if (!slot) return;
 
-    if (!ColorMath.isValidHex(newHex)) return;
+    if (!this._isValidHex(newHex)) return;
     const cleanHex = (newHex.startsWith('#') ? newHex : '#' + newHex).toUpperCase();
     slot.hex = cleanHex;
     slot.rgb = ColorMath.hexToRgb(cleanHex);
 
-    this.renderCompareSlots();
+    if (reRender) {
+      this.renderCompareSlots();
+    } else {
+      this._updateSlotCardDOM(slotId);
+      this.renderQuickAssignBar();
+    }
     this._updateComparisonPanel();
   }
 
@@ -2277,6 +2415,7 @@ export class Hyper4DStudio {
       });
     }
 
+    this.activeTargetSlotId = this.compareSlots[0].id;
     this.renderCompareSlots();
     this._updateComparisonPanel();
 
@@ -2296,6 +2435,7 @@ export class Hyper4DStudio {
       { id: 'B', name: 'Color Fondo (BG)', hex: bgHex, rgb: bg, active: true }
     ];
 
+    this.activeTargetSlotId = 'A';
     this.renderCompareSlots();
     this._updateComparisonPanel();
 
@@ -2311,24 +2451,28 @@ export class Hyper4DStudio {
     const canDelete = this.compareSlots.length > 2;
 
     container.innerHTML = this.compareSlots.map((slot) => {
+      const isTarget = slot.id === this.activeTargetSlotId;
       return `
-        <div class="hyper4d-compare-slot-card" data-slot-id="${slot.id}">
+        <div class="hyper4d-compare-slot-card ${isTarget ? 'slot-is-target' : ''}" data-slot-id="${slot.id}" title="Click para seleccionar y vincular con la Rueda">
           <div class="hyper4d-slot-header">
-            <span class="hyper4d-slot-badge">[${slot.id}]</span>
+            <div style="display: flex; align-items: center; gap: 5px;">
+              <span class="hyper4d-slot-badge">[${slot.id}]</span>
+              <span class="hyper4d-slot-target-badge" style="display: ${isTarget ? 'inline-block' : 'none'};">🎯 Rueda</span>
+            </div>
             <span class="hyper4d-slot-title" title="${slot.name}">${slot.name}</span>
-            ${canDelete ? `<button class="hyper4d-slot-delete-btn" data-slot-id="${slot.id}" title="Eliminar esta muestra de la comparativa">✕</button>` : ''}
+            ${canDelete ? `<button type="button" class="hyper4d-slot-delete-btn" data-slot-id="${slot.id}" title="Eliminar esta muestra de la comparativa">✕</button>` : ''}
           </div>
           <div class="hyper4d-slot-body">
-            <div class="hyper4d-slot-swatch-wrapper" title="Click para cambiar color con el selector">
+            <div class="hyper4d-slot-swatch-wrapper" title="Click para abrir selector cromático">
               <div class="hyper4d-slot-swatch" style="background-color: ${slot.hex};"></div>
               <input type="color" class="hyper4d-slot-color-picker" data-slot-id="${slot.id}" value="${slot.hex}">
             </div>
             <div class="hyper4d-slot-controls">
               <input type="text" class="hyper4d-slot-hex-input" data-slot-id="${slot.id}" value="${slot.hex}" spellcheck="false" maxlength="7">
               <div class="hyper4d-slot-quick-btns">
-                <button type="button" class="hyper4d-slot-qbtn" data-action="set-fg" data-slot-id="${slot.id}" title="Asignar color Frontal (FG) actual">FG</button>
-                <button type="button" class="hyper4d-slot-qbtn" data-action="set-bg" data-slot-id="${slot.id}" title="Asignar color Fondo (BG) actual">BG</button>
-                <button type="button" class="hyper4d-slot-qbtn" data-action="load-wheel" data-slot-id="${slot.id}" title="Cargar este color en la rueda principal">👁️ Rueda</button>
+                <button type="button" class="hyper4d-slot-qbtn" data-action="set-fg" data-slot-id="${slot.id}" title="Asignar color Frontal (FG) actual de la suite">📥 FG</button>
+                <button type="button" class="hyper4d-slot-qbtn" data-action="set-bg" data-slot-id="${slot.id}" title="Asignar color Fondo (BG) actual de la suite">📥 BG</button>
+                <button type="button" class="hyper4d-slot-qbtn" data-action="target-wheel" data-slot-id="${slot.id}" title="Vincular con la Rueda Cromática para ajuste en vivo">🎯 Rueda</button>
               </div>
             </div>
           </div>
@@ -2336,7 +2480,18 @@ export class Hyper4DStudio {
       `;
     }).join('');
 
-    // Event bindings para las tarjetas dinámicas
+    // Actualizar barra de asignación rápida
+    this.renderQuickAssignBar();
+
+    // Event bindings para las tarjetas
+    container.querySelectorAll('.hyper4d-compare-slot-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('button, input')) return;
+        const slotId = card.dataset.slotId;
+        this.setActiveTargetSlot(slotId, { loadIntoWheel: false });
+      });
+    });
+
     container.querySelectorAll('.hyper4d-slot-delete-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -2348,7 +2503,11 @@ export class Hyper4DStudio {
     container.querySelectorAll('.hyper4d-slot-color-picker').forEach(picker => {
       picker.addEventListener('input', (e) => {
         const slotId = picker.dataset.slotId;
-        this.updateSlotColor(slotId, e.target.value);
+        this.updateSlotColor(slotId, e.target.value, { reRender: false });
+      });
+      picker.addEventListener('change', (e) => {
+        const slotId = picker.dataset.slotId;
+        this.updateSlotColor(slotId, e.target.value, { reRender: false });
       });
     });
 
@@ -2357,8 +2516,8 @@ export class Hyper4DStudio {
         const slotId = input.dataset.slotId;
         let val = e.target.value.trim();
         if (!val.startsWith('#')) val = '#' + val;
-        if (ColorMath.isValidHex(val)) {
-          this.updateSlotColor(slotId, val);
+        if (this._isValidHex(val)) {
+          this.updateSlotColor(slotId, val, { reRender: false });
         } else {
           const slot = this.compareSlots.find(s => s.id === slotId);
           if (slot) input.value = slot.hex;
@@ -2370,27 +2529,19 @@ export class Hyper4DStudio {
     });
 
     container.querySelectorAll('.hyper4d-slot-qbtn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const action = btn.dataset.action;
         const slotId = btn.dataset.slotId;
         const slot = this.compareSlots.find(s => s.id === slotId);
         if (!slot) return;
 
         if (action === 'set-fg') {
-          const fg = this.app?.fgColor || { r: 99, g: 102, b: 241 };
-          const hex = ColorMath.rgbToHex(fg.r, fg.g, fg.b);
-          this.updateSlotColor(slotId, hex);
+          this.assignCurrentColorToSlot(slotId, 'fg');
         } else if (action === 'set-bg') {
-          const bg = this.app?.bgColor || { r: 245, g: 158, b: 11 };
-          const hex = ColorMath.rgbToHex(bg.r, bg.g, bg.b);
-          this.updateSlotColor(slotId, hex);
-        } else if (action === 'load-wheel') {
-          if (this.app) {
-            this.app.setColorDirectly(slot.rgb);
-            if (this.app.showToast) {
-              this.app.showToast(`Color ${slot.hex} ([${slot.id}]) cargado en la Rueda`, 'success');
-            }
-          }
+          this.assignCurrentColorToSlot(slotId, 'bg');
+        } else if (action === 'target-wheel') {
+          this.setActiveTargetSlot(slotId, { loadIntoWheel: true });
         }
       });
     });

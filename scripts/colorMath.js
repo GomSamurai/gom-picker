@@ -27,6 +27,13 @@ export const ColorMath = {
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
   },
 
+  // Check if string is a valid HEX color (#RGB, #RGBA, #RRGGBB, #RRGGBBAA)
+  isValidHex(hex) {
+    if (!hex || typeof hex !== 'string') return false;
+    const clean = hex.startsWith('#') ? hex.slice(1) : hex;
+    return /^[0-9A-Fa-f]{3}$|^[0-9A-Fa-f]{4}$|^[0-9A-Fa-f]{6}$|^[0-9A-Fa-f]{8}$/.test(clean);
+  },
+
   // HEX to RGB {r, g, b, a}
   hexToRgb(hex) {
     let clean = hex.replace('#', '').trim();
