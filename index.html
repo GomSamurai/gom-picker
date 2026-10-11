@@ -1541,7 +1541,7 @@
 
       <!-- NUEVA PESTAÑA REVOLUCIONARIA: HIPERESPACIO 4D DEL COLOR -->
       <div id="viewHyper4D" class="tab-view" style="display: none;">
-        <div class="hyper4d-main-wrapper">
+        <div id="hyper4dMainWrapper" class="hyper4d-main-wrapper">
           
           <!-- Header & Toolbar Superior 4D -->
           <div class="hyper4d-toolbar-header">
@@ -1588,6 +1588,7 @@
                 <button id="btnHyper4DViewFront" class="hyper4d-icon-btn" title="Vista Frontal (Valor / Matiz)">📐 Frontal</button>
                 <button id="btnHyper4DViewSide" class="hyper4d-icon-btn" title="Vista Lateral (Croma / Valor)">📐 Lateral</button>
                 <button id="btnHyper4DSnapshot" class="hyper4d-icon-btn hyper4d-btn-accent" title="Descargar captura PNG de alta definición">📸 Captura HD</button>
+                <button id="btnHyper4DFullscreen" class="hyper4d-icon-btn hyper4d-btn-fullscreen" title="Modo Pantalla Completa Inmersiva con todas las opciones (Tecla F)">⛶ Pantalla Completa</button>
               </div>
             </div>
           </div>
@@ -1596,8 +1597,18 @@
           <div class="hyper4d-stage-layout">
             
             <!-- Lienzo 4D Interactivo -->
-            <div class="hyper4d-canvas-container">
+            <div id="hyper4dCanvasContainer" class="hyper4d-canvas-container">
               <canvas id="hyper4dCanvas"></canvas>
+
+              <!-- Botones Flotantes en Modo Pantalla Completa -->
+              <div class="hyper4d-fs-floating-controls" style="display: none;">
+                <button id="btnHyper4DFsToggleSidebar" class="hyper4d-fs-tool-btn" title="Mostrar/Ocultar Panel Lateral de Opciones">
+                  <span>📋</span> <span class="fs-btn-txt">Panel de Opciones</span>
+                </button>
+                <button id="btnHyper4DExitFullscreen" class="hyper4d-fs-tool-btn danger" title="Salir de Pantalla Completa (Esc)">
+                  <span>✕</span> <span class="fs-btn-txt">Salir de Pantalla Completa</span>
+                </button>
+              </div>
 
               <!-- HUD Superior Flotante: Control de la 4ª Dimensión (W) -->
               <div class="hyper4d-hud-w-bar">
@@ -1620,57 +1631,67 @@
               <div class="hyper4d-hud-layers-bar">
                 <label class="hyper4d-layer-check" title="Mostrar/ocultar nube de sólido base">
                   <input type="checkbox" id="chkHyper4DSolid" checked>
-                  <span>Sólido Base</span>
+                  <span>Sólido</span>
                 </label>
                 <label class="hyper4d-layer-check" title="Mostrar/ocultar anillos y ejes de referencia espacial">
                   <input type="checkbox" id="chkHyper4DAxes" checked>
-                  <span>Ejes de Valor</span>
+                  <span>Ejes</span>
                 </label>
                 <label class="hyper4d-layer-check" title="Mostrar/ocultar poliedro translúcido de armonías (tríadas y complementario)">
                   <input type="checkbox" id="chkHyper4DHarmony" checked>
-                  <span>Armonías 4D</span>
+                  <span>Armonías</span>
                 </label>
                 <label class="hyper4d-layer-check" title="Mostrar/ocultar vectores de luz cenital y sombra de Sorolla">
                   <input type="checkbox" id="chkHyper4DLightShadow" checked>
-                  <span>Luz & Sombra</span>
+                  <span>Luz/Sombra</span>
                 </label>
                 <label class="hyper4d-layer-check" title="Mostrar/ocultar curva sustractiva física de mezcla de Florent Farges">
                   <input type="checkbox" id="chkHyper4DBowCurve" checked>
                   <span>Curva Farges</span>
                 </label>
+                <label class="hyper4d-layer-check" title="Mostrar/ocultar vector de dispersión subcutánea SSS (James Gurney)">
+                  <input type="checkbox" id="chkHyper4DSSS" checked>
+                  <span>SSS Gurney</span>
+                </label>
+                <label class="hyper4d-layer-check" title="Mostrar/ocultar discos de proporción armónica de superficie (Goethe)">
+                  <input type="checkbox" id="chkHyper4DGoethe" checked>
+                  <span>Extensión Goethe</span>
+                </label>
                 <label class="hyper4d-layer-check" title="Mostrar/ocultar constelación de la paleta activa en Bibliotecas">
                   <input type="checkbox" id="chkHyper4DPalette" checked>
-                  <span>Red Paleta</span>
+                  <span>Paleta</span>
                 </label>
               </div>
 
               <!-- HUD Hint / Instrucciones de navegación -->
               <div class="hyper4d-hud-nav-hint">
-                <span>🖱️ Click izq + arrastrar: Órbita 3D</span> • 
+                <span>🖱️ Click izq: Órbita</span> • 
                 <span>Shift + arrastrar: Desplazar</span> • 
                 <span>Rueda: Zoom</span> • 
-                <span>Click en nodo: Cargar muestra</span>
+                <span>Click nodo: Cargar</span> • 
+                <span>F: Pantalla Completa</span>
               </div>
             </div>
 
             <!-- Panel Lateral de Inteligencia y Comparación 4D -->
-            <div class="hyper4d-sidebar-panel">
+            <div id="hyper4dSidebarPanel" class="hyper4d-sidebar-panel">
               
               <!-- Subpestañas del Inspector -->
               <div class="hyper4d-subtabs-nav">
-                <button class="hyper4d-subtab-btn active" data-subtab="inspect">🔍 Desglose</button>
-                <button class="hyper4d-subtab-btn" data-subtab="compare">⚖️ Comparador</button>
+                <button class="hyper4d-subtab-btn active" data-subtab="inspect">🔍 Desglose & Farges</button>
+                <button class="hyper4d-subtab-btn" data-subtab="composition">📐 Composición & Gurney</button>
+                <button class="hyper4d-subtab-btn" data-subtab="compare">⚖️ Comparador Pro</button>
                 <button class="hyper4d-subtab-btn" data-subtab="palette">🌌 Constelación</button>
                 <button class="hyper4d-subtab-btn" data-subtab="masters">🏛️ Maestros</button>
               </div>
 
-              <!-- Panel 1: Desglose Multidimensional de la Muestra Activa -->
+              <!-- Panel 1: Desglose Multidimensional & Teoría de Florent Farges -->
               <div id="hyper4dPanelInspect" class="hyper4d-tab-content active">
                 <div class="hyper4d-sample-card">
                   <div class="hyper4d-sample-header">
                     <div id="hyper4dActiveSwatch" class="hyper4d-swatch-large" style="background-color: #6366F1;"></div>
                     <div class="hyper4d-sample-info">
-                      <div class="hyper4d-sample-label">MUESTRA ACTIVA EN ESTUDIO</div>
+                      <div class="hyper4d-sample-label">MUESTRA ACTIVA EN ESTUDIO 4D</div>
                       <div id="hyper4dActiveHex" class="hyper4d-sample-hex">#6366F1</div>
                       <div id="hyper4dActiveMunsell" class="hyper4d-sample-munsell">5PB 4.2/12</div>
                     </div>
@@ -1680,45 +1701,118 @@
                   </div>
                 </div>
 
+                <!-- Escala de Valor Inherente (Farges / Munsell 1-9) -->
                 <div class="hyper4d-card-section">
-                  <div class="hyper4d-section-title">✨ Vectores Desplegados en 4D:</div>
+                  <div class="hyper4d-section-title">📊 Escala de Valor Inherente (Florent Farges):</div>
+                  <div id="hyper4dInherentValueBox" class="hyper4d-inherent-box">
+                    <!-- Dinámico -->
+                  </div>
+                </div>
+
+                <!-- Sesgo de Primarios y Advertencias de Mezcla (Evitar el lodo) -->
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">🧭 Sesgo de Matiz (Hue Bias) & Regla de Farges:</div>
+                  <div id="hyper4dHueBiasBox" class="hyper4d-bias-box">
+                    <!-- Dinámico -->
+                  </div>
+                </div>
+
+                <!-- Pigmentos Genuinos Afines de Bellas Artes -->
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">🎨 Pigmentos de Atelier Recomendados (Óleo/Acuarela):</div>
+                  <div id="hyper4dMatchingPigmentsBox" class="hyper4d-pigments-box">
+                    <!-- Dinámico -->
+                  </div>
+                </div>
+
+                <!-- Afinidad con Carnaciones de Farges -->
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">👤 Tríada Facial Académica (Flesh Tones):</div>
+                  <div id="hyper4dFleshZoneBox" class="hyper4d-flesh-box">
+                    <!-- Dinámico -->
+                  </div>
+                </div>
+
+                <!-- Vectores Desplegados 4D -->
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">✨ Vectores Desplegados en el Hiperespacio:</div>
                   <ul class="hyper4d-vector-list">
                     <li>
                       <span class="hyper4d-vec-dot" style="background-color: #FBBF24;"></span>
                       <div>
-                        <strong>Vector de Luz (Forma Iluminada):</strong>
-                        <p>Asciende hacia Blanco de Titanio PW6 con leve corrimiento cálido solar para evitar tiza blanca plana.</p>
+                        <strong>Vector de Luz (Blanco Titanio PW6):</strong>
+                        <p>Asciende con corrimiento térmico solar evitando el tizado lechoso.</p>
                       </div>
                     </li>
                     <li>
                       <span class="hyper4d-vec-dot" style="background-color: #818CF8;"></span>
                       <div>
                         <strong>Vector de Sombra (Luminismo Sorolla):</strong>
-                        <p>Desciende térmicamente hacia violeta cobalto / siena, preservando riqueza y transparencia sin caer en negro barro.</p>
+                        <p>Desciende hacia violetas y sienas preservando transparencia sin ensuciar con negro.</p>
+                      </div>
+                    </li>
+                    <li>
+                      <span class="hyper4d-vec-dot" style="background-color: #EC4899;"></span>
+                      <div>
+                        <strong>Vector Dispersión Subcutánea (SSS Gurney):</strong>
+                        <p>Inflexión cálida hiper-saturada en el terminador donde la luz penetra la materia translúcida.</p>
                       </div>
                     </li>
                     <li>
                       <span class="hyper4d-vec-dot" style="background-color: #F43F5E;"></span>
                       <div>
-                        <strong>Eje Complementario (Foco Visual):</strong>
-                        <p>Atraviesa el centro neutro del hiperespacio para máxima vibración por contraste simultáneo.</p>
+                        <strong>Eje Complementario:</strong>
+                        <p>Atraviesa el corazón acromático para máxima vibración por contraste simultáneo.</p>
                       </div>
                     </li>
                   </ul>
                 </div>
-
-                <div class="hyper4d-card-section">
-                  <div class="hyper4d-section-title">👨‍🎨 Análisis de Mezcla (Florent Farges):</div>
-                  <div id="hyper4dFargesAdvice" class="hyper4d-farges-box">
-                    <div>Cargando análisis de pigmentos para la muestra...</div>
-                  </div>
-                </div>
               </div>
 
-              <!-- Panel 2: Comparador Multidimensional (A vs B vs C vs D) -->
+              <!-- Panel 2: Composición & Teoría de Maestros (Goethe, Itten, Gurney) -->
+              <div id="hyper4dPanelComposition" class="hyper4d-tab-content" style="display: none;">
+                
+                <!-- Regla de Extensión Armónica de Goethe -->
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">⚖️ Proporción Armónica de Superficie (J.W. Goethe):</div>
+                  <p style="font-size: 0.73rem; color: var(--text-secondary); line-height: 1.45; margin: 0 0 8px 0;">
+                    Según Goethe, cada color ejerce una fuerza lumínica distinta. Para que una composición esté en equilibrio perfecto, los colores muy luminosos deben ocupar menos espacio que los oscuros.
+                  </p>
+                  <div id="hyper4dGoetheBox" class="hyper4d-goethe-box">
+                    <!-- Dinámico -->
+                  </div>
+                </div>
+
+                <!-- Los 7 Contrastes de Johannes Itten -->
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">🎭 Diagnóstico de Contraste Dominante (Johannes Itten):</div>
+                  <div id="hyper4dIttenBox" class="hyper4d-itten-box">
+                    <!-- Dinámico -->
+                  </div>
+                </div>
+
+                <!-- Teoría de Luz y Clima de James Gurney -->
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">☀️ Clima Lumínico & Iluminación (James Gurney):</div>
+                  <div id="hyper4dGurneyBox" class="hyper4d-gurney-box">
+                    <!-- Dinámico -->
+                  </div>
+                </div>
+
+                <!-- Rol Compositivo en el Lienzo -->
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">🖼️ Papel Compositivo Recomendado:</div>
+                  <div id="hyper4dCompositionRoleBox" class="hyper4d-role-box">
+                    <!-- Dinámico -->
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Panel 3: Comparador Multidimensional (A vs B vs C vs D) -->
               <div id="hyper4dPanelCompare" class="hyper4d-tab-content" style="display: none;">
                 <div class="hyper4d-section-desc">
-                  Compara analíticamente dos o más muestras proyectadas en el hiperespacio 4D con cálculo Delta-E, contraste tonal y punto medio de colisión física.
+                  Compara analíticamente dos o más muestras proyectadas en el hiperespacio 4D con cálculo Delta-E, contraste tonal, interacción compositiva y punto medio de colisión física.
                 </div>
 
                 <div class="hyper4d-compare-slots-grid">
@@ -1744,12 +1838,15 @@
                 <div class="hyper4d-card-section">
                   <div class="hyper4d-section-title">🎨 Mezcla al 50/50 en el Espacio:</div>
                   <p style="font-size: 0.72rem; color: var(--text-secondary); margin: 0 0 6px 0;">
-                    El nodo amarillo intermedio en la línea discontinua marca el punto exacto resultante de mezclar físicamente ambas muestras con pintura tradicional.
+                    El nodo intermedio en la línea vectorial marca el punto exacto resultante de mezclar físicamente ambas muestras con pintura tradicional.
                   </p>
+                  <div id="hyper4dCompareMixActionBox" style="margin-top: 8px;">
+                    <!-- Botón para cargar o guardar mezcla -->
+                  </div>
                 </div>
               </div>
 
-              <!-- Panel 3: Constelación de Paleta de Bibliotecas -->
+              <!-- Panel 4: Constelación de Paleta de Bibliotecas -->
               <div id="hyper4dPanelPalette" class="hyper4d-tab-content" style="display: none;">
                 <div class="hyper4d-section-desc">
                   Visualiza todas las muestras de tu paleta activa en Bibliotecas como una constelación interconectada en 4D, revelando el volumen de gamut de tu obra y detectando zonas cromáticas desatendidas.
@@ -1760,13 +1857,16 @@
                   <p style="font-size: 0.73rem; color: var(--text-secondary); line-height: 1.45; margin: 0 0 8px 0;">
                     Las líneas celestes en el lienzo 4D representan los límites cromáticos cubiertos por tu paleta. Una constelación equilibrada debe tener presencia tanto en valores altos como en sombras y acentos de contraste.
                   </p>
+                  <div id="hyper4dPaletteCoverageReport" style="font-size: 0.72rem; margin-bottom: 8px; line-height: 1.4;">
+                    <!-- Reporte de cobertura -->
+                  </div>
                   <button id="btnHyper4DInspirePalette" class="tool-action-btn" style="width: 100%; justify-content: center; margin-top: 4px;">
                     <span>✨</span> Inspirar Paleta Balanceada en Bibliotecas
                   </button>
                 </div>
               </div>
 
-              <!-- Panel 4: Estudio de Maestros Legendarios -->
+              <!-- Panel 5: Estudio de Maestros Legendarios -->
               <div id="hyper4dPanelMasters" class="hyper4d-tab-content" style="display: none;">
                 <div class="hyper4d-section-desc">
                   Selecciona una constelación de un maestro histórico para proyectar su paleta en 4D y comprender por qué sus relaciones cromáticas son inmortales.
@@ -1778,6 +1878,8 @@
                   <button class="hyper4d-master-chip" data-master="monet">🌸 Monet</button>
                   <button class="hyper4d-master-chip" data-master="zorn">🎭 Zorn</button>
                   <button class="hyper4d-master-chip" data-master="farges">👨‍🎨 Farges</button>
+                  <button class="hyper4d-master-chip" data-master="vermeer">🪟 Vermeer</button>
+                  <button class="hyper4d-master-chip" data-master="velazquez">👑 Velázquez</button>
                 </div>
 
                 <div id="hyper4dMasterDesc" class="hyper4d-master-info-card">

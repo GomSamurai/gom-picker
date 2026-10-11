@@ -5957,6 +5957,205 @@ body.value-check-mode {
   padding: 8px;
 }
 
+/* ==========================================================================
+   MODO PANTALLA COMPLETA INMERSIVA (FULLSCREEN 4D STUDIO)
+   ========================================================================== */
+.hyper4d-btn-fullscreen {
+  background: linear-gradient(135deg, #0284C7, #2563EB) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  font-weight: 700 !important;
+}
+
+.hyper4d-btn-fullscreen:hover {
+  background: linear-gradient(135deg, #0EA5E9, #3B82F6) !important;
+  box-shadow: 0 0 12px rgba(14, 165, 233, 0.5) !important;
+}
+
+.hyper4d-main-wrapper.fullscreen-mode {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 10px 14px 14px 14px !important;
+  border-radius: 0 !important;
+  background: #05070C !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.hyper4d-main-wrapper.fullscreen-mode .hyper4d-stage-layout {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 14px !important;
+  height: calc(100vh - 75px) !important;
+  overflow: hidden !important;
+}
+
+.hyper4d-main-wrapper.fullscreen-mode .hyper4d-canvas-container {
+  flex: 1 !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  border-radius: 10px !important;
+}
+
+.hyper4d-main-wrapper.fullscreen-mode .hyper4d-sidebar-panel {
+  width: 380px !important;
+  max-width: 400px !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+  border-radius: 10px !important;
+  background: rgba(13, 16, 26, 0.92) !important;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.6) !important;
+}
+
+.hyper4d-main-wrapper.fullscreen-mode.sidebar-hidden .hyper4d-sidebar-panel {
+  display: none !important;
+}
+
+/* Botones Flotantes en Modo Pantalla Completa */
+.hyper4d-fs-floating-controls {
+  position: absolute;
+  top: 60px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.hyper4d-fs-tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 5px 10px;
+  color: #FFFFFF;
+  font-size: 0.73rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: all 0.15s ease;
+}
+
+.hyper4d-fs-tool-btn:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: #38BDF8;
+  transform: translateY(-1px);
+}
+
+.hyper4d-fs-tool-btn.danger {
+  background: rgba(159, 18, 57, 0.88);
+  border-color: rgba(244, 63, 94, 0.4);
+}
+
+.hyper4d-fs-tool-btn.danger:hover {
+  background: rgba(225, 29, 72, 0.95);
+  border-color: #F43F5E;
+}
+
+/* ==========================================================================
+   ESTILOS DE TEORÍA DEL COLOR ENRIQUECIDA (FARGES, GOETHE, ITTEN, GURNEY)
+   ========================================================================== */
+.hyper4d-inherent-box,
+.hyper4d-bias-box,
+.hyper4d-pigments-box,
+.hyper4d-flesh-box,
+.hyper4d-goethe-box,
+.hyper4d-itten-box,
+.hyper4d-gurney-box,
+.hyper4d-role-box {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.hyper4d-val-scale-strip {
+  display: flex;
+  gap: 2px;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  height: 18px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hyper4d-val-step {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+
+.hyper4d-val-step.active {
+  box-shadow: inset 0 0 0 2px #FBBF24, 0 0 6px #FBBF24;
+  transform: scaleY(1.15);
+  z-index: 2;
+}
+
+.hyper4d-pigment-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  margin-bottom: 4px;
+  border-left: 3px solid #6366F1;
+}
+
+.hyper4d-pigment-chip {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.hyper4d-goethe-meter {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  padding: 8px;
+  margin-top: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hyper4d-goethe-bar-bg {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.hyper4d-goethe-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #FBBF24, #F43F5E);
+  transition: width 0.3s ease;
+}
+
+.hyper4d-badge-sub {
+  display: inline-block;
+  font-size: 0.64rem;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 3px;
+  margin-right: 4px;
+}
+
 
 
 

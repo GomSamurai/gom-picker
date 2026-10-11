@@ -57,9 +57,13 @@ export class Hyper4DStudio {
       showHarmonyPolyhedron: true,
       showLightShadowVector: true,
       showMixingBowCurve: true,
+      showSSSVector: true,
+      showGoetheExtension: true,
       showPaletteConstellation: true,
       showLabels: true,
-      particleStars: true
+      particleStars: true,
+      isFullscreen: false,
+      isSidebarHidden: false
     };
 
     // Muestras en el Comparador (Hasta 4)
@@ -101,6 +105,18 @@ export class Hyper4DStudio {
         author: 'Florent Farges (Pedagogía Clásica)',
         desc: 'Muestra la curvatura física no lineal al mezclar pigmentos. Resalta el fenómeno del Amarillo + Negro que vira a verde oliva orgánico sin pasar por pigmentos verdes.',
         colors: ['#FFF200', '#CC9933', '#8D361F', '#D91424', '#1B2682', '#126848', '#1E1D1B']
+      },
+      vermeer: {
+        title: 'Johannes Vermeer — Luz de Ventana Norte & Azul Ultramar',
+        author: 'Johannes Vermeer (1632-1675)',
+        desc: 'Luz ambiental fría difusa de cielo nórdico equilibrada con la transparencia dorada de ocres y el lujo óptico del lapislázuli genuino (PB29). Máxima pureza de valor en luces altas.',
+        colors: ['#FAF6EE', '#DFBA53', '#1E3F78', '#4A3528', '#E0A370']
+      },
+      velazquez: {
+        title: 'Diego Velázquez — La Armonía de Plata y Tierras Nobles',
+        author: 'Diego Velázquez (1599-1660)',
+        desc: 'Maestría compositiva de grises nacarados y sombras de tierra neutra, con acentos vibrantes de bermellón aplicados en puntos estratégicos para focalizar la mirada.',
+        colors: ['#D9D7CE', '#8C867D', '#3D352E', '#A83B38', '#1C1A18']
       }
     };
 
@@ -692,6 +708,55 @@ export class Hyper4DStudio {
             label: i === 2 ? 'Curva Bow Farges' : ''
           });
         }
+      }
+    }
+
+    // 6. VECTOR DE DISPERSIÓN SUBCUTÁNEA (Subsurface Scattering SSS - James Gurney)
+    if (this.options.showSSSVector) {
+      // El terminador se sitúa en la frontera entre luz y sombra, con un salto térmico hacia carmín/naranja saturado
+      const sssHue = (hsv.h >= 20 && hsv.h <= 180) ? (hsv.h - 25 + 360) % 360 : (hsv.h + 20) % 360;
+      const sssRgb = ColorMath.hsvToRgb(sssHue, Math.min(1, hsv.s * 1.35 + 0.25), Math.max(0.2, hsv.v * 0.75));
+      const sssHex = ColorMath.rgbToHex(sssRgb.r, sssRgb.g, sssRgb.b);
+      const sssNode = {
+        id: 'active_vector_sss',
+        type: 'vector_sss',
+        x: (baseX + (baseX * 0.6)) / 2 + 15,
+        y: (baseY + Math.max(-130, baseY - 55)) / 2,
+        z: (baseZ + (baseZ * 0.6)) / 2 + 15,
+        w: baseW + 15,
+        hex: sssHex,
+        rgb: sssRgb,
+        name: `Terminador SSS (${sssHex})`,
+        desc: 'Dispersión subsuperficial (luz filtrada en la carne/materia orgánica translúcida).',
+        size: 7.5
+      };
+      nodes.push(sssNode);
+      lines.push({ from: centerNode, to: sssNode, color: '#EC4899', width: 2, dash: [3, 2], label: 'SSS Terminador' });
+      lines.push({ from: sssNode, to: shadowNode, color: 'rgba(236, 72, 153, 0.45)', width: 1.5 });
+    }
+
+    // 7. DISCOS DE EXTENSIÓN ARMÓNICA DE SUPERFICIE (J.W. Goethe)
+    if (this.options.showGoetheExtension) {
+      const goetheInfo = this.getGoetheHarmonicProportion(activeRgb);
+      const discCount = 6;
+      const ringRadius = (goetheInfo.suggestedAreaPct / 100) * 150 + 20;
+      for (let i = 0; i < discCount; i++) {
+        const angle = (i * (360 / discCount) * Math.PI) / 180;
+        const gX = baseX + ringRadius * Math.cos(angle);
+        const gZ = baseZ + ringRadius * Math.sin(angle);
+        const gNode = {
+          id: `goethe_disc_${i}`,
+          type: 'goethe_node',
+          x: gX,
+          y: baseY,
+          z: gZ,
+          w: baseW,
+          hex: activeHex,
+          rgb: activeRgb,
+          name: `Extensión Goethe (${goetheInfo.suggestedAreaPct.toFixed(0)}% área)`,
+          size: 2.8
+        };
+        nodes.push(gNode);
       }
     }
 
@@ -1345,12 +1410,58 @@ export class Hyper4DStudio {
     bindToggle('chkHyper4DHarmony', 'showHarmonyPolyhedron');
     bindToggle('chkHyper4DLightShadow', 'showLightShadowVector');
     bindToggle('chkHyper4DBowCurve', 'showMixingBowCurve');
+    bindToggle('chkHyper4DSSS', 'showSSSVector');
+    bindToggle('chkHyper4DGoethe', 'showGoetheExtension');
     bindToggle('chkHyper4DPalette', 'showPaletteConstellation');
 
-    // 8. Pestañas del Panel Lateral (Inspector, Comparador, Constelación, Maestros)
+    // 8. Control de Pantalla Completa Inmersiva
+    const btnFullscreen = document.getElementById('btnHyper4DFullscreen');
+    if (btnFullscreen) {
+      btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
+    }
+
+    const btnExitFs = document.getElementById('btnHyper4DExitFullscreen');
+    if (btnExitFs) {
+      btnExitFs.addEventListener('click', () => this.exitFullscreen());
+    }
+
+    const btnToggleSidebar = document.getElementById('btnHyper4DFsToggleSidebar');
+    if (btnToggleSidebar) {
+      btnToggleSidebar.addEventListener('click', () => this.toggleSidebar());
+    }
+
+    // Atajos de Teclado (Tecla F para Pantalla Completa, Escape para salir)
+    window.addEventListener('keydown', (e) => {
+      // Ignorar si el usuario está escribiendo en un input, textarea o chat
+      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+      if (activeTag === 'input' || activeTag === 'textarea' || document.activeElement?.isContentEditable) {
+        return;
+      }
+
+      // Solo si la pestaña 4D está visible
+      const view4D = document.getElementById('viewHyper4D');
+      if (!view4D || view4D.style.display === 'none') return;
+
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        this.toggleFullscreen();
+      } else if (e.key === 'Escape' && this.options.isFullscreen) {
+        e.preventDefault();
+        this.exitFullscreen();
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement && this.options.isFullscreen) {
+        this.exitFullscreen();
+      }
+    });
+
+    // 9. Pestañas del Panel Lateral (Inspector, Composición, Comparador, Constelación, Maestros)
     const subTabs = document.querySelectorAll('.hyper4d-subtab-btn');
     const subPanels = {
       inspect: document.getElementById('hyper4dPanelInspect'),
+      composition: document.getElementById('hyper4dPanelComposition'),
       compare: document.getElementById('hyper4dPanelCompare'),
       palette: document.getElementById('hyper4dPanelPalette'),
       masters: document.getElementById('hyper4dPanelMasters')
@@ -1366,7 +1477,7 @@ export class Hyper4DStudio {
       });
     });
 
-    // 9. Presets de Maestros
+    // 10. Presets de Maestros
     document.querySelectorAll('.hyper4d-master-chip').forEach(chip => {
       chip.addEventListener('click', () => {
         const key = chip.dataset.master;
@@ -1374,16 +1485,320 @@ export class Hyper4DStudio {
       });
     });
 
-    // 10. Botón de Exportar Captura HD
+    // 11. Botón de Exportar Captura HD
     const btnSnapshot = document.getElementById('btnHyper4DSnapshot');
     if (btnSnapshot) {
       btnSnapshot.addEventListener('click', () => this.exportSnapshot());
     }
 
-    // 11. Botón Inspirar Paleta
+    // 12. Botón Inspirar Paleta
     const btnInspire = document.getElementById('btnHyper4DInspirePalette');
     if (btnInspire) {
       btnInspire.addEventListener('click', () => this.generateInspiredPalette());
+    }
+  }
+
+  // --- CONTROL DEL MODO PANTALLA COMPLETA INMERSIVA ---
+
+  toggleFullscreen() {
+    if (!this.options.isFullscreen) {
+      this.enterFullscreen();
+    } else {
+      this.exitFullscreen();
+    }
+  }
+
+  enterFullscreen() {
+    const wrapper = document.getElementById('hyper4dMainWrapper');
+    if (!wrapper) return;
+
+    this.options.isFullscreen = true;
+    wrapper.classList.add('fullscreen-mode');
+
+    const fsControls = wrapper.querySelector('.hyper4d-fs-floating-controls');
+    if (fsControls) fsControls.style.display = 'flex';
+
+    const btnFs = document.getElementById('btnHyper4DFullscreen');
+    if (btnFs) btnFs.textContent = '❌ Salir (Esc)';
+
+    if (wrapper.requestFullscreen && !document.fullscreenElement) {
+      wrapper.requestFullscreen().catch(() => {});
+    }
+
+    setTimeout(() => this._resizeCanvas(), 60);
+
+    if (this.app?.showToast) {
+      this.app.showToast('Modo Pantalla Completa Inmersiva 4D activado (F / Esc)', 'info');
+    }
+  }
+
+  exitFullscreen() {
+    const wrapper = document.getElementById('hyper4dMainWrapper');
+    if (!wrapper) return;
+
+    this.options.isFullscreen = false;
+    wrapper.classList.remove('fullscreen-mode');
+    wrapper.classList.remove('sidebar-hidden');
+
+    const fsControls = wrapper.querySelector('.hyper4d-fs-floating-controls');
+    if (fsControls) fsControls.style.display = 'none';
+
+    const btnFs = document.getElementById('btnHyper4DFullscreen');
+    if (btnFs) btnFs.textContent = '⛶ Pantalla Completa';
+
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+
+    setTimeout(() => this._resizeCanvas(), 60);
+  }
+
+  toggleSidebar() {
+    const wrapper = document.getElementById('hyper4dMainWrapper');
+    if (!wrapper) return;
+
+    this.options.isSidebarHidden = !this.options.isSidebarHidden;
+    wrapper.classList.toggle('sidebar-hidden', this.options.isSidebarHidden);
+
+    const btnToggle = document.getElementById('btnHyper4DFsToggleSidebar');
+    if (btnToggle) {
+      const txtSpan = btnToggle.querySelector('.fs-btn-txt');
+      if (txtSpan) txtSpan.textContent = this.options.isSidebarHidden ? 'Mostrar Panel' : 'Ocultar Panel';
+    }
+
+    setTimeout(() => this._resizeCanvas(), 60);
+  }
+
+  // --- MÉTODOS DE ANÁLISIS DE TEORÍA DEL COLOR (FARGES, GOETHE, ITTEN, GURNEY) ---
+
+  getFargesInherentValue(rgb) {
+    const lum = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+    const valueStep = Math.max(1, Math.min(9, Math.round(lum * 8 + 1)));
+
+    const valueNames = {
+      9: { label: 'High Light (Paso 9)', pigment: 'Blanco de Titanio (PW6)', leeway: 'Máximo valor. Solo admite oscurecimiento; cualquier adición de blanco no altera su valor.' },
+      8: { label: 'Light (Paso 8)', pigment: 'Amarillo Limón / Amarillo Cadmio (PY35)', leeway: 'Valor intrínseco alto. Soporta muy poco blanco antes de lavarse y quedar lechoso.' },
+      7: { label: 'Low Light (Paso 7)', pigment: 'Amarillo Ocre aclarado / Nápoles', leeway: 'Excelente para transiciones luminosas y medias tintas de luz cálida.' },
+      6: { label: 'Medium Light (Paso 6)', pigment: 'Ocre Amarillo (PY43) / Naranja Cadmio (PO20)', leeway: 'Pivote clásico de medias tintas en retratos y naturalezas muertas.' },
+      5: { label: 'Middle Value (Paso 5)', pigment: 'Tono Medio Clave / 50% Gris Neutral', leeway: 'Punto de equilibrio del claroscuro. Separa rigurosamente la masa de luz de la masa de sombra.' },
+      4: { label: 'High Dark (Paso 4)', pigment: 'Rojo Cadmio Medio (PR108) / Bermellón', leeway: 'Valor medio-oscuro denso. Admite aclarado moderado hacia luz o bajada hacia sombra profunda.' },
+      3: { label: 'Dark (Paso 3)', pigment: 'Carmín de Alizarina (PR177) / Viridián (PG18)', leeway: 'Excelente para sombras ricas y transparentes de alto croma sin usar negro plano.' },
+      2: { label: 'Low Dark (Paso 2)', pigment: 'Azul Ultramar (PB29) / Sombra Tostada (PBr7)', leeway: 'Casi el valor más oscuro de la paleta. Ideal para oscurecer mezclas sin ensuciarlas.' },
+      1: { label: 'Darkest (Paso 1)', pigment: 'Negro Marfil (PBk9) / Negro Humo', leeway: 'Máxima profundidad acromática. En óleo se aconseja templar con siena o ultramar para dar aire.' }
+    };
+
+    return {
+      step: valueStep,
+      lum: Math.round(lum * 100),
+      info: valueNames[valueStep]
+    };
+  }
+
+  getFargesHueBias(hue) {
+    if (hue >= 35 && hue < 80) {
+      if (hue >= 56) {
+        return {
+          bias: 'Amarillo Frío (Sesgo Verde)',
+          pigmentRef: 'Amarillo Limón Cadmio (PY35)',
+          advice: 'Ideal para mezclar verdes limpios, luminosos y vibrantes con ftalo o viridián. Si se mezcla con rojos, produce naranjas ligeramente apagados.'
+        };
+      } else {
+        return {
+          bias: 'Amarillo Cálido (Sesgo Rojo/Dorado)',
+          pigmentRef: 'Amarillo Cadmio Medio (PY35)',
+          advice: 'Ideal para naranjas brillantes, encarnados y tierras doradas. Si se mezcla con azules da verdes oliva quebrados (el clásico fenómeno amarillo+negro de Farges).'
+        };
+      }
+    } else if (hue >= 330 || hue < 35) {
+      if (hue >= 330 || hue < 10) {
+        return {
+          bias: 'Rojo Frío (Sesgo Azul / Magenta)',
+          pigmentRef: 'Carmín de Alizarina (PR177) / Rosa Quinacridona (PV19)',
+          advice: 'El auténtico primario frío para violetas y púrpuras limpios al mezclarse con azul ultramar. Si se mezcla con amarillo da naranjas terrosos.'
+        };
+      } else {
+        return {
+          bias: 'Rojo Cálido (Sesgo Amarillo / Naranja)',
+          pigmentRef: 'Rojo Cadmio Claro / Bermellón (PR108)',
+          advice: 'Produce naranjas ardientes con amarillo cadmio. Si se mezcla con ultramar produce marrones o grises quebrados por contener las 3 componentes primarias.'
+        };
+      }
+    } else if (hue >= 180 && hue < 270) {
+      if (hue >= 225) {
+        return {
+          bias: 'Azul Cálido (Sesgo Rojo / Violeta)',
+          pigmentRef: 'Azul Ultramar Francés (PB29)',
+          advice: 'Cálido dentro de los azules. Produce violetas resonantes con carmín. Con amarillo produce verdes oliva apagados por su componente rojiza inherente.'
+        };
+      } else {
+        return {
+          bias: 'Azul Frío (Sesgo Verde / Cian)',
+          pigmentRef: 'Azul Cobalto (PB28) / Azul Ftalo (PB15:3)',
+          advice: 'El primario frío perfecto para cielos, atmósfera y mezclas de verde de máxima luminosidad y pureza.'
+        };
+      }
+    } else if (hue >= 80 && hue < 180) {
+      return {
+        bias: hue < 130 ? 'Verde Cálido (Sesgo Amarillo / Oliva)' : 'Verde Frío (Sesgo Azul / Viridián)',
+        pigmentRef: hue < 130 ? 'Tierra Verde / Verde Oliva' : 'Viridián (PG18) / Ftalo (PG7)',
+        advice: hue < 130 ? 'Verde orgánico natural de vegetación soleada.' : 'Verde de veladura profunda para sombras frías y atmósfera acuática.'
+      };
+    } else {
+      return {
+        bias: 'Violeta / Púrpura (Secundario Resonante)',
+        pigmentRef: 'Violeta Dioxacina (PV23) / Azul Ultramar + Carmín',
+        advice: 'Máxima potencia para quebrar amarillos y crear sombras cromáticas según la técnica de Sorolla.'
+      };
+    }
+  }
+
+  getMatchingFineArtPigments(rgb) {
+    if (!FlorentFargesEngine || !FlorentFargesEngine.PIGMENTS) return [];
+    const distances = FlorentFargesEngine.PIGMENTS.map(p => {
+      const d = Math.hypot(rgb.r - p.rgb.r, rgb.g - p.rgb.g, rgb.b - p.rgb.b);
+      return { pigment: p, dist: d };
+    });
+    distances.sort((a, b) => a.dist - b.dist);
+    return distances.slice(0, 3).map(item => item.pigment);
+  }
+
+  getFleshZoneAffinity(rgb) {
+    if (!FlorentFargesEngine || !FlorentFargesEngine.FLESH_ZONES) return null;
+    let closestZone = null;
+    let minDist = Infinity;
+    FlorentFargesEngine.FLESH_ZONES.forEach(zone => {
+      const d = Math.hypot(rgb.r - zone.rgb.r, rgb.g - zone.rgb.g, rgb.b - zone.rgb.b);
+      if (d < minDist) {
+        minDist = d;
+        closestZone = zone;
+      }
+    });
+
+    if (minDist > 160) {
+      return {
+        isFleshTone: false,
+        note: 'Tono no carnal directo: Ideal para vestiduras, fondos, atmósfera o acentos focales complementarios.'
+      };
+    }
+
+    return {
+      isFleshTone: true,
+      zone: closestZone,
+      distance: Math.round(minDist)
+    };
+  }
+
+  getGoetheHarmonicProportion(rgb) {
+    const hsv = ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b);
+    const lum = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+
+    let goetheWeight = 6;
+    let colorName = 'Neutro / Tierra';
+
+    if (hsv.s < 0.15) {
+      goetheWeight = lum > 0.6 ? 8 : (lum < 0.3 ? 3 : 5);
+      colorName = 'Gris Acromático';
+    } else if (hsv.h >= 45 && hsv.h < 75) {
+      goetheWeight = 9;
+      colorName = 'Amarillo (Fuerza Lumínica Máxima)';
+    } else if (hsv.h >= 20 && hsv.h < 45) {
+      goetheWeight = 8;
+      colorName = 'Naranja';
+    } else if (hsv.h >= 340 || hsv.h < 20) {
+      goetheWeight = 6;
+      colorName = 'Rojo';
+    } else if (hsv.h >= 75 && hsv.h < 170) {
+      goetheWeight = 6;
+      colorName = 'Verde';
+    } else if (hsv.h >= 170 && hsv.h < 260) {
+      goetheWeight = 4;
+      colorName = 'Azul';
+    } else {
+      goetheWeight = 3;
+      colorName = 'Violeta / Púrpura (Luz Sombría)';
+    }
+
+    const areaPct = ((11 - goetheWeight) / 24) * 100;
+
+    return {
+      colorName,
+      goetheWeight,
+      suggestedAreaPct: Math.max(10, Math.min(65, areaPct)),
+      ratioRule: goetheWeight >= 8 ? 'Usar en áreas pequeñas y acentos (1:3 contra tonos oscuros).' : (goetheWeight <= 4 ? 'Usar en grandes masas de descanso o fondo (3:1 contra luces).' : 'Superficie equilibrada (1:1 con su par complementario).')
+    };
+  }
+
+  getIttenDominantContrast(rgb) {
+    const hsv = ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b);
+    const lum = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+    const isWarm = (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320;
+
+    if (lum > 0.82 || lum < 0.18) {
+      return {
+        name: 'Contraste de Claro-Oscuro (Luminosidad)',
+        desc: `Esta muestra explota el valor extremo (${lum > 0.82 ? 'Luz Alta' : 'Sombra Profunda'}). Su poder compositivo radica en jerarquizar la silueta y recortar figuras sobre el fondo.`
+      };
+    } else if (hsv.s > 0.75) {
+      return {
+        name: 'Contraste de Calidad (Saturación Pura vs Neutro)',
+        desc: 'Saturación muy alta. Funciona como imán visual. Si se rodea de tierras o grises apagados, su intensidad resplandecerá sin necesitar contrastes de valor bruscos.'
+      };
+    } else if (hsv.s < 0.25) {
+      return {
+        name: 'Contraste de Modulación Atmosférica (Gris Cromático)',
+        desc: 'Tono desaturado y noble. Sirve de amortiguador de la paleta para que los colores vivos de la composición no compitan entre sí.'
+      };
+    } else if (isWarm) {
+      return {
+        name: 'Contraste Térmico (Cálido Adelantado)',
+        desc: 'Psicológicamente los tonos cálidos avanzan hacia el espectador. Ideal para primeros planos, volumen iluminado o áreas de calidez emocional.'
+      };
+    } else {
+      return {
+        name: 'Contraste Térmico (Frío Recesivo)',
+        desc: 'Los tonos fríos retroceden visualmente en el espacio, generando sensación de lejanía, aire, perspectiva atmosférica y serenidad.'
+      };
+    }
+  }
+
+  getGurneyLightingAnalysis(rgb) {
+    const hsv = ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b);
+    const isWarm = (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320;
+
+    let lightSource = 'Luz Natural Equilibrada (5500K)';
+    let atmosphereMood = 'Atmósfera Neutra de Estudio';
+    if (isWarm && hsv.s > 0.4) {
+      lightSource = 'Luz Solar Dorada (Golden Hour ~3200K) o Fuego/Vela';
+      atmosphereMood = 'Cálida, envolvente, con sombras azules complementarias';
+    } else if (!isWarm && hsv.s > 0.3) {
+      lightSource = 'Luz Difusa de Ventana Norte / Domo Celeste (6500K - 8500K)';
+      atmosphereMood = 'Fresco, diáfano, sombras templadas por rebote del suelo';
+    }
+
+    return {
+      lightSource,
+      atmosphereMood,
+      sssFactor: (hsv.s * 0.6 + (isWarm ? 0.4 : 0.1)).toFixed(2)
+    };
+  }
+
+  getCompositionRole(rgb) {
+    const hsv = ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b);
+    if (hsv.s > 0.7 && hsv.v > 0.6) {
+      return {
+        role: 'Protagonista / Foco Focal Primario (Punto Focal)',
+        desc: 'Atrae la mirada al instante. Debe usarse con moderación en el centro de interés para no saturar la lectura.'
+      };
+    } else if (hsv.s >= 0.3 && hsv.v >= 0.35) {
+      return {
+        role: 'Mediatinta Estructural / Transición (Halftone)',
+        desc: 'Modela el volumen y la forma entre la luz plena y la penumbra. Ocupa la mayor superficie informativa del objeto.'
+      };
+    } else {
+      return {
+        role: 'Fondo / Clima Atmosférico / Masa de Reposo',
+        desc: 'Proporciona descanso al ojo del espectador y sostiene la jerarquía de los acentos vivos.'
+      };
     }
   }
 
@@ -1415,13 +1830,14 @@ export class Hyper4DStudio {
     const hex = ColorMath.rgbToHex(curRgb.r, curRgb.g, curRgb.b);
     const munsell = MunsellSystem.rgbToMunsell(curRgb.r, curRgb.g, curRgb.b);
     const hsv = ColorMath.rgbToHsv(curRgb.r, curRgb.g, curRgb.b);
-    const lab = ColorMath.rgbToOklch(curRgb.r, curRgb.g, curRgb.b);
     const isWarm = (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320;
 
     // Actualizar Muestra A del Comparador
     if (this.compareSlots[0]) {
       this.compareSlots[0].hex = hex;
       this.compareSlots[0].rgb = curRgb;
+      const slotASwatch = document.getElementById('hyper4dSlotASwatch');
+      if (slotASwatch) slotASwatch.style.backgroundColor = hex;
     }
 
     // Actualizar Tarjeta de Inspección HTML
@@ -1439,18 +1855,167 @@ export class Hyper4DStudio {
       coordsEl.textContent = `H:${Math.round(hsv.h)}° S:${Math.round(hsv.s * 100)}% V:${Math.round(hsv.v * 100)}% | ${isWarm ? 'Cálido' : 'Frío'}`;
     }
 
-    // Actualizar análisis de Florent Farges en la tarjeta
-    const solver = FlorentFargesEngine.solveMixingForColor(curRgb);
-    const adviceEl = document.getElementById('hyper4dFargesAdvice');
-    if (adviceEl && solver) {
-      adviceEl.innerHTML = `
-        <div style="margin-bottom: 4px;"><strong>Pigmentos recomendados:</strong> ${solver.cand1.name} (${solver.cand1.percent}%) + ${solver.cand2.name} (${solver.cand2.percent}%)</div>
-        <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.4;">${solver.valueAdvice}</div>
+    // 1. Escala de Valor Inherente (Farges 1-9)
+    const inherentVal = this.getFargesInherentValue(curRgb);
+    const inherentBox = document.getElementById('hyper4dInherentValueBox');
+    if (inherentBox) {
+      const scaleSteps = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(step => {
+        const lumVal = Math.round(((step - 1) / 8) * 255);
+        const bgHex = ColorMath.rgbToHex(lumVal, lumVal, lumVal);
+        const isActive = step === inherentVal.step;
+        return `<div class="hyper4d-val-step ${isActive ? 'active' : ''}" style="background-color: ${bgHex}; color: ${step > 5 ? '#000' : '#FFF'};">${step}</div>`;
+      }).join('');
+
+      inherentBox.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <strong style="color: #FBBF24;">${inherentVal.info.label}</strong>
+          <span style="font-size: 0.68rem; color: #94A3B8;">Luminancia: ${inherentVal.lum}%</span>
+        </div>
+        <div class="hyper4d-val-scale-strip">${scaleSteps}</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.4;">
+          <strong>Referencia:</strong> ${inherentVal.info.pigment}.<br>
+          <em>${inherentVal.info.leeway}</em>
+        </div>
       `;
     }
 
-    // Actualizar datos del Comparador
+    // 2. Sesgo de Matiz (Hue Bias) & Regla de Farges
+    const biasInfo = this.getFargesHueBias(hsv.h);
+    const biasBox = document.getElementById('hyper4dHueBiasBox');
+    if (biasBox) {
+      biasBox.innerHTML = `
+        <div style="margin-bottom: 4px;">
+          <span class="hyper4d-badge-sub" style="background: rgba(99, 102, 241, 0.25); color: #C7D2FE;">${biasInfo.bias}</span>
+          <span style="font-size: 0.7rem; color: #94A3B8;">Ref: ${biasInfo.pigmentRef}</span>
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.4;">${biasInfo.advice}</div>
+      `;
+    }
+
+    // 3. Pigmentos Reales Afines de Atelier
+    const matchingPigments = this.getMatchingFineArtPigments(curRgb);
+    const pigmentsBox = document.getElementById('hyper4dMatchingPigmentsBox');
+    if (pigmentsBox && matchingPigments.length > 0) {
+      pigmentsBox.innerHTML = matchingPigments.map(p => `
+        <div class="hyper4d-pigment-row">
+          <div class="hyper4d-pigment-chip" style="background-color: ${p.hex};"></div>
+          <div style="flex: 1;">
+            <div style="display: flex; justify-content: space-between;">
+              <strong style="color: #FFFFFF; font-size: 0.71rem;">${p.name}</strong>
+              <span style="font-family: var(--font-mono); font-size: 0.68rem; color: #38BDF8;">${p.ci}</span>
+            </div>
+            <div style="font-size: 0.66rem; color: var(--text-muted); display: flex; gap: 6px;">
+              <span>Valor: ${p.inherentValue}/9</span> • 
+              <span>${p.opacity}</span> • 
+              <span>Fuerza tinte: ${p.tintingStrength}/10</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 4. Afinidad con Carnaciones de Farges
+    const fleshInfo = this.getFleshZoneAffinity(curRgb);
+    const fleshBox = document.getElementById('hyper4dFleshZoneBox');
+    if (fleshBox && fleshInfo) {
+      if (fleshInfo.isFleshTone) {
+        fleshBox.innerHTML = `
+          <div style="margin-bottom: 3px;">
+            <strong style="color: #F472B6;">${fleshInfo.zone.title}</strong>
+          </div>
+          <div style="font-size: 0.69rem; color: var(--text-muted); margin-bottom: 4px;">
+            ${fleshInfo.zone.anatomical}
+          </div>
+          <div style="font-size: 0.68rem; color: #38BDF8;">
+            <strong>Fórmula Farges:</strong> ${fleshInfo.zone.recipe}
+          </div>
+        `;
+      } else {
+        fleshBox.innerHTML = `<div style="font-size: 0.7rem; color: var(--text-muted);">${fleshInfo.note}</div>`;
+      }
+    }
+
+    // 5. Composición: Extensión de Goethe
+    const goetheInfo = this.getGoetheHarmonicProportion(curRgb);
+    const goetheBox = document.getElementById('hyper4dGoetheBox');
+    if (goetheBox) {
+      goetheBox.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <strong style="color: #FFFFFF;">${goetheInfo.colorName}</strong>
+          <span style="font-family: var(--font-mono); color: #FBBF24;">Fuerza: ${goetheInfo.goetheWeight}/9</span>
+        </div>
+        <div class="hyper4d-goethe-meter">
+          <div style="display: flex; justify-content: space-between; font-size: 0.68rem;">
+            <span>Área Recomendada en Lienzo:</span>
+            <strong style="color: #38BDF8;">${goetheInfo.suggestedAreaPct.toFixed(0)}% del cuadro</strong>
+          </div>
+          <div class="hyper4d-goethe-bar-bg">
+            <div class="hyper4d-goethe-bar-fill" style="width: ${goetheInfo.suggestedAreaPct}%;"></div>
+          </div>
+          <div style="font-size: 0.68rem; color: var(--text-muted);">${goetheInfo.ratioRule}</div>
+        </div>
+      `;
+    }
+
+    // 6. Composición: Contrastes de Itten
+    const ittenInfo = this.getIttenDominantContrast(curRgb);
+    const ittenBox = document.getElementById('hyper4dIttenBox');
+    if (ittenBox) {
+      ittenBox.innerHTML = `
+        <div style="margin-bottom: 4px;">
+          <strong style="color: #A78BFA;">${ittenInfo.name}</strong>
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.4;">${ittenInfo.desc}</div>
+      `;
+    }
+
+    // 7. Iluminación y SSS de James Gurney
+    const gurneyInfo = this.getGurneyLightingAnalysis(curRgb);
+    const gurneyBox = document.getElementById('hyper4dGurneyBox');
+    if (gurneyBox) {
+      gurneyBox.innerHTML = `
+        <div style="margin-bottom: 3px;">
+          <span style="color: #F59E0B; font-weight: 700;">Fuente de Luz Óptima:</span>
+          <span>${gurneyInfo.lightSource}</span>
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 4px;">
+          <strong>Clima de Escena:</strong> ${gurneyInfo.atmosphereMood}
+        </div>
+        <div style="font-size: 0.69rem; color: #EC4899;">
+          <strong>Factor SSS (Dispersión Subcutánea):</strong> ${gurneyInfo.sssFactor} (Intensidad de color vivo en el terminador de sombra).
+        </div>
+      `;
+    }
+
+    // 8. Rol Compositivo
+    const roleInfo = this.getCompositionRole(curRgb);
+    const roleBox = document.getElementById('hyper4dCompositionRoleBox');
+    if (roleBox) {
+      roleBox.innerHTML = `
+        <div style="margin-bottom: 3px;">
+          <strong style="color: #34D399;">${roleInfo.role}</strong>
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.4;">${roleInfo.desc}</div>
+      `;
+    }
+
+    // 9. Actualizar datos del Comparador
     this._updateComparisonPanel();
+
+    // 10. Reporte de Cobertura de Paleta
+    const coverageReport = document.getElementById('hyper4dPaletteCoverageReport');
+    if (coverageReport && this.app?.swatchManager) {
+      const activePal = this.app.swatchManager.getActivePalette();
+      if (activePal && Array.isArray(activePal.colors) && activePal.colors.length > 0) {
+        const count = activePal.colors.length;
+        coverageReport.innerHTML = `
+          <div style="color: #38BDF8; font-weight: 600; margin-bottom: 2px;">Paleta activa: "${activePal.name}" (${count} muestras)</div>
+          <div style="color: var(--text-muted);">Constelación desplegada en 4D con cálculo de límites cromáticos y balance de valores.</div>
+        `;
+      } else {
+        coverageReport.innerHTML = `<span style="color: var(--text-muted);">Selecciona o crea una paleta en la pestaña Bibliotecas para proyectar su volumen.</span>`;
+      }
+    }
   }
 
   _updateComparisonPanel() {
@@ -1485,6 +2050,15 @@ export class Hyper4DStudio {
     else if (deltaE > 10) deltaInterpretation = 'Diferencia tonal clara y armónica';
     else if (deltaE > 3) deltaInterpretation = 'Variación sutil / matiz cercano';
 
+    // Diagnóstico Compositivo Conjunto
+    const hueDiff = Math.abs(hsvA.h - hsvB.h);
+    const minHueDiff = Math.min(hueDiff, 360 - hueDiff);
+    let harmonyRelation = 'Relación Cromática Libre';
+    if (minHueDiff >= 165 && minHueDiff <= 195) harmonyRelation = '🔥 Oposición Complementaria Directa (Máxima Tensión)';
+    else if (minHueDiff <= 35) harmonyRelation = '🌿 Afinidad Análoga (Continuidad y Calma)';
+    else if (minHueDiff >= 105 && minHueDiff <= 135) harmonyRelation = '📐 Tríada Equidistante (Riqueza Vibrante)';
+    else if (minHueDiff >= 80 && minHueDiff <= 100) harmonyRelation = '⚖️ Cuadratura Térmica (Contraste Moderado)';
+
     compEl.innerHTML = `
       <div class="hyper4d-stat-row">
         <span>Distancia Perceptual ΔE:</span>
@@ -1498,12 +2072,46 @@ export class Hyper4DStudio {
         <span>Diálogo Térmico:</span>
         <strong style="color: #F472B6;">${warmA !== warmB ? '⚡ Contraste Cálido / Frío directo' : 'Unidad térmica homogénea'}</strong>
       </div>
+      <div class="hyper4d-stat-row">
+        <span>Relación Compositiva:</span>
+        <strong style="color: #34D399;">${harmonyRelation}</strong>
+      </div>
     `;
+
+    // Botones de Acción de Mezcla 50/50
+    const mixBox = document.getElementById('hyper4dCompareMixActionBox');
+    if (mixBox) {
+      const mixRgb = ColorMath.mixRyb(slotA.rgb, slotB.rgb, 0.5);
+      const mixHex = ColorMath.rgbToHex(mixRgb.r, mixRgb.g, mixRgb.b);
+      mixBox.innerHTML = `
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="width: 22px; height: 22px; border-radius: 4px; background-color: ${mixHex}; border: 1px solid #FFF;"></div>
+          <button id="btnHyper4DLoadMix" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.7rem;">
+            <span>🎨</span> Cargar Mezcla (${mixHex})
+          </button>
+        </div>
+      `;
+
+      const btnLoad = document.getElementById('btnHyper4DLoadMix');
+      if (btnLoad && this.app) {
+        btnLoad.addEventListener('click', () => {
+          this.app.setColorDirectly(mixRgb);
+          if (this.app.showToast) {
+            this.app.showToast(`Mezcla física 50/50 (${mixHex}) cargada en la Rueda`, 'success');
+          }
+        });
+      }
+    }
   }
 
   _loadMasterPreset(key) {
     const preset = this.masterPresets[key];
     if (!preset) return;
+
+    // Actualizar clase active en chips
+    document.querySelectorAll('.hyper4d-master-chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.master === key);
+    });
 
     const descEl = document.getElementById('hyper4dMasterDesc');
     if (descEl) {
@@ -1539,6 +2147,8 @@ export class Hyper4DStudio {
       }
     }
   }
+
+
 
   generateInspiredPalette() {
     const curRgb = this.app?.fgColor || { r: 99, g: 102, b: 241 };
