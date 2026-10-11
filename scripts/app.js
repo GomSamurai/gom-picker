@@ -1814,6 +1814,17 @@ class GomPickerApp {
       }
     });
 
+    items.push({ divider: true });
+    items.push({
+      icon: '🖼️',
+      label: palette ? `Exportar Lámina de '${palette.name}'...` : `Exportar Ficha de ${hex}...`,
+      action: () => {
+        const palColors = palette ? palette.colors : [hex];
+        const palName = palette ? palette.name : `Muestra ${hex}`;
+        SwatchSheetExporter.openExportModal(palName, palColors, this);
+      }
+    });
+
     // In-palette options if this swatch is part of an editable palette
     if (palette && !isBuiltIn && index >= 0) {
       items.push({ divider: true });
@@ -2143,10 +2154,9 @@ class GomPickerApp {
       },
       {
         icon: '🖼️',
-        label: 'Lámina Swatch PNG (1200x630)',
+        label: 'Taller de Láminas & Exportación Pro...',
         run: () => {
-          SwatchSheetExporter.exportPaletteToPng(pal.name, pal.colors);
-          this.showToast('✓ Lámina Swatch Sheet PNG descargada', 'success');
+          SwatchSheetExporter.openExportModal(pal.name, pal.colors, this);
         }
       }
     ];
@@ -3255,7 +3265,33 @@ class GomPickerApp {
         this.renderSwatchesCollection();
         this.showToast(`Paleta '${p.title}' guardada en tu biblioteca`);
       });
-      actionsRow.appendChild(btnSave);
+
+      const btnExportMaster = document.createElement('button');
+      btnExportMaster.className = 'tool-action-btn';
+      btnExportMaster.style.padding = '4px 8px';
+      btnExportMaster.style.fontSize = '0.72rem';
+      btnExportMaster.innerHTML = `<span>🖼️</span> Lámina`;
+      btnExportMaster.title = `Exportar lámina cromática de estudio de "${p.title}"`;
+      btnExportMaster.addEventListener('click', (e) => {
+        e.stopPropagation();
+        SwatchSheetExporter.openExportModal(
+          `${p.title} (${p.artist}, ${p.year || ''})`,
+          p.colors,
+          this,
+          {
+            template: 'fine_art_atelier',
+            theme: 'paper',
+            subtitle: `ESTUDIO DE GRAN MAESTRO: ${p.artist.toUpperCase()} • ${p.movement?.toUpperCase() || ''}`
+          }
+        );
+      });
+
+      const leftActions = document.createElement('div');
+      leftActions.style.display = 'flex';
+      leftActions.style.gap = '6px';
+      leftActions.appendChild(btnExportMaster);
+      leftActions.appendChild(btnSave);
+      actionsRow.appendChild(leftActions);
 
       // If custom artwork, allow deletion
       if (p.isCustom) {
@@ -3363,6 +3399,22 @@ class GomPickerApp {
         this.swatchManager.addPalette(artwork.title, artwork.colors.map(c => c.hex));
         this.renderSwatchesCollection();
         this.showToast(`Paleta de '${artwork.title}' guardada en Bibliotecas`);
+      };
+    }
+
+    const btnExportSheetModal = document.getElementById('btnModalExportSheet');
+    if (btnExportSheetModal) {
+      btnExportSheetModal.onclick = () => {
+        SwatchSheetExporter.openExportModal(
+          `${artwork.title} (${artwork.artist}, ${artwork.year || ''})`,
+          artwork.colors,
+          this,
+          {
+            template: 'fine_art_atelier',
+            theme: 'paper',
+            subtitle: `ESTUDIO DE GRAN MAESTRO: ${artwork.artist.toUpperCase()} • ${artwork.movement?.toUpperCase() || ''}`
+          }
+        );
       };
     }
 
@@ -4191,8 +4243,9 @@ class GomPickerApp {
       btnAiExportPng.addEventListener('click', () => {
         if (!this.currentAiPalette || !this.currentAiPalette.colors) return;
         const name = this.currentAiPalette.title || 'Paleta IA 60-30-10';
-        SwatchSheetExporter.exportPaletteToPng(name, this.currentAiPalette.colors);
-        this.showToast('✓ Lámina Swatch Sheet generada en PNG de alta resolución (1200x630px)', 'success');
+        SwatchSheetExporter.openExportModal(name, this.currentAiPalette.colors, this, {
+          subtitle: 'COMPOSICIÓN SINTETIZADA POR ASESOR IA • PROPORCIONES 60-30-10'
+        });
       });
     }
 
@@ -4788,8 +4841,7 @@ class GomPickerApp {
     if (btnSwatchesPng) {
       btnSwatchesPng.addEventListener('click', () => {
         const activePal = this.swatchManager.getActivePalette() || { name: 'Paleta Activa GOM Picker', colors: [this.fgColor.hex, this.bgColor.hex] };
-        SwatchSheetExporter.exportPaletteToPng(activePal.name, activePal.colors);
-        this.showToast('✓ Lámina Swatch Sheet descargada en PNG (1200x630px)', 'success');
+        SwatchSheetExporter.openExportModal(activePal.name, activePal.colors, this);
       });
     }
   }

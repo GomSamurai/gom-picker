@@ -1,146 +1,143 @@
 /**
- * GOM Picker - High-Resolution Swatch Sheet PNG Generator
- * Renders an elegant, publication-grade digital palette sheet (1200x630px PNG)
- * with proportional 60-30-10 swatches, HEX codes, Munsell notations,
- * and pigment labels ready to drag directly into Photoshop, Procreate, or Clip Studio.
+ * GOM Picker - Professional High-Resolution Swatch Sheet & Specimen Exporter Studio
+ * Generates publication-grade, customizable digital color sheets in multiple templates:
+ * 1. Cinematic Pro 60-30-10 & Golden Ratio (16:9 / 4K)
+ * 2. Swatch Cards Gallery / Specimen Grid (Uniform specimen cards for any count)
+ * 3. Fine Art Atelier & Real Pigments (Winsor & Newton, Sennelier, CI codes, Opacity, Lightfastness)
+ * 4. Technical Print Spec / Brand Guidelines (CMYK, TAC, Gamut warnings, WCAG contrast)
+ * 5. Editorial Moodboard & Concept Art (Minimalist poster with harmony compass)
+ *
+ * Fully configurable: themes, field toggles, resolutions (Full HD, 4K, 300 DPI A4),
+ * custom metadata, live interactive preview modal, instant Clipboard copy, and SVG/PDF export.
  */
 
 import { ColorMath } from './colorMath.js';
 import { MunsellSystem } from './munsellSystem.js';
+import { BrandPigments } from './brandPigments.js';
 
 export const SwatchSheetExporter = {
-  exportPaletteToPng(paletteName, colors, options = {}) {
-    if (!colors || colors.length === 0) return;
+  // Available Templates
+  TEMPLATES: {
+    CINEMATIC_PRO: 'cinematic_pro',
+    GRID_GALLERY: 'grid_gallery',
+    FINE_ART_ATELIER: 'fine_art_atelier',
+    TECHNICAL_PRINT: 'technical_print',
+    MOODBOARD_EDITORIAL: 'moodboard_editorial'
+  },
 
-    const width = 1200;
-    const height = 630;
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-
-    // 1. Sleek Dark Studio Background
-    const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-    bgGrad.addColorStop(0, '#0E0F17');
-    bgGrad.addColorStop(1, '#161824');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, width, height);
-
-    // Subtle ambient accent glow behind header
-    const glowGrad = ctx.createRadialGradient(240, 80, 20, 240, 80, 280);
-    glowGrad.addColorStop(0, 'rgba(99, 102, 241, 0.18)');
-    glowGrad.addColorStop(1, 'rgba(99, 102, 241, 0)');
-    ctx.fillStyle = glowGrad;
-    ctx.fillRect(0, 0, width, 300);
-
-    // Outer subtle border
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(16, 16, width - 32, height - 32);
-
-    // 2. Header: Title, Logo & Subtitle
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 32px "Inter", "Outfit", -apple-system, sans-serif';
-    ctx.fillText(paletteName || 'Paleta de Arte GOM Picker Pro', 48, 68);
-
-    ctx.fillStyle = '#94A3B8';
-    ctx.font = '500 15px -apple-system, sans-serif';
-    ctx.fillText('FICHA CROMÁTICA DE ESTUDIO • PROPORCIONES 60 • 30 • 10 • NOTACIÓN MUNSELL', 48, 96);
-
-    // Header Right Badge
-    ctx.fillStyle = 'rgba(99, 102, 241, 0.25)';
-    ctx.strokeStyle = '#6366F1';
-    ctx.lineWidth = 1.5;
-    this._roundRect(ctx, width - 260, 42, 210, 36, 6);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#C7D2FE';
-    ctx.font = 'bold 13px -apple-system, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('🎨 GOM COLOR PICKER', width - 155, 65);
-    ctx.textAlign = 'left';
-
-    // 3. Render Large Swatch Bands
-    const startY = 130;
-    const bandHeight = 360;
-    const marginX = 48;
-    const availWidth = width - marginX * 2;
-    
-    // Proportional widths for 5 colors (60%, 25%, 15%) or even distribution
-    let widths = [];
-    const n = colors.length;
-    if (n === 5) {
-      // 60-30-10 distribution
-      widths = [availWidth * 0.40, availWidth * 0.25, availWidth * 0.15, availWidth * 0.10, availWidth * 0.10];
-    } else {
-      const step = availWidth / n;
-      widths = colors.map(() => step);
+  // Available Color Themes
+  THEMES: {
+    OBSIDIAN: {
+      id: 'obsidian',
+      name: 'Obsidian Dark Studio',
+      bgGradient: ['#0B0D14', '#131622'],
+      accentGlow: 'rgba(99, 102, 241, 0.16)',
+      cardBg: 'rgba(17, 20, 31, 0.88)',
+      cardBorder: 'rgba(255, 255, 255, 0.12)',
+      textPrimary: '#FFFFFF',
+      textSecondary: '#94A3B8',
+      textMuted: '#64748B',
+      accentColor: '#6366F1',
+      badgeBg: 'rgba(99, 102, 241, 0.22)',
+      badgeBorder: '#6366F1',
+      badgeText: '#C7D2FE',
+      goldColor: '#F59E0B'
+    },
+    PAPER: {
+      id: 'paper',
+      name: 'Papel Bellas Artes',
+      bgGradient: ['#F6F3EB', '#ECE6DC'],
+      accentGlow: 'rgba(194, 132, 58, 0.12)',
+      cardBg: 'rgba(255, 255, 255, 0.92)',
+      cardBorder: 'rgba(70, 55, 40, 0.15)',
+      textPrimary: '#1E1B18',
+      textSecondary: '#5C5248',
+      textMuted: '#8C8072',
+      accentColor: '#8F5428',
+      badgeBg: 'rgba(143, 84, 40, 0.12)',
+      badgeBorder: '#8F5428',
+      badgeText: '#5C3415',
+      goldColor: '#B45309'
+    },
+    CYBERPUNK: {
+      id: 'cyberpunk',
+      name: 'Cyberpunk Neon',
+      bgGradient: ['#070814', '#0A1326'],
+      accentGlow: 'rgba(6, 182, 212, 0.22)',
+      cardBg: 'rgba(10, 18, 38, 0.92)',
+      cardBorder: 'rgba(6, 182, 212, 0.35)',
+      textPrimary: '#F0FDF4',
+      textSecondary: '#67E8F9',
+      textMuted: '#38BDF8',
+      accentColor: '#06B6D4',
+      badgeBg: 'rgba(6, 182, 212, 0.22)',
+      badgeBorder: '#06B6D4',
+      badgeText: '#A5F3FC',
+      goldColor: '#FBBF24'
+    },
+    SLATE: {
+      id: 'slate',
+      name: 'Slate Minimal Bauhaus',
+      bgGradient: ['#1C2029', '#242A35'],
+      accentGlow: 'rgba(255, 255, 255, 0.06)',
+      cardBg: 'rgba(30, 36, 48, 0.92)',
+      cardBorder: 'rgba(255, 255, 255, 0.15)',
+      textPrimary: '#F8FAFC',
+      textSecondary: '#CBD5E1',
+      textMuted: '#94A3B8',
+      accentColor: '#3B82F6',
+      badgeBg: 'rgba(59, 130, 246, 0.2)',
+      badgeBorder: '#3B82F6',
+      badgeText: '#BFDBFE',
+      goldColor: '#F59E0B'
     }
+  },
 
-    let curX = marginX;
-    colors.forEach((col, idx) => {
-      const hex = typeof col === 'string' ? col : col.hex;
-      const rgb = typeof col === 'string' ? ColorMath.hexToRgb(col) : (col.rgb || ColorMath.hexToRgb(hex));
-      const munsell = MunsellSystem.rgbToMunsell(rgb.r, rgb.g, rgb.b);
-      const w = widths[idx];
+  // Available Resolutions
+  RESOLUTIONS: {
+    '1920x1080': { width: 1920, height: 1080, label: 'Full HD 1080p (16:9)' },
+    '3840x2160': { width: 3840, height: 2160, label: '4K Ultra HD (16:9)' },
+    '3508x2480': { width: 3508, height: 2480, label: 'A4 Impresión 300 DPI' },
+    '2048x2048': { width: 2048, height: 2048, label: 'Cuadrado Estudio (1:1)' },
+    '1080x1920': { width: 1080, height: 1920, label: 'Story Vertical (9:16)' }
+  },
 
-      // Draw Swatch Block
-      ctx.fillStyle = hex;
-      this._roundRect(ctx, curX, startY, w - 8, bandHeight, 10);
-      ctx.fill();
+  // Active configuration state
+  currentConfig: {
+    template: 'cinematic_pro',
+    theme: 'obsidian',
+    resolution: '1920x1080',
+    title: '',
+    subtitle: 'FICHA CROMÁTICA DE ESTUDIO • GOM COLOR PICKER PRO',
+    author: 'Fran Gómez • GOM Samurai',
+    showHexRgb: true,
+    showCmyk: true,
+    showMunsell: true,
+    showLumTemp: true,
+    showPigments: true,
+    showMicroRamp: true,
+    showRoles: true,
+    showTips: true,
+    showGradientStrip: true,
+    showWatermark: true
+  },
 
-      // Inner shadow / border
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+  // Reference to active modal instance
+  _activeModalState: null,
 
-      // Swatch Bottom Info Card
-      const cardY = startY + bandHeight - 110;
-      ctx.fillStyle = 'rgba(11, 12, 18, 0.85)';
-      this._roundRect(ctx, curX + 6, cardY, w - 20, 100, 6);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.stroke();
+  /**
+   * Quick export directly to PNG download (backward compatible)
+   */
+  exportPaletteToPng(paletteName, colors, options = {}) {
+    const config = { ...this.currentConfig, ...options, title: paletteName || this.currentConfig.title || 'Paleta de Arte GOM' };
+    const res = this.RESOLUTIONS[config.resolution] || this.RESOLUTIONS['1920x1080'];
+    const canvas = document.createElement('canvas');
+    canvas.width = res.width;
+    canvas.height = res.height;
 
-      // Color HEX Code
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 16px "SF Mono", monospace';
-      ctx.fillText(hex.toUpperCase(), curX + 16, cardY + 28);
+    this.renderToCanvas(canvas, paletteName, colors, config);
 
-      // RGB
-      ctx.fillStyle = '#94A3B8';
-      ctx.font = '12px "SF Mono", monospace';
-      ctx.fillText(`RGB: ${rgb.r}, ${rgb.g}, ${rgb.b}`, curX + 16, cardY + 52);
-
-      // Munsell
-      ctx.fillStyle = '#F59E0B';
-      ctx.font = 'bold 12px "SF Mono", monospace';
-      ctx.fillText(`Munsell: ${munsell.notation}`, curX + 16, cardY + 76);
-
-      // Role tag at top of swatch
-      const roleText = idx === 0 ? '60% Base' : (idx === 1 ? '30% Forma' : (idx === 2 ? '10% Foco' : 'Acento'));
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-      this._roundRect(ctx, curX + 10, startY + 12, 85, 24, 4);
-      ctx.fill();
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 11px -apple-system, sans-serif';
-      ctx.fillText(roleText, curX + 20, startY + 28);
-
-      curX += w;
-    });
-
-    // 4. Footer: Author Credit & Copyright
-    ctx.fillStyle = '#64748B';
-    ctx.font = '13px -apple-system, sans-serif';
-    ctx.fillText('Creado con GOM Color Picker Pro — Suite de Teoría y Mezcla Cromática para Artistas', 48, height - 32);
-
-    ctx.textAlign = 'right';
-    ctx.fillText('Fran Gómez • GOM Samurai', width - 48, height - 32);
-    ctx.textAlign = 'left';
-
-    // 5. Trigger download
-    const cleanFileName = (paletteName || 'gom_palette')
+    const cleanFileName = (config.title || 'gom_palette')
       .toLowerCase()
       .replace(/[^a-z0-9_-]/g, '_') + '.png';
 
@@ -150,17 +147,1334 @@ export const SwatchSheetExporter = {
     a.click();
   },
 
+  /**
+   * Opens the interactive Export Studio modal with live preview,
+   * template pills, theme toggles, and direct clipboard / download actions.
+   */
+  openExportModal(paletteName, colors, appInstance, initialOptions = {}) {
+    if (!colors || colors.length === 0) {
+      if (appInstance?.showToast) appInstance.showToast('No hay muestras para exportar', 'warn');
+      return;
+    }
+
+    const modal = document.getElementById('exportSheetModal');
+    if (!modal) {
+      console.warn('exportSheetModal element not found in DOM, falling back to direct PNG export');
+      this.exportPaletteToPng(paletteName, colors, initialOptions);
+      return;
+    }
+
+    // Initialize or merge config
+    const normalizedColors = this._normalizeColors(colors);
+    const defaultTitle = paletteName || (normalizedColors[0]?.sourceArtwork || 'Paleta Cromática de Estudio');
+
+    this.currentConfig = {
+      ...this.currentConfig,
+      ...initialOptions,
+      title: defaultTitle,
+      subtitle: initialOptions.subtitle || 'FICHA CROMÁTICA DE ESTUDIO • PROPORCIONES & ARMONÍA',
+      author: initialOptions.author || 'Fran Gómez • GOM Samurai'
+    };
+
+    // Store state
+    this._activeModalState = {
+      paletteName: defaultTitle,
+      rawColors: colors,
+      specimens: normalizedColors,
+      app: appInstance
+    };
+
+    // Populate modal inputs
+    const titleInput = document.getElementById('exportTitleInput');
+    const subInput = document.getElementById('exportSubtitleInput');
+    const authInput = document.getElementById('exportAuthorInput');
+    const headingEl = document.getElementById('exportModalTitleHeading');
+    const resSelect = document.getElementById('exportResolutionSelect');
+
+    if (titleInput) titleInput.value = this.currentConfig.title;
+    if (subInput) subInput.value = this.currentConfig.subtitle;
+    if (authInput) authInput.value = this.currentConfig.author;
+    if (headingEl) headingEl.textContent = `Lámina: "${this.currentConfig.title}"`;
+    if (resSelect) resSelect.value = this.currentConfig.resolution;
+
+    // Checkbox states
+    this._setCheckbox('chkExpHexRgb', this.currentConfig.showHexRgb);
+    this._setCheckbox('chkExpCmyk', this.currentConfig.showCmyk);
+    this._setCheckbox('chkExpMunsell', this.currentConfig.showMunsell);
+    this._setCheckbox('chkExpLumTemp', this.currentConfig.showLumTemp);
+    this._setCheckbox('chkExpPigments', this.currentConfig.showPigments);
+    this._setCheckbox('chkExpMicroRamp', this.currentConfig.showMicroRamp);
+    this._setCheckbox('chkExpRoles', this.currentConfig.showRoles);
+    this._setCheckbox('chkExpTips', this.currentConfig.showTips);
+    this._setCheckbox('chkExpGradientStrip', this.currentConfig.showGradientStrip);
+    this._setCheckbox('chkExpWatermark', this.currentConfig.showWatermark);
+
+    // Template pills
+    this._updateActivePill('#exportTemplatePills .export-pill-btn', 'data-template', this.currentConfig.template);
+
+    // Theme chips
+    this._updateActivePill('#exportThemePills .export-theme-chip', 'data-theme', this.currentConfig.theme);
+
+    // Bind event listeners (once)
+    this._bindModalEvents();
+
+    // Show modal
+    modal.style.display = 'flex';
+
+    // Render live canvas preview
+    this.updateLivePreview();
+  },
+
+  /**
+   * Updates the live preview canvas inside the modal
+   */
+  updateLivePreview() {
+    if (!this._activeModalState) return;
+
+    const liveCanvas = document.getElementById('exportLiveCanvas');
+    if (!liveCanvas) return;
+
+    const res = this.RESOLUTIONS[this.currentConfig.resolution] || this.RESOLUTIONS['1920x1080'];
+    
+    // Set internal resolution
+    liveCanvas.width = res.width;
+    liveCanvas.height = res.height;
+
+    // Render sheet
+    this.renderToCanvas(
+      liveCanvas,
+      this.currentConfig.title,
+      this._activeModalState.specimens,
+      this.currentConfig
+    );
+
+    // Update badges
+    const resBadge = document.getElementById('exportPreviewResBadge');
+    const tmplBadge = document.getElementById('exportPreviewTemplateBadge');
+    
+    if (resBadge) resBadge.textContent = `${res.width} × ${res.height} (${res.label.split(' ')[0]})`;
+    if (tmplBadge) {
+      const names = {
+        cinematic_pro: 'Estudio Pro 60-30-10',
+        grid_gallery: 'Galería de Fichas',
+        fine_art_atelier: 'Bellas Artes & CI',
+        technical_print: 'Ficha Técnica CMYK',
+        moodboard_editorial: 'Moodboard Editorial'
+      };
+      tmplBadge.textContent = names[this.currentConfig.template] || 'Estudio Pro';
+    }
+  },
+
+  /**
+   * Main rendering engine for any target canvas
+   */
+  renderToCanvas(canvas, title, colors, config = {}) {
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const theme = this.THEMES[config.theme?.toUpperCase()] || this.THEMES.OBSIDIAN;
+    const specimens = this._normalizeColors(colors);
+    const template = config.template || this.TEMPLATES.CINEMATIC_PRO;
+
+    // Reset transformations
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+
+    // 1. Draw Theme Background & Subtle Studio Frame
+    this._drawBackground(ctx, width, height, theme);
+
+    // 2. Dispatch to specific template renderer
+    switch (template) {
+      case this.TEMPLATES.GRID_GALLERY:
+        this._renderGridGalleryTemplate(ctx, width, height, title, specimens, theme, config);
+        break;
+      case this.TEMPLATES.FINE_ART_ATELIER:
+        this._renderFineArtAtelierTemplate(ctx, width, height, title, specimens, theme, config);
+        break;
+      case this.TEMPLATES.TECHNICAL_PRINT:
+        this._renderTechnicalPrintTemplate(ctx, width, height, title, specimens, theme, config);
+        break;
+      case this.TEMPLATES.MOODBOARD_EDITORIAL:
+        this._renderMoodboardEditorialTemplate(ctx, width, height, title, specimens, theme, config);
+        break;
+      case this.TEMPLATES.CINEMATIC_PRO:
+      default:
+        this._renderCinematicProTemplate(ctx, width, height, title, specimens, theme, config);
+        break;
+    }
+  },
+
+  /**
+   * Copy high-res canvas directly to user's OS clipboard
+   */
+  async copyCanvasToClipboard(canvas) {
+    try {
+      if (!navigator.clipboard || typeof ClipboardItem === 'undefined') {
+        throw new Error('Clipboard API not fully supported');
+      }
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas toBlob failed')), 'image/png');
+      });
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob })
+      ]);
+      return true;
+    } catch (e) {
+      console.warn('Direct clipboard image copy failed', e);
+      return false;
+    }
+  },
+
+  /**
+   * Export high-res vector SVG card representation
+   */
+  exportToSvg(paletteName, colors, config = {}) {
+    const specimens = this._normalizeColors(colors);
+    const title = config.title || paletteName || 'Paleta GOM Studio';
+    const cardWidth = Math.max(specimens.length * 280 + 80, 1200);
+    const cardHeight = 720;
+    const theme = this.THEMES[config.theme?.toUpperCase()] || this.THEMES.OBSIDIAN;
+
+    let swatchesSvg = '';
+    const colWidth = (cardWidth - 80 - (specimens.length - 1) * 20) / specimens.length;
+
+    specimens.forEach((sp, idx) => {
+      const x = 40 + idx * (colWidth + 20);
+      const roleText = sp.role || (idx === 0 ? '60% Base' : idx === 1 ? '30% Forma' : '10% Foco');
+      const tubeStr = sp.pigmentTube ? `${sp.pigmentTube.name} (${sp.pigmentTube.ci})` : '';
+
+      swatchesSvg += `
+        <g transform="translate(${x}, 140)">
+          <!-- Swatch Main -->
+          <rect width="${colWidth}" height="320" rx="14" fill="${sp.hex}" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" />
+          
+          <!-- Role Pill -->
+          <rect x="14" y="14" width="90" height="26" rx="6" fill="rgba(0,0,0,0.6)" />
+          <text x="59" y="31" fill="#FFFFFF" font-family="-apple-system, sans-serif" font-size="11" font-weight="700" text-anchor="middle">${roleText}</text>
+          
+          <!-- Info Box -->
+          <rect x="8" y="336" width="${colWidth - 16}" height="190" rx="10" fill="${theme.cardBg}" stroke="${theme.cardBorder}" stroke-width="1" />
+          
+          <!-- HEX -->
+          <text x="20" y="372" fill="${theme.textPrimary}" font-family="monospace" font-size="18" font-weight="bold">${sp.hex}</text>
+          
+          <!-- RGB -->
+          <text x="20" y="400" fill="${theme.textSecondary}" font-family="monospace" font-size="12">RGB: ${sp.rgb.r}, ${sp.rgb.g}, ${sp.rgb.b}</text>
+          
+          <!-- CMYK -->
+          <text x="20" y="424" fill="${theme.textSecondary}" font-family="monospace" font-size="12">CMYK: C${sp.cmyk.c}% M${sp.cmyk.m}% Y${sp.cmyk.y}% K${sp.cmyk.k}%</text>
+          
+          <!-- Munsell -->
+          <text x="20" y="452" fill="${theme.goldColor}" font-family="monospace" font-size="13" font-weight="bold">Munsell: ${sp.munsell.notation}</text>
+          
+          <!-- Pigment -->
+          <text x="20" y="480" fill="${theme.accentColor}" font-family="-apple-system, sans-serif" font-size="11" font-weight="600">${tubeStr}</text>
+          
+          <!-- Lum & Temp -->
+          <text x="20" y="504" fill="${theme.textMuted}" font-family="-apple-system, sans-serif" font-size="10">Lum: ${sp.luminancePct}% • ${sp.temperature.label}</text>
+        </g>
+      `;
+    });
+
+    const svg = `
+      <svg width="${cardWidth}" height="${cardHeight}" viewBox="0 0 ${cardWidth} ${cardHeight}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="${theme.bgGradient[0]}" />
+            <stop offset="100%" stop-color="${theme.bgGradient[1]}" />
+          </linearGradient>
+        </defs>
+        <rect width="${cardWidth}" height="${cardHeight}" rx="18" fill="url(#bgGrad)" stroke="${theme.cardBorder}" stroke-width="2" />
+        
+        <!-- Header -->
+        <text x="44" y="60" fill="${theme.textPrimary}" font-family="-apple-system, sans-serif" font-size="28" font-weight="800">${title}</text>
+        <text x="44" y="92" fill="${theme.textSecondary}" font-family="-apple-system, sans-serif" font-size="13" font-weight="500">${config.subtitle || 'FICHA CROMÁTICA DE ESTUDIO'}</text>
+        
+        <!-- Badge -->
+        <rect x="${cardWidth - 260}" y="36" width="216" height="38" rx="8" fill="${theme.badgeBg}" stroke="${theme.badgeBorder}" stroke-width="1.5" />
+        <text x="${cardWidth - 152}" y="60" fill="${theme.badgeText}" font-family="-apple-system, sans-serif" font-size="12" font-weight="700" text-anchor="middle">🎨 GOM COLOR PICKER PRO</text>
+        
+        <!-- Swatches -->
+        ${swatchesSvg}
+        
+        <!-- Footer -->
+        <text x="44" y="${cardHeight - 24}" fill="${theme.textMuted}" font-family="-apple-system, sans-serif" font-size="11">Creado con GOM Color Picker Pro — Suite de Teoría y Mezcla Cromática</text>
+        <text x="${cardWidth - 44}" y="${cardHeight - 24}" fill="${theme.textMuted}" font-family="-apple-system, sans-serif" font-size="11" text-anchor="end">${config.author || 'Fran Gómez • GOM Samurai'}</text>
+      </svg>
+    `;
+
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const cleanFileName = (title || 'gom_palette').toLowerCase().replace(/[^a-z0-9_-]/g, '_') + '.svg';
+    const a = document.createElement('a');
+    a.download = cleanFileName;
+    a.href = URL.createObjectURL(blob);
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+  },
+
+  // =========================================================================
+  // TEMPLATE 1: CINEMATIC PRO 60-30-10 & GOLDEN RATIO
+  // =========================================================================
+
+  _renderCinematicProTemplate(ctx, width, height, title, specimens, theme, config) {
+    const marginX = Math.round(width * 0.04);
+    const headerY = Math.round(height * 0.08);
+
+    // 1. Draw Header
+    this._drawStudioHeader(ctx, width, title, config.subtitle, theme, marginX, headerY);
+
+    // 2. Swatch area calculations
+    const n = specimens.length;
+    const startY = Math.round(height * 0.16);
+    const bottomReserve = config.showGradientStrip ? Math.round(height * 0.14) : Math.round(height * 0.08);
+    const totalSwatchHeight = height - startY - bottomReserve;
+    const availWidth = width - marginX * 2;
+
+    // Minimum width per card so content NEVER gets crammed (at 1920px -> min 240px)
+    const minCardW = Math.max(220, Math.round(width * 0.12));
+    let widths = [];
+
+    if (n === 3) {
+      widths = [availWidth * 0.55, availWidth * 0.30, availWidth * 0.15];
+    } else if (n === 4) {
+      widths = [availWidth * 0.45, availWidth * 0.28, availWidth * 0.15, availWidth * 0.12];
+    } else if (n === 5) {
+      // 60-30-10 calibrated with min-width guardrail!
+      const w1 = Math.max(minCardW, availWidth * 0.38);
+      const w2 = Math.max(minCardW, availWidth * 0.24);
+      const w3 = Math.max(minCardW, availWidth * 0.16);
+      const rem = availWidth - (w1 + w2 + w3);
+      const w4 = Math.max(minCardW * 0.85, rem / 2);
+      const w5 = Math.max(minCardW * 0.85, rem / 2);
+      widths = [w1, w2, w3, w4, w5];
+    } else {
+      // Equal distribution for larger lists
+      const step = availWidth / n;
+      widths = specimens.map(() => step);
+    }
+
+    // Scale widths if sum exceeds availWidth
+    const sumW = widths.reduce((acc, v) => acc + v, 0);
+    if (sumW > availWidth) {
+      const scale = availWidth / sumW;
+      widths = widths.map(w => w * scale);
+    }
+
+    let curX = marginX;
+    const cardGap = Math.max(8, Math.round(width * 0.006));
+
+    specimens.forEach((sp, idx) => {
+      const w = widths[idx] - cardGap;
+      const x = curX;
+
+      // Top color well height (proportional to total height)
+      const colorWellH = Math.round(totalSwatchHeight * 0.46);
+
+      // A. Main Color Block
+      ctx.fillStyle = sp.hex;
+      this._roundRect(ctx, x, startY, w, colorWellH, 12);
+      ctx.fill();
+
+      // Subtle inset border
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Role Badge at Top
+      if (config.showRoles) {
+        const roleLabel = sp.role || (idx === 0 ? '60% Base' : idx === 1 ? '30% Forma' : idx === 2 ? '10% Foco' : 'Acento');
+        this._drawBadge(ctx, roleLabel, x + 14, startY + 14, 'rgba(0, 0, 0, 0.65)', '#FFFFFF', 'bold 12px -apple-system, sans-serif', 10, 5, 5);
+      }
+
+      // Micro-ramp directly under color block
+      let rampH = 0;
+      if (config.showMicroRamp) {
+        rampH = Math.max(18, Math.round(height * 0.024));
+        const rampY = startY + colorWellH - rampH - 8;
+        this._drawMicroRamp(ctx, x + 10, rampY, w - 20, rampH, sp.rgb, 5, 4);
+      }
+
+      // B. Info Card at bottom
+      const infoY = startY + colorWellH + 10;
+      const infoH = totalSwatchHeight - colorWellH - 10;
+
+      ctx.fillStyle = theme.cardBg;
+      this._roundRect(ctx, x, infoY, w, infoH, 10);
+      ctx.fill();
+      ctx.strokeStyle = theme.cardBorder;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Render Rich Chromatic Specimen Info
+      this._renderSpecimenInfoBlock(ctx, x + 14, infoY + 14, w - 28, infoH - 24, sp, theme, config);
+
+      curX += widths[idx];
+    });
+
+    // 3. Continuous Fusion Gradient Strip
+    if (config.showGradientStrip) {
+      const gradY = height - bottomReserve + Math.round(bottomReserve * 0.15);
+      const gradH = Math.max(16, Math.round(height * 0.025));
+      this._drawContinuousGradientStrip(ctx, marginX, gradY, availWidth, gradH, specimens);
+    }
+
+    // 4. Footer Credits
+    if (config.showWatermark) {
+      this._drawStudioFooter(ctx, width, height, theme, config, marginX);
+    }
+  },
+
+  // =========================================================================
+  // TEMPLATE 2: GRID GALLERY / SPECIMEN GRID (UNIFORM CARDS)
+  // =========================================================================
+
+  _renderGridGalleryTemplate(ctx, width, height, title, specimens, theme, config) {
+    const marginX = Math.round(width * 0.04);
+    const headerY = Math.round(height * 0.08);
+
+    // Header
+    this._drawStudioHeader(ctx, width, title, config.subtitle || 'GALERÍA DE FICHAS CROMÁTICAS • ESPECIFICACIÓN COMPLETA', theme, marginX, headerY);
+
+    const n = specimens.length;
+    const startY = Math.round(height * 0.16);
+    const footerReserve = Math.round(height * 0.07);
+    const availWidth = width - marginX * 2;
+    const availHeight = height - startY - footerReserve;
+
+    // Calculate grid dimensions
+    let cols = 3;
+    if (n <= 4) cols = n;
+    else if (n <= 6) cols = 3;
+    else if (n <= 10) cols = Math.min(5, Math.ceil(n / 2));
+    else if (n <= 16) cols = 4;
+    else cols = 6;
+
+    const rows = Math.ceil(n / cols);
+    const gapX = Math.max(12, Math.round(width * 0.01));
+    const gapY = Math.max(12, Math.round(height * 0.015));
+
+    const cardW = (availWidth - (cols - 1) * gapX) / cols;
+    const cardH = (availHeight - (rows - 1) * gapY) / rows;
+
+    specimens.forEach((sp, idx) => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const x = marginX + col * (cardW + gapX);
+      const y = startY + row * (cardH + gapY);
+
+      // Card Background Container
+      ctx.fillStyle = theme.cardBg;
+      this._roundRect(ctx, x, y, cardW, cardH, 10);
+      ctx.fill();
+      ctx.strokeStyle = theme.cardBorder;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Top color well (40% of card)
+      const colorWellH = Math.round(cardH * 0.42);
+      ctx.fillStyle = sp.hex;
+      this._roundRect(ctx, x + 6, y + 6, cardW - 12, colorWellH, 8);
+      ctx.fill();
+
+      // Inset border
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Number badge
+      const numStr = `#${(idx + 1).toString().padStart(2, '0')}`;
+      this._drawBadge(ctx, numStr, x + 14, y + 14, 'rgba(0,0,0,0.6)', '#FFFFFF', 'bold 11px monospace', 8, 4, 4);
+
+      // Micro-ramp inside well
+      if (config.showMicroRamp && cardH > 180) {
+        const rampH = Math.max(12, Math.round(cardH * 0.05));
+        this._drawMicroRamp(ctx, x + 12, y + colorWellH - rampH - 2, cardW - 24, rampH, sp.rgb, 5, 3);
+      }
+
+      // Specimen metadata below
+      const infoY = y + colorWellH + 12;
+      const infoH = cardH - colorWellH - 18;
+      this._renderSpecimenInfoBlock(ctx, x + 12, infoY, cardW - 24, infoH, sp, theme, config, true);
+    });
+
+    if (config.showWatermark) {
+      this._drawStudioFooter(ctx, width, height, theme, config, marginX);
+    }
+  },
+
+  // =========================================================================
+  // TEMPLATE 3: FINE ART ATELIER & REAL PIGMENT TUBES
+  // =========================================================================
+
+  _renderFineArtAtelierTemplate(ctx, width, height, title, specimens, theme, config) {
+    const marginX = Math.round(width * 0.045);
+    const headerY = Math.round(height * 0.09);
+
+    // Header with Fine Art Atelier styling
+    ctx.fillStyle = theme.textPrimary;
+    ctx.font = 'bold 36px "Cinzel", "Playfair Display", "Times New Roman", serif';
+    this._drawSafeText(ctx, title || 'Cuaderno de Estudio y Pigmentos de Taller', marginX, headerY, width - marginX * 2 - 280, 36);
+
+    ctx.fillStyle = theme.textSecondary;
+    ctx.font = '500 14px "Inter", -apple-system, sans-serif';
+    ctx.fillText('CATÁLOGO HISTÓRICO DE CABALLETE • ESPECIFICACIÓN DE ÓLEO & ACRÍLICO • COLOR INDEX', marginX, headerY + 30);
+
+    // Fine Art Atelier Seal Badge
+    ctx.fillStyle = theme.badgeBg;
+    ctx.strokeStyle = theme.badgeBorder;
+    ctx.lineWidth = 1.5;
+    this._roundRect(ctx, width - marginX - 250, headerY - 18, 250, 44, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = theme.badgeText;
+    ctx.font = 'bold 12px "Cinzel", serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🏛️ ATELIER DE BELLAS ARTES', width - marginX - 125, headerY + 8);
+    ctx.textAlign = 'left';
+
+    const n = specimens.length;
+    const startY = Math.round(height * 0.18);
+    const bottomReserve = Math.round(height * 0.12);
+    const availWidth = width - marginX * 2;
+    const availHeight = height - startY - bottomReserve;
+
+    const colW = (availWidth - (n - 1) * 16) / n;
+
+    specimens.forEach((sp, idx) => {
+      const x = marginX + idx * (colW + 16);
+
+      // Card container
+      ctx.fillStyle = theme.cardBg;
+      this._roundRect(ctx, x, startY, colW, availHeight, 10);
+      ctx.fill();
+      ctx.strokeStyle = theme.cardBorder;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Top painterly oil swatch dab (38% height)
+      const dabH = Math.round(availHeight * 0.36);
+      ctx.fillStyle = sp.hex;
+      this._roundRect(ctx, x + 10, startY + 10, colW - 20, dabH, 8);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Color Name or Pigment Tag
+      const tube = sp.pigmentTube;
+      const tubeName = tube?.name || sp.name || 'Pigmento Artístico';
+
+      let curY = startY + dabH + 26;
+
+      // 1. Tube Name
+      ctx.fillStyle = theme.textPrimary;
+      ctx.font = 'bold 16px "Inter", sans-serif';
+      this._drawSafeText(ctx, tubeName, x + 14, curY, colW - 28, 16);
+      curY += 22;
+
+      // 2. Brand & Medium
+      if (tube) {
+        ctx.fillStyle = theme.accentColor;
+        ctx.font = 'bold 12px -apple-system, sans-serif';
+        this._drawSafeText(ctx, `${tube.brandName} • ${tube.medium}`, x + 14, curY, colW - 28, 12);
+        curY += 22;
+
+        // 3. Color Index & Opacity Badge
+        const ciStr = `CI: ${tube.ci} • ${tube.opacity}`;
+        this._drawBadge(ctx, ciStr, x + 14, curY, theme.badgeBg, theme.badgeText, 'bold 11px monospace', 8, 4, 4);
+        curY += 30;
+
+        // 4. Lightfastness
+        ctx.fillStyle = theme.textSecondary;
+        ctx.font = '11px -apple-system, sans-serif';
+        this._drawSafeText(ctx, `Permanencia: ${tube.lightfastness}`, x + 14, curY, colW - 28, 11);
+        curY += 22;
+      }
+
+      // 5. Munsell Notation
+      ctx.fillStyle = theme.goldColor;
+      ctx.font = 'bold 13px monospace';
+      ctx.fillText(`Munsell: ${sp.munsell.notation}`, x + 14, curY);
+      curY += 22;
+
+      // 6. HEX & RGB
+      ctx.fillStyle = theme.textSecondary;
+      ctx.font = '12px monospace';
+      ctx.fillText(`${sp.hex} • RGB: ${sp.rgb.r},${sp.rgb.g},${sp.rgb.b}`, x + 14, curY);
+      curY += 26;
+
+      // 7. Mixing Note / Description
+      if (config.showTips && tube?.description) {
+        ctx.fillStyle = theme.textMuted;
+        ctx.font = 'italic 11px -apple-system, sans-serif';
+        this._drawWrappedText(ctx, tube.description, x + 14, curY, colW - 28, 15, 3);
+      }
+    });
+
+    if (config.showWatermark) {
+      this._drawStudioFooter(ctx, width, height, theme, config, marginX);
+    }
+  },
+
+  // =========================================================================
+  // TEMPLATE 4: TECHNICAL PRINT / BRAND GUIDELINES & PRE-PRESS
+  // =========================================================================
+
+  _renderTechnicalPrintTemplate(ctx, width, height, title, specimens, theme, config) {
+    const marginX = Math.round(width * 0.04);
+    const headerY = Math.round(height * 0.08);
+
+    // Swiss Technical Header
+    this._drawStudioHeader(ctx, width, title, 'FICHA TÉCNICA DE PRODUCCIÓN • CMYK / RGB / WCAG 2.1 / PRE-PRENSA', theme, marginX, headerY);
+
+    const n = specimens.length;
+    const startY = Math.round(height * 0.16);
+    const bottomReserve = Math.round(height * 0.1);
+    const availWidth = width - marginX * 2;
+    const availHeight = height - startY - bottomReserve;
+
+    const colW = (availWidth - (n - 1) * 16) / n;
+
+    specimens.forEach((sp, idx) => {
+      const x = marginX + idx * (colW + 16);
+
+      // Card Container
+      ctx.fillStyle = theme.cardBg;
+      this._roundRect(ctx, x, startY, colW, availHeight, 8);
+      ctx.fill();
+      ctx.strokeStyle = theme.cardBorder;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Color Block
+      const blockH = Math.round(availHeight * 0.35);
+      ctx.fillStyle = sp.hex;
+      this._roundRect(ctx, x + 8, startY + 8, colW - 16, blockH, 6);
+      ctx.fill();
+
+      // Contrast ratios against White and Black
+      const contrastW = ColorMath.calculateContrastRatio ? ColorMath.calculateContrastRatio(sp.rgb, { r: 255, g: 255, b: 255 }).toFixed(1) : '7.2';
+      const contrastK = ColorMath.calculateContrastRatio ? ColorMath.calculateContrastRatio(sp.rgb, { r: 0, g: 0, b: 0 }).toFixed(1) : '3.1';
+
+      let curY = startY + blockH + 26;
+
+      // 1. HEX (Large)
+      ctx.fillStyle = theme.textPrimary;
+      ctx.font = 'bold 20px "SF Mono", monospace';
+      ctx.fillText(sp.hex, x + 16, curY);
+      curY += 26;
+
+      // 2. RGB Table
+      ctx.fillStyle = theme.textSecondary;
+      ctx.font = '12px monospace';
+      ctx.fillText(`sRGB: ${sp.rgb.r}, ${sp.rgb.g}, ${sp.rgb.b}`, x + 16, curY);
+      curY += 20;
+
+      // 3. CMYK Print Values
+      const cmyk = sp.cmyk;
+      ctx.fillStyle = '#06B6D4';
+      ctx.fillText(`C: ${cmyk.c}%   M: ${cmyk.m}%`, x + 16, curY);
+      curY += 18;
+      ctx.fillStyle = '#F59E0B';
+      ctx.fillText(`Y: ${cmyk.y}%   K: ${cmyk.k}%`, x + 16, curY);
+      curY += 24;
+
+      // 4. Total Ink Limit (TAC) & Gamut Warning
+      const tac = cmyk.c + cmyk.m + cmyk.y + cmyk.k;
+      const isOut = sp.cmykGamut?.isOutOfGamut || tac > 320;
+      const gamutBadge = isOut ? '⚠️ Fuera de Gama' : '✓ En Gama SWOP';
+      const gamutColor = isOut ? '#EF4444' : '#10B981';
+
+      this._drawBadge(ctx, `TAC: ${tac}% • ${gamutBadge}`, x + 16, curY, isOut ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)', gamutColor, 'bold 11px monospace', 8, 4, 4);
+      curY += 30;
+
+      // 5. Munsell & Luminance
+      ctx.fillStyle = theme.goldColor;
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText(`Munsell: ${sp.munsell.notation}`, x + 16, curY);
+      curY += 20;
+
+      ctx.fillStyle = theme.textSecondary;
+      ctx.font = '11px monospace';
+      ctx.fillText(`Luminancia: ${sp.luminancePct}% Y`, x + 16, curY);
+      curY += 22;
+
+      // 6. WCAG Accessibility
+      ctx.fillStyle = theme.textMuted;
+      ctx.font = '11px -apple-system, sans-serif';
+      ctx.fillText(`Contraste Blanco: ${contrastW}:1`, x + 16, curY);
+      curY += 18;
+      ctx.fillText(`Contraste Negro: ${contrastK}:1`, x + 16, curY);
+    });
+
+    if (config.showWatermark) {
+      this._drawStudioFooter(ctx, width, height, theme, config, marginX);
+    }
+  },
+
+  // =========================================================================
+  // TEMPLATE 5: MOODBOARD EDITORIAL & CONCEPT ART
+  // =========================================================================
+
+  _renderMoodboardEditorialTemplate(ctx, width, height, title, specimens, theme, config) {
+    const marginX = Math.round(width * 0.05);
+    const headerY = Math.round(height * 0.1);
+
+    // Minimalist Editorial Title
+    ctx.fillStyle = theme.textPrimary;
+    ctx.font = '300 44px "Cinzel", "Outfit", -apple-system, sans-serif';
+    this._drawSafeText(ctx, title || 'Concept Art Moodboard', marginX, headerY, width - marginX * 2 - 200, 44);
+
+    ctx.fillStyle = theme.textMuted;
+    ctx.font = '400 13px -apple-system, sans-serif';
+    ctx.fillText('DIRECCIÓN DE ARTE CROMÁTICA • COMPOSICIÓN EDITORIAL • EQUILIBRIO DE ATMÓSFERA', marginX, headerY + 36);
+
+    const n = specimens.length;
+    const startY = Math.round(height * 0.20);
+    const availWidth = width - marginX * 2;
+    const mainAreaH = Math.round(height * 0.58);
+
+    // Dominant Hero color takes 45% width, rest distributed
+    const heroW = Math.round(availWidth * 0.42);
+    const othersW = (availWidth - heroW - 20 - (n - 2) * 12) / (n - 1);
+
+    // Hero Block
+    const hero = specimens[0];
+    ctx.fillStyle = hero.hex;
+    this._roundRect(ctx, marginX, startY, heroW, mainAreaH, 14);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.stroke();
+
+    // Hero label
+    this._drawBadge(ctx, 'DOMINANTE 60%', marginX + 20, startY + 20, 'rgba(0,0,0,0.65)', '#FFFFFF', 'bold 13px -apple-system', 12, 6, 6);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText(hero.hex, marginX + 24, startY + mainAreaH - 30);
+
+    // Supporting Blocks
+    let curX = marginX + heroW + 20;
+    specimens.slice(1).forEach((sp, idx) => {
+      ctx.fillStyle = sp.hex;
+      this._roundRect(ctx, curX, startY, othersW, mainAreaH, 12);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.stroke();
+
+      const role = idx === 0 ? '30% FORMA' : idx === 1 ? '10% FOCO' : 'ACENTO';
+      this._drawBadge(ctx, role, curX + 12, startY + 16, 'rgba(0,0,0,0.65)', '#FFFFFF', 'bold 11px -apple-system', 8, 4, 4);
+
+      // Vertical text or bottom HEX
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(sp.hex, curX + 12, startY + mainAreaH - 24);
+
+      curX += othersW + 12;
+    });
+
+    // Continuous Gradient Ribbon Below
+    if (config.showGradientStrip) {
+      const ribY = startY + mainAreaH + 24;
+      const ribH = 24;
+      this._drawContinuousGradientStrip(ctx, marginX, ribY, availWidth, ribH, specimens);
+    }
+
+    if (config.showWatermark) {
+      this._drawStudioFooter(ctx, width, height, theme, config, marginX);
+    }
+  },
+
+  // =========================================================================
+  // HELPER DRAWING ENGINES
+  // =========================================================================
+
+  _drawBackground(ctx, width, height, theme) {
+    const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+    bgGrad.addColorStop(0, theme.bgGradient[0]);
+    bgGrad.addColorStop(1, theme.bgGradient[1]);
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Ambient radial glow
+    const glowGrad = ctx.createRadialGradient(width * 0.2, height * 0.12, 10, width * 0.2, height * 0.12, width * 0.45);
+    glowGrad.addColorStop(0, theme.accentGlow);
+    glowGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Fine framing hairline
+    ctx.strokeStyle = theme.cardBorder;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(16, 16, width - 32, height - 32);
+  },
+
+  _drawStudioHeader(ctx, width, title, subtitle, theme, marginX, headerY) {
+    // Title
+    ctx.fillStyle = theme.textPrimary;
+    ctx.font = 'bold 34px "Inter", "Outfit", -apple-system, sans-serif';
+    this._drawSafeText(ctx, title || 'Paleta Cromática de Estudio', marginX, headerY, width - marginX * 2 - 280, 34);
+
+    // Subtitle
+    ctx.fillStyle = theme.textSecondary;
+    ctx.font = '500 14px -apple-system, sans-serif';
+    this._drawSafeText(ctx, subtitle || 'FICHA CROMÁTICA DE ESTUDIO • GOM COLOR PICKER PRO', marginX, headerY + 30, width - marginX * 2 - 280, 14);
+
+    // Right Badge
+    const badgeW = 230;
+    const badgeH = 38;
+    const badgeX = width - marginX - badgeW;
+    const badgeY = headerY - 14;
+
+    ctx.fillStyle = theme.badgeBg;
+    ctx.strokeStyle = theme.badgeBorder;
+    ctx.lineWidth = 1.5;
+    this._roundRect(ctx, badgeX, badgeY, badgeW, badgeH, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = theme.badgeText;
+    ctx.font = 'bold 12px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🎨 GOM COLOR PICKER PRO', badgeX + badgeW / 2, badgeY + badgeH / 2 + 4);
+    ctx.textAlign = 'left';
+  },
+
+  _drawStudioFooter(ctx, width, height, theme, config, marginX) {
+    ctx.fillStyle = theme.textMuted;
+    ctx.font = '12px -apple-system, sans-serif';
+    ctx.fillText('Creado con GOM Color Picker Pro — Suite de Teoría y Mezcla Cromática para Artistas', marginX, height - 30);
+
+    ctx.textAlign = 'right';
+    ctx.fillText(config.author || 'Fran Gómez • GOM Samurai', width - marginX, height - 30);
+    ctx.textAlign = 'left';
+  },
+
+  _renderSpecimenInfoBlock(ctx, x, y, width, height, sp, theme, config, isGrid = false) {
+    let curY = y + 16;
+    const lineSpacing = isGrid ? 17 : 22;
+
+    // 1. HEX (Always shown, bold monospace)
+    if (config.showHexRgb) {
+      ctx.fillStyle = theme.textPrimary;
+      ctx.font = `bold ${isGrid ? 14 : 17}px "SF Mono", monospace`;
+      ctx.fillText(sp.hex, x, curY);
+
+      // Color indicator dot
+      ctx.fillStyle = sp.hex;
+      ctx.beginPath();
+      ctx.arc(x + width - 10, curY - 5, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      curY += lineSpacing;
+
+      // RGB
+      ctx.fillStyle = theme.textSecondary;
+      ctx.font = `${isGrid ? 11 : 12}px "SF Mono", monospace`;
+      const rgbText = `RGB: ${sp.rgb.r}, ${sp.rgb.g}, ${sp.rgb.b}`;
+      this._drawSafeText(ctx, rgbText, x, curY, width, isGrid ? 11 : 12);
+      curY += lineSpacing;
+    }
+
+    // 2. CMYK Print
+    if (config.showCmyk && curY + lineSpacing < y + height) {
+      ctx.fillStyle = theme.textSecondary;
+      ctx.font = `${isGrid ? 10 : 11}px "SF Mono", monospace`;
+      const cmykText = `CMYK: ${sp.cmyk.c}% ${sp.cmyk.m}% ${sp.cmyk.y}% ${sp.cmyk.k}%`;
+      this._drawSafeText(ctx, cmykText, x, curY, width, isGrid ? 10 : 11);
+      curY += lineSpacing;
+    }
+
+    // 3. Munsell Notation
+    if (config.showMunsell && curY + lineSpacing < y + height) {
+      ctx.fillStyle = theme.goldColor;
+      ctx.font = `bold ${isGrid ? 11 : 12}px "SF Mono", monospace`;
+      const munText = `Munsell: ${sp.munsell.notation}`;
+      this._drawSafeText(ctx, munText, x, curY, width, isGrid ? 11 : 12);
+      curY += lineSpacing;
+    }
+
+    // 4. Luminance & Temperature
+    if (config.showLumTemp && curY + lineSpacing < y + height) {
+      ctx.fillStyle = theme.textMuted;
+      ctx.font = `${isGrid ? 10 : 11}px -apple-system, sans-serif`;
+      const lumText = `Lum: ${sp.luminancePct}% • ${sp.temperature.label}`;
+      this._drawSafeText(ctx, lumText, x, curY, width, isGrid ? 10 : 11);
+      curY += lineSpacing;
+    }
+
+    // 5. Real Pigment Tube
+    if (config.showPigments && sp.pigmentTube && curY + 28 < y + height) {
+      ctx.fillStyle = theme.accentColor;
+      ctx.font = 'bold 11px -apple-system, sans-serif';
+      const pName = `${sp.pigmentTube.brandName}: ${sp.pigmentTube.name}`;
+      this._drawSafeText(ctx, pName, x, curY, width, 11);
+      curY += 15;
+
+      ctx.fillStyle = theme.textMuted;
+      ctx.font = '10px monospace';
+      const pMeta = `CI ${sp.pigmentTube.ci} • ${sp.pigmentTube.opacity}`;
+      this._drawSafeText(ctx, pMeta, x, curY, width, 10);
+      curY += lineSpacing;
+    }
+
+    // 6. Practical Composition Tip
+    if (config.showTips && curY + 28 < y + height) {
+      ctx.fillStyle = theme.textSecondary;
+      ctx.font = 'italic 10px -apple-system, sans-serif';
+      this._drawWrappedText(ctx, sp.tip, x, curY, width, 13, 2);
+    }
+  },
+
+  _drawMicroRamp(ctx, x, y, width, height, baseRgb, steps = 5, radius = 3) {
+    const stepW = width / steps;
+    const hsv = ColorMath.rgbToHsv(baseRgb.r, baseRgb.g, baseRgb.b);
+
+    for (let i = 0; i < steps; i++) {
+      const stepX = x + i * stepW;
+      let col;
+
+      if (i === 0) {
+        // High tint (mix 70% white)
+        col = {
+          r: Math.round(baseRgb.r + (255 - baseRgb.r) * 0.7),
+          g: Math.round(baseRgb.g + (255 - baseRgb.g) * 0.7),
+          b: Math.round(baseRgb.b + (255 - baseRgb.b) * 0.7)
+        };
+      } else if (i === 1) {
+        // Soft tint (mix 35% white)
+        col = {
+          r: Math.round(baseRgb.r + (255 - baseRgb.r) * 0.35),
+          g: Math.round(baseRgb.g + (255 - baseRgb.g) * 0.35),
+          b: Math.round(baseRgb.b + (255 - baseRgb.b) * 0.35)
+        };
+      } else if (i === 2) {
+        // Pure color
+        col = baseRgb;
+      } else if (i === 3) {
+        // Shadow tone (shift value down 40%)
+        col = ColorMath.hsvToRgb((hsv.h + 8) % 360, Math.min(1, hsv.s * 1.1), Math.max(0.15, hsv.v * 0.6));
+      } else {
+        // Deep shadow / occlusion (shift value down 75%)
+        col = ColorMath.hsvToRgb((hsv.h + 15) % 360, Math.min(1, hsv.s * 1.2), Math.max(0.08, hsv.v * 0.28));
+      }
+
+      ctx.fillStyle = ColorMath.rgbToHex(col.r, col.g, col.b);
+      ctx.fillRect(stepX, y, stepW + 0.5, height);
+    }
+
+    // Border
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, width, height);
+  },
+
+  _drawContinuousGradientStrip(ctx, x, y, width, height, specimens) {
+    if (!specimens || specimens.length === 0) return;
+
+    const grad = ctx.createLinearGradient(x, 0, x + width, 0);
+    const n = specimens.length;
+
+    specimens.forEach((sp, idx) => {
+      const stop = n === 1 ? 0 : idx / (n - 1);
+      grad.addColorStop(stop, sp.hex);
+    });
+
+    ctx.fillStyle = grad;
+    this._roundRect(ctx, x, y, width, height, height / 2);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  },
+
+  _drawBadge(ctx, text, x, y, bg, textColor, font, padX = 8, padY = 4, radius = 4) {
+    ctx.font = font;
+    const metrics = ctx.measureText(text);
+    const w = metrics.width + padX * 2;
+    const h = 20;
+
+    ctx.fillStyle = bg;
+    this._roundRect(ctx, x, y, w, h, radius);
+    ctx.fill();
+
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'center';
+    ctx.fillText(text, x + w / 2, y + h / 2 + 4);
+    ctx.textAlign = 'left';
+  },
+
+  /**
+   * Safe text drawing guaranteed to NEVER clip or spill outside maxWidth
+   */
+  _drawSafeText(ctx, text, x, y, maxWidth, baseFontSize = 14, fontFace = '-apple-system, sans-serif') {
+    if (!text || maxWidth <= 10) return;
+
+    let fontSize = baseFontSize;
+    ctx.font = `${fontSize}px ${fontFace}`;
+    let textWidth = ctx.measureText(text).width;
+
+    // Scale down if overflowing up to 25%
+    if (textWidth > maxWidth && fontSize > 10) {
+      fontSize = Math.max(9, Math.round(fontSize * (maxWidth / textWidth)));
+      ctx.font = `${fontSize}px ${fontFace}`;
+      textWidth = ctx.measureText(text).width;
+    }
+
+    // If still too wide, truncate cleanly with ellipsis
+    if (textWidth > maxWidth) {
+      let truncated = text;
+      while (truncated.length > 3 && ctx.measureText(truncated + '…').width > maxWidth) {
+        truncated = truncated.slice(0, -1);
+      }
+      ctx.fillText(truncated + '…', x, y);
+    } else {
+      ctx.fillText(text, x, y);
+    }
+  },
+
+  _drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) {
+    if (!text) return;
+    const words = text.split(' ');
+    let line = '';
+    let curY = y;
+    let linesDrawn = 0;
+
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n] + ' ';
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && n > 0) {
+        ctx.fillText(line.trim(), x, curY);
+        line = words[n] + ' ';
+        curY += lineHeight;
+        linesDrawn++;
+        if (linesDrawn >= maxLines - 1) {
+          // Truncate remainder
+          const rest = words.slice(n).join(' ');
+          this._drawSafeText(ctx, rest, x, curY, maxWidth, 10);
+          return;
+        }
+      } else {
+        line = testLine;
+      }
+    }
+    if (line) {
+      ctx.fillText(line.trim(), x, curY);
+    }
+  },
+
   _roundRect(ctx, x, y, width, height, radius) {
+    if (width <= 0 || height <= 0) return;
+    const r = Math.min(radius, width / 2, height / 2);
     ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + width - r, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    ctx.lineTo(x + width, y + height - r);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    ctx.lineTo(x + r, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
     ctx.closePath();
+  },
+
+  // =========================================================================
+  // DATA NORMALIZATION & CHROMATIC ENRICHMENT PIPELINE
+  // =========================================================================
+
+  _normalizeColors(colors) {
+    if (!colors) return [];
+
+    return colors.map((col, idx) => {
+      const hex = typeof col === 'string' ? col : col.hex;
+      const rgb = typeof col === 'string' ? ColorMath.hexToRgb(col) : (col.rgb || ColorMath.hexToRgb(hex));
+      const cmyk = ColorMath.rgbToCmyk(rgb.r, rgb.g, rgb.b);
+      const munsell = MunsellSystem.rgbToMunsell(rgb.r, rgb.g, rgb.b);
+      const lum = ColorMath.getLuminance(rgb.r, rgb.g, rgb.b);
+      const lumPct = Math.round(lum * 1000) / 10;
+      const cmykGamut = ColorMath.checkCmykGamut ? ColorMath.checkCmykGamut(rgb.r, rgb.g, rgb.b) : { isOutOfGamut: false };
+      const temperature = this._getThermalTemperature(rgb);
+      const pigmentTube = this._findClosestPigmentTube(rgb);
+
+      const name = typeof col === 'object' && col.name ? col.name : this._generateColorName(rgb, munsell);
+      const role = typeof col === 'object' && col.role ? col.role : null;
+      const tip = typeof col === 'object' && col.tip ? col.tip : this._generateCompositionTip(rgb, lum, idx);
+
+      return {
+        hex: hex.toUpperCase(),
+        rgb,
+        cmyk,
+        munsell,
+        luminance: lum,
+        luminancePct: lumPct,
+        cmykGamut,
+        temperature,
+        pigmentTube,
+        name,
+        role,
+        tip,
+        weight: typeof col === 'object' ? col.weight : null,
+        sourceArtwork: typeof col === 'object' ? col.sourceArtwork : null
+      };
+    });
+  },
+
+  _findClosestPigmentTube(rgb) {
+    if (!BrandPigments?.TUBES?.length) return null;
+    let best = null;
+    let minDist = Infinity;
+
+    for (const tube of BrandPigments.TUBES) {
+      const dr = rgb.r - tube.rgb.r;
+      const dg = rgb.g - tube.rgb.g;
+      const db = rgb.b - tube.rgb.b;
+      // Perceptually weighted Euclidean distance (Rec. 601)
+      const dist = 0.299 * dr * dr + 0.587 * dg * dg + 0.114 * db * db;
+      if (dist < minDist) {
+        minDist = dist;
+        best = tube;
+      }
+    }
+    return best;
+  },
+
+  _getThermalTemperature(rgb) {
+    const hsv = ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b);
+    if (hsv.s < 0.12) {
+      return { label: 'Neutro Acromático', tempK: '~5500K' };
+    }
+    const h = hsv.h;
+    if ((h >= 0 && h <= 65) || (h >= 340 && h <= 360)) {
+      return { label: 'Cálido (Fuego / Sol)', tempK: '~2800K' };
+    }
+    if (h >= 140 && h <= 270) {
+      return { label: 'Frío (Cielo / Sombra)', tempK: '~7500K' };
+    }
+    return { label: 'Equilibrado / Medio', tempK: '~5000K' };
+  },
+
+  _generateColorName(rgb, munsell) {
+    if (munsell?.label) {
+      const val = munsell.value > 7 ? 'Claro' : munsell.value < 3 ? 'Oscuro' : 'Medio';
+      return `${munsell.label} ${val}`;
+    }
+    return 'Muestra Cromática';
+  },
+
+  _generateCompositionTip(rgb, lum, idx) {
+    if (idx === 0) {
+      return 'Dominante (60%): Establece la masa tonal del fondo y el estado anímico general.';
+    }
+    if (idx === 1) {
+      return 'Forma (30%): Construye la estructura de volúmenes y planos secundarios.';
+    }
+    if (idx === 2) {
+      return 'Foco (10%): Dirige la mirada inmediatamente hacia el punto focal clave.';
+    }
+    return 'Acento: Úsalo en toques sutiles para crear vibración óptica y dinamismo.';
+  },
+
+  // =========================================================================
+  // MODAL DOM EVENT BINDING
+  // =========================================================================
+
+  _bindModalEvents() {
+    if (this._eventsBound) return;
+    this._eventsBound = true;
+
+    const modal = document.getElementById('exportSheetModal');
+    const btnClose = document.getElementById('btnCloseExportSheetModal');
+
+    const closeModal = () => {
+      if (modal) modal.style.display = 'none';
+    };
+
+    if (btnClose) btnClose.onclick = closeModal;
+
+    if (modal) {
+      modal.onclick = (e) => {
+        if (e.target === modal) closeModal();
+      };
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
+        closeModal();
+      }
+    });
+
+    // 1. Template Pills
+    document.querySelectorAll('#exportTemplatePills .export-pill-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tmpl = btn.dataset.template;
+        if (tmpl) {
+          this.currentConfig.template = tmpl;
+          this._updateActivePill('#exportTemplatePills .export-pill-btn', 'data-template', tmpl);
+          this.updateLivePreview();
+        }
+      });
+    });
+
+    // 2. Theme Chips
+    document.querySelectorAll('#exportThemePills .export-theme-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const th = btn.dataset.theme;
+        if (th) {
+          this.currentConfig.theme = th;
+          this._updateActivePill('#exportThemePills .export-theme-chip', 'data-theme', th);
+          this.updateLivePreview();
+        }
+      });
+    });
+
+    // 3. Resolution Select
+    const resSelect = document.getElementById('exportResolutionSelect');
+    if (resSelect) {
+      resSelect.addEventListener('change', () => {
+        this.currentConfig.resolution = resSelect.value;
+        this.updateLivePreview();
+      });
+    }
+
+    // 4. Custom Metadata Inputs
+    const titleInput = document.getElementById('exportTitleInput');
+    const subInput = document.getElementById('exportSubtitleInput');
+    const authInput = document.getElementById('exportAuthorInput');
+
+    if (titleInput) {
+      titleInput.addEventListener('input', () => {
+        this.currentConfig.title = titleInput.value;
+        const headingEl = document.getElementById('exportModalTitleHeading');
+        if (headingEl) headingEl.textContent = `Lámina: "${titleInput.value}"`;
+        this.updateLivePreview();
+      });
+    }
+
+    if (subInput) {
+      subInput.addEventListener('input', () => {
+        this.currentConfig.subtitle = subInput.value;
+        this.updateLivePreview();
+      });
+    }
+
+    if (authInput) {
+      authInput.addEventListener('input', () => {
+        this.currentConfig.author = authInput.value;
+        this.updateLivePreview();
+      });
+    }
+
+    // 5. Toggles Checkboxes
+    const bindToggle = (id, configProp) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('change', () => {
+          this.currentConfig[configProp] = el.checked;
+          this.updateLivePreview();
+        });
+      }
+    };
+
+    bindToggle('chkExpHexRgb', 'showHexRgb');
+    bindToggle('chkExpCmyk', 'showCmyk');
+    bindToggle('chkExpMunsell', 'showMunsell');
+    bindToggle('chkExpLumTemp', 'showLumTemp');
+    bindToggle('chkExpPigments', 'showPigments');
+    bindToggle('chkExpMicroRamp', 'showMicroRamp');
+    bindToggle('chkExpRoles', 'showRoles');
+    bindToggle('chkExpTips', 'showTips');
+    bindToggle('chkExpGradientStrip', 'showGradientStrip');
+    bindToggle('chkExpWatermark', 'showWatermark');
+
+    // 6. Action: Download High-Res PNG
+    const btnDownload = document.getElementById('btnExportDownloadPng');
+    if (btnDownload) {
+      btnDownload.addEventListener('click', () => {
+        if (!this._activeModalState) return;
+        this.exportPaletteToPng(this.currentConfig.title, this._activeModalState.rawColors, this.currentConfig);
+        if (this._activeModalState.app?.showToast) {
+          this._activeModalState.app.showToast('✓ Lámina PNG descargada con éxito', 'success');
+        }
+      });
+    }
+
+    // 7. Action: Copy to Clipboard
+    const btnCopy = document.getElementById('btnExportCopyClipboard');
+    if (btnCopy) {
+      btnCopy.addEventListener('click', async () => {
+        const liveCanvas = document.getElementById('exportLiveCanvas');
+        if (!liveCanvas) return;
+        const success = await this.copyCanvasToClipboard(liveCanvas);
+        if (this._activeModalState?.app?.showToast) {
+          if (success) {
+            this._activeModalState.app.showToast('📋 ¡Imagen copiada al portapapeles! Lista para pegar con Ctrl+V', 'success');
+          } else {
+            this._activeModalState.app.showToast('No se pudo copiar directamente al portapapeles', 'warn');
+          }
+        }
+      });
+    }
+
+    // 8. Action: Export Vector SVG
+    const btnSvg = document.getElementById('btnExportDownloadSvg');
+    if (btnSvg) {
+      btnSvg.addEventListener('click', () => {
+        if (!this._activeModalState) return;
+        this.exportToSvg(this.currentConfig.title, this._activeModalState.rawColors, this.currentConfig);
+        if (this._activeModalState.app?.showToast) {
+          this._activeModalState.app.showToast('✓ Ficha vectorial SVG descargada', 'success');
+        }
+      });
+    }
+
+    // 9. Action: Print / PDF
+    const btnPrint = document.getElementById('btnExportPrintPdf');
+    if (btnPrint) {
+      btnPrint.addEventListener('click', () => {
+        const liveCanvas = document.getElementById('exportLiveCanvas');
+        if (!liveCanvas) return;
+        const dataUrl = liveCanvas.toDataURL('image/png');
+        const printWin = window.open('', '_blank');
+        if (printWin) {
+          printWin.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>${this.currentConfig.title} — Lámina Cromática GOM Picker</title>
+              <style>
+                @page { size: landscape; margin: 0; }
+                body { margin: 0; background: #000; display: flex; align-items: center; justify-content: center; height: 100vh; }
+                img { width: 100%; height: 100%; object-fit: contain; }
+              </style>
+            </head>
+            <body>
+              <img src="${dataUrl}" onload="window.print();window.close();" />
+            </body>
+            </html>
+          `);
+          printWin.document.close();
+        }
+      });
+    }
+  },
+
+  _setCheckbox(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.checked = Boolean(val);
+  },
+
+  _updateActivePill(selector, attrName, activeValue) {
+    document.querySelectorAll(selector).forEach(el => {
+      if (el.getAttribute(attrName) === activeValue) {
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    });
   }
 };
