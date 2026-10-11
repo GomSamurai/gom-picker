@@ -18,7 +18,7 @@ export class AIChatStudio {
     this.isGenerating = false;
     this.isExpanded = false;
     this.customHeight = typeof localStorage !== 'undefined' ? localStorage.getItem('gom_ai_chat_custom_height') : null;
-    this.geminiModel = (typeof localStorage !== 'undefined' ? localStorage.getItem('gom_ai_gemini_model') : null) || 'gemini-3.8-flash';
+    this.geminiModel = (typeof localStorage !== 'undefined' ? localStorage.getItem('gom_ai_gemini_model') : null) || 'gemini-2.5-flash';
   }
 
   init() {
@@ -35,6 +35,7 @@ export class AIChatStudio {
     const btnClear = document.getElementById('btnAiChatClear');
     const btnToggleQuick = document.getElementById('btnToggleQuickChips');
     const btnQuickInject = document.getElementById('btnAiChatQuickInject');
+    const btnInjectPalette = document.getElementById('btnAiChatInjectPalette');
     const resizerHandle = document.getElementById('chatResizerHandle');
     const backdrop = document.getElementById('aiChatBackdrop');
     const chatContainer = document.getElementById('aiChatContainer');
@@ -95,6 +96,26 @@ export class AIChatStudio {
           chatInput.value = val.substring(0, start) + hex + ' ' + val.substring(end);
           chatInput.focus();
           chatInput.selectionStart = chatInput.selectionEnd = start + hex.length + 1;
+        }
+      });
+    }
+
+    if (btnInjectPalette) {
+      btnInjectPalette.addEventListener('click', () => {
+        let paletteDesc = '';
+        if (this.app?.swatchManager) {
+          const activePal = this.app.swatchManager.getActivePalette() || (this.app.swatchManager.palettes && this.app.swatchManager.palettes[0]);
+          if (activePal && activePal.colors && activePal.colors.length > 0) {
+            paletteDesc = `mi paleta "${activePal.name}" (${activePal.colors.join(', ')})`;
+          }
+        }
+        if (!paletteDesc) {
+          const hex = this.app?.fgColor ? this.app.fgColor.hex : '#6366F1';
+          paletteDesc = `mi color activo (${hex})`;
+        }
+        if (chatInput) {
+          chatInput.value = `¿Cómo puedo armonizar y balancear ${paletteDesc}? Recomiéndame tonos de sombra, luz y tubos de pigmento para completarla.`;
+          chatInput.focus();
         }
       });
     }
@@ -215,6 +236,8 @@ export class AIChatStudio {
     const providerSelect = document.getElementById('aiProviderSelect');
     const keyField = document.getElementById('aiApiKeyField');
     const keyInput = document.getElementById('aiApiKeyInput');
+    const modelField = document.getElementById('aiModelField');
+    const geminiModelSelect = document.getElementById('aiGeminiModelSelect');
     const btnTest = document.getElementById('btnTestAiConnection');
     const testResult = document.getElementById('aiConnectionTestResult');
 
@@ -224,6 +247,8 @@ export class AIChatStudio {
       if (providerSelect) providerSelect.value = this.provider;
       if (keyInput) keyInput.value = this.apiKey;
       if (keyField) keyField.style.display = this.provider === 'local' ? 'none' : 'block';
+      if (modelField) modelField.style.display = this.provider === 'gemini' ? 'block' : 'none';
+      if (geminiModelSelect) geminiModelSelect.value = this.geminiModel || 'gemini-2.5-flash';
       if (testResult) {
         testResult.style.display = 'none';
         testResult.innerHTML = '';
@@ -244,6 +269,9 @@ export class AIChatStudio {
         if (keyField) {
           keyField.style.display = e.target.value === 'local' ? 'none' : 'block';
         }
+        if (modelField) {
+          modelField.style.display = e.target.value === 'gemini' ? 'block' : 'none';
+        }
         if (testResult) testResult.style.display = 'none';
       };
     }
@@ -252,6 +280,8 @@ export class AIChatStudio {
       btnTest.onclick = async () => {
         const prov = providerSelect ? providerSelect.value : 'local';
         const key = keyInput ? keyInput.value.trim() : this.apiKey;
+        const chosenModel = geminiModelSelect ? geminiModelSelect.value : this.geminiModel;
+
         if (testResult) {
           testResult.style.display = 'block';
           testResult.style.background = 'rgba(99, 102, 241, 0.15)';
@@ -260,7 +290,7 @@ export class AIChatStudio {
           testResult.innerHTML = '<span>⏳ Conectando y probando API...</span>';
         }
         btnTest.disabled = true;
-        const res = await this.testApiConnection(prov, key);
+        const res = await this.testApiConnection(prov, key, chosenModel);
         btnTest.disabled = false;
         if (testResult) {
           if (res.success) {
@@ -268,6 +298,20 @@ export class AIChatStudio {
             testResult.style.border = '1px solid rgba(16, 185, 129, 0.4)';
             testResult.style.color = '#6EE7B7';
             testResult.innerHTML = res.message;
+
+            // Populate detected models in the dropdown if available
+            if (res.availableModels && geminiModelSelect) {
+              const currentOptions = Array.from(geminiModelSelect.options).map(o => o.value);
+              res.availableModels.forEach(m => {
+                if (!currentOptions.includes(m)) {
+                  const opt = document.createElement('option');
+                  opt.value = m;
+                  opt.textContent = `⚡ ${m}`;
+                  geminiModelSelect.appendChild(opt);
+                }
+              });
+              if (res.model) geminiModelSelect.value = res.model;
+            }
           } else {
             testResult.style.background = 'rgba(239, 68, 68, 0.15)';
             testResult.style.border = '1px solid rgba(239, 68, 68, 0.4)';
@@ -282,13 +326,17 @@ export class AIChatStudio {
       btnSave.onclick = () => {
         this.provider = providerSelect ? providerSelect.value : 'local';
         this.apiKey = keyInput ? keyInput.value.trim() : '';
+        if (geminiModelSelect) {
+          this.geminiModel = geminiModelSelect.value;
+          localStorage.setItem('gom_ai_gemini_model', this.geminiModel);
+        }
         localStorage.setItem('gom_ai_provider', this.provider);
         localStorage.setItem('gom_ai_api_key', this.apiKey);
         this._updateProviderBadge();
         close();
         if (this.app && this.app.showToast) {
-          const name = this.provider === 'local' ? 'Motor Experto Local' : (this.provider === 'gemini' ? 'Google Gemini AI' : 'OpenAI');
-          this.app.showToast(`Proveedor configurado: ${name}`, 'success');
+          const name = this.provider === 'local' ? 'Motor Experto Local' : (this.provider === 'gemini' ? `Google Gemini (${this.geminiModel})` : 'OpenAI');
+          this.app.showToast(`Configuración guardada: ${name}`, 'success');
         }
       };
     }
@@ -515,28 +563,117 @@ Puedo ayudarte a resolver cualquier duda sobre:
   }
 
   _formatMessageText(text) {
-    let out = text
+    if (!text) return '';
+
+    // Protect HTML special characters first
+    let escaped = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
+    // 1. Code blocks ```code```
+    escaped = escaped.replace(/```([\s\S]*?)```/g, (match, code) => {
+      return `<pre class="chat-code-block"><code>${code.trim()}</code></pre>`;
+    });
+
+    // 2. Inline code `code`
+    escaped = escaped.replace(/`([^`]+)`/g, '<code class="chat-inline-code">$1</code>');
+
+    // 3. Process line by line for structured blocks
+    const lines = escaped.split('\n');
+    const processedLines = [];
+    let inUl = false;
+    let inOl = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Match bullets (- or *)
+      const bulletMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
+      // Match numbered lists (1. , 2. )
+      const numMatch = line.match(/^(\s*)\d+\.\s+(.*)$/);
+      // Match blockquotes (>)
+      const quoteMatch = line.match(/^(\s*)(?:&gt;|>)\s*(.*)$/);
+      // Match headers
+      const h5Match = line.match(/^#####\s+(.*)$/);
+      const h4Match = line.match(/^####\s+(.*)$/);
+      const h3Match = line.match(/^###\s+(.*)$/);
+      const h2Match = line.match(/^##\s+(.*)$/);
+      const h1Match = line.match(/^#\s+(.*)$/);
+
+      if (bulletMatch) {
+        if (inOl) { processedLines.push('</ol>'); inOl = false; }
+        if (!inUl) { processedLines.push('<ul class="chat-list">'); inUl = true; }
+        processedLines.push(`<li>${bulletMatch[2]}</li>`);
+        continue;
+      } else if (inUl) {
+        processedLines.push('</ul>');
+        inUl = false;
+      }
+
+      if (numMatch) {
+        if (inUl) { processedLines.push('</ul>'); inUl = false; }
+        if (!inOl) { processedLines.push('<ol class="chat-list">'); inOl = true; }
+        processedLines.push(`<li>${numMatch[2]}</li>`);
+        continue;
+      } else if (inOl) {
+        processedLines.push('</ol>');
+        inOl = false;
+      }
+
+      if (quoteMatch) {
+        processedLines.push(`<blockquote class="chat-blockquote">${quoteMatch[2]}</blockquote>`);
+        continue;
+      }
+
+      if (h1Match || h2Match) {
+        const title = h1Match ? h1Match[1] : h2Match[1];
+        processedLines.push(`<h3 class="chat-h2">${title}</h3>`);
+        continue;
+      }
+      if (h3Match) {
+        processedLines.push(`<h4 class="chat-h3">${h3Match[1]}</h4>`);
+        continue;
+      }
+      if (h4Match) {
+        processedLines.push(`<h5 class="chat-h4">${h4Match[1]}</h5>`);
+        continue;
+      }
+      if (h5Match) {
+        processedLines.push(`<h6 class="chat-h5">${h5Match[1]}</h6>`);
+        continue;
+      }
+
+      processedLines.push(line);
+    }
+
+    if (inUl) processedLines.push('</ul>');
+    if (inOl) processedLines.push('</ol>');
+
+    let out = processedLines.join('\n');
+
     // Bold **text**
-    out = out.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     // Italic *text*
-    out = out.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    // Lists
-    out = out.replace(/^\s*-\s+(.*)$/gm, '<li>$1</li>');
-    out = out.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
-    // Line breaks
-    out = out.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+    out = out.replace(/(^|[^*])\*([^*]+)\*([^*]|$)/g, '$1<em>$2</em>$3');
+
+    // Strip extraneous line breaks around block elements
+    out = out.replace(/(<\/(?:ul|ol|h2|h3|h4|h5|h6|blockquote|pre)>)\n+/g, '$1');
+    out = out.replace(/\n+(<(?:ul|ol|h2|h3|h4|h5|h6|blockquote|pre|li))/g, '$1');
+    out = out.replace(/(<\/li>)\n+/g, '$1');
+
+    // Paragraph gaps & line breaks
+    out = out.replace(/\n\n+/g, '<div class="chat-p-gap"></div>');
+    out = out.replace(/\n/g, '<br>');
 
     // Convert hex color codes into interactive visual chips
     out = out.replace(/(#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{3}))\b/g, (match, hex) => {
-      return `<button class="chat-color-chip" data-hex="${hex}" title="Click para cargar ${hex} en la rueda cromática o [+] para guardarlo">
-        <span class="chat-chip-swatch" style="background-color: ${hex};"></span>
-        <span class="chat-chip-code">${hex}</span>
-        <span class="chat-chip-action">↗</span>
-        <span class="chat-chip-add" title="Añadir a la paleta activa en Bibliotecas">+</span>
+      const upperHex = hex.toUpperCase();
+      return `<button class="chat-color-chip" data-hex="${upperHex}" title="Click: Cargar ${upperHex} en la rueda cromática | [+]: Añadir a la paleta activa">
+        <span class="chat-chip-swatch" style="background-color: ${upperHex};"></span>
+        <span class="chat-chip-code">${upperHex}</span>
+        <span class="chat-chip-action" title="Cargar en rueda">↗</span>
+        <span class="chat-chip-add" title="Añadir a paleta activa">+</span>
       </button>`;
     });
 
@@ -697,6 +834,99 @@ En pintura y teoría cromática, el secreto de una pieza memorable no radica en 
 *¿Deseas una recomendación sobre mezclas de tubos, una paleta histórica de maestros o ayuda con un género específico (paisaje, retrato, sci-fi)?*`;
   }
 
+  // --- CONTEXTO DEL ESTUDIO EN TIEMPO REAL Y PROMPTS ---
+
+  getStudioContext() {
+    const ctx = {
+      activeColor: null,
+      backgroundColor: null,
+      munsell: null,
+      hsv: null,
+      hsl: null,
+      temperature: null,
+      harmonyRule: null,
+      wheelMode: null,
+      activePalette: null,
+      palettesSummary: []
+    };
+
+    if (this.app?.fgColor) {
+      const { r, g, b, hex } = this.app.fgColor;
+      const hsv = ColorMath.rgbToHsv(r, g, b);
+      const hsl = ColorMath.rgbToHsl(r, g, b);
+      const munsell = MunsellSystem.rgbToMunsell(r, g, b);
+      const isWarm = (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320;
+      ctx.activeColor = {
+        hex,
+        r, g, b,
+        hsv: { h: Math.round(hsv.h), s: Math.round(hsv.s * 100), v: Math.round(hsv.v * 100) },
+        hsl: { h: Math.round(hsl.h), s: Math.round(hsl.s * 100), l: Math.round(hsl.l * 100) },
+        munsell: munsell?.notation || 'N/A'
+      };
+      ctx.temperature = isWarm ? 'Cálido (predominio amarillo-rojo)' : 'Frío (predominio azul-verde-violeta)';
+    }
+
+    if (this.app?.bgColor) {
+      ctx.backgroundColor = this.app.bgColor.hex;
+    }
+
+    if (this.app?.colorWheel) {
+      ctx.harmonyRule = this.app.colorWheel.harmonyRule || 'triadic';
+      ctx.wheelMode = this.app.colorWheel.mode || 'ryb';
+    }
+
+    if (this.app?.swatchManager) {
+      const activePal = this.app.swatchManager.getActivePalette();
+      if (activePal) {
+        ctx.activePalette = {
+          name: activePal.name,
+          colors: Array.isArray(activePal.colors) ? activePal.colors.slice(0, 20) : []
+        };
+      }
+      if (Array.isArray(this.app.swatchManager.palettes)) {
+        ctx.palettesSummary = this.app.swatchManager.palettes.slice(0, 6).map(p => ({
+          name: p.name,
+          count: Array.isArray(p.colors) ? p.colors.length : 0,
+          sample: Array.isArray(p.colors) ? p.colors.slice(0, 4).join(', ') : ''
+        }));
+      }
+    }
+
+    return ctx;
+  }
+
+  _buildSystemPrompt() {
+    const ctx = this.getStudioContext();
+    let prompt = `Eres el Maestro de Arte y Asesor Cromático de élite de la suite profesional GOM Color Picker Pro. Eres un consumado erudito y crítico de arte, maestro de teoría del color (Albert Munsell, Johannes Itten, James Gurney, Florent Farges, Anders Zorn, Josef Albers), formulación de pigmentos tradicionales (óleo, acrílico, acuarela, gouache), física de la luz (reflexión especular, difusión subsuperficial / SSS, temperatura cromática de sombras y luces) y dirección de arte digital. Conoces al detalle las obras y métodos de los grandes maestros (Joaquín Sorolla, Rembrandt, Velázquez, Monet, John Singer Sargent, Vermeer, Caravaggio, J.M.W. Turner, Gustav Klimt, etc.).
+
+ESTADO EN TIEMPO REAL DEL ESTUDIO DEL USUARIO:`;
+
+    if (ctx.activeColor) {
+      prompt += `\n- Color Frontal Activo en Rueda: ${ctx.activeColor.hex} | Munsell: ${ctx.activeColor.munsell} | H:${ctx.activeColor.hsv.h}° S:${ctx.activeColor.hsv.s}% V:${ctx.activeColor.hsv.v}% | Temperatura: ${ctx.temperature}`;
+    }
+    if (ctx.backgroundColor) {
+      prompt += `\n- Color Secundario de Fondo: ${ctx.backgroundColor}`;
+    }
+    if (ctx.harmonyRule) {
+      prompt += `\n- Modo de Rueda: ${ctx.wheelMode} | Regla Armónica activa: ${ctx.harmonyRule}`;
+    }
+    if (ctx.activePalette && ctx.activePalette.colors.length > 0) {
+      prompt += `\n- Paleta activa en Bibliotecas: "${ctx.activePalette.name}" (${ctx.activePalette.colors.length} muestras: ${ctx.activePalette.colors.join(', ')})`;
+    }
+    if (ctx.palettesSummary.length > 0) {
+      prompt += `\n- Otras colecciones del usuario: ${ctx.palettesSummary.map(p => `"${p.name}" [${p.sample}]`).join(' | ')}`;
+    }
+
+    prompt += `\n\nDIRECTRICES ESENCIALES DE RESPUESTA:
+1. Responde con profundidad, maestría técnica, elocuencia y total claridad. NUNCA cortes la respuesta a medias. Si el usuario pide una explicación detallada, ofrécele una respuesta completa, pedagógica y estructurada.
+2. Formato Markdown impecable: usa encabezados (##, ###), viñetas (- o *), listas ordenadas (1., 2.), negritas (**texto**) y citas (> cita) para una lectura fluida.
+3. SIEMPRE que recomiendes o menciones cualquier color, sombra, luz o acento, escribe su código hexadecimal en mayúsculas (#RRGGBB, ej: #E8C87A, #3B4B70). La interfaz de GOM Picker los convertirá automáticamente en muestras interactivas con botones para cargarlos en la rueda o guardarlos en la paleta.
+4. Si la consulta involucra mezclas de pintura física, especifica los pigmentos estándar (ej: Ocre Amarillo PY43, Azul Ultramar PB29, Siena Tostada PBr7, Tierra de Sombra Natural PBr7, Bermellón PR106, Blanco de Titanio PW6) y proporciones prácticas.
+5. Conecta tus consejos con el contexto del usuario en la suite (su color activo, paleta o armonía) de forma natural y constructiva.`;
+
+    return prompt;
+  }
+
   // --- LLM EN LA NUBE CON GOOGLE GEMINI (API OFICIAL) ---
 
   async getAvailableGeminiModels(apiKey) {
@@ -715,69 +945,99 @@ En pintura y teoría cromática, el secreto de una pieza memorable no radica en 
     }
   }
 
-  async _fetchGemini(apiKey, prompt, systemPrompt, preferredModel = null) {
+  async _fetchGemini(apiKey, contentsOrPrompt, systemPrompt, preferredModel = null) {
     const cleanKey = (apiKey || '').trim();
     if (!cleanKey) throw new Error('API Key vacía');
 
-    // Ordered prioritized candidate models:
-    // 1. Preferred or previously verified model
-    // 2. gemini-3.8-flash (official 2026 current standard recommended by Google AI Studio)
-    // 3. gemini-2.5-flash
-    // 4. gemini-1.5-flash
+    // Build contents payload
+    let contents = [];
+    if (Array.isArray(contentsOrPrompt)) {
+      contents = contentsOrPrompt;
+    } else {
+      contents = [{ role: 'user', parts: [{ text: String(contentsOrPrompt) }] }];
+    }
+
+    // Ordered prioritized candidate models
     const candidateModels = [];
     if (preferredModel) candidateModels.push(preferredModel.replace(/^models\//, ''));
     if (this.geminiModel) candidateModels.push(this.geminiModel.replace(/^models\//, ''));
-    candidateModels.push('gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-pro');
+    candidateModels.push('gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-3.8-flash', 'gemini-1.5-flash', 'gemini-pro');
 
-    // Deduplicate preserving priority
     const modelsToTry = Array.from(new Set(candidateModels));
     let lastError = null;
 
     for (const m of modelsToTry) {
-      try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${cleanKey}`;
-        const body = {
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 800 }
-        };
-        if (systemPrompt) {
-          body.systemInstruction = { parts: [{ text: systemPrompt }] };
-        }
+      // Configs to try: first without thinking delay for speed & full budget, then standard
+      const configsToTry = [
+        { temperature: 0.7, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } },
+        { temperature: 0.7, maxOutputTokens: 8192 }
+      ];
 
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          const message = errData.error?.message || `HTTP ${res.status}`;
-          lastError = new Error(message);
-
-          // If model is retired or not found, proceed to next candidate model
-          if (res.status === 404 || /not found|no longer available|unsupported/i.test(message)) {
-            console.warn(`[AIChatStudio] Modelo ${m} no disponible (${message}), probando siguiente candidato...`);
-            continue;
+      for (const genConfig of configsToTry) {
+        try {
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${cleanKey}`;
+          const body = {
+            contents,
+            generationConfig: genConfig
+          };
+          if (systemPrompt) {
+            body.systemInstruction = { parts: [{ text: systemPrompt }] };
           }
-          // If error is invalid API key, quota or permission, throw immediately
-          throw lastError;
-        }
 
-        const data = await res.json();
-        const candidate = data.candidates && data.candidates[0];
-        const text = candidate?.content?.parts?.[0]?.text;
-        if (!text) throw new Error('Respuesta vacía del modelo Gemini');
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
 
-        // Persist verified working model
-        this.geminiModel = m;
-        localStorage.setItem('gom_ai_gemini_model', m);
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            const message = errData.error?.message || `HTTP ${res.status}`;
+            lastError = new Error(message);
 
-        return { text, model: m };
-      } catch (err) {
-        lastError = err;
-        if (/API_KEY_INVALID|quota|PERMISSION_DENIED/i.test(err.message)) {
-          throw err;
+            // If error is thinkingConfig unsupported, try next genConfig without thinkingConfig
+            if (/thinkingConfig|thinkingBudget|unknown field/i.test(message)) {
+              continue;
+            }
+
+            // If model is retired or not found, try next candidate model
+            if (res.status === 404 || /not found|no longer available|unsupported/i.test(message)) {
+              console.warn(`[AIChatStudio] Modelo ${m} no disponible (${message}), probando siguiente...`);
+              break;
+            }
+
+            // If API key is invalid or quota exceeded, throw immediately
+            throw lastError;
+          }
+
+          const data = await res.json();
+          const candidate = data.candidates && data.candidates[0];
+
+          // Extract text from parts, filtering out thoughts
+          let text = '';
+          if (candidate?.content?.parts && Array.isArray(candidate.content.parts)) {
+            const nonThought = candidate.content.parts.filter(p => !p.thought);
+            if (nonThought.length > 0) {
+              text = nonThought.map(p => p.text || '').join('');
+            } else {
+              text = candidate.content.parts.map(p => p.text || '').join('');
+            }
+          }
+
+          if (!text) {
+            const reason = candidate?.finishReason || 'DESCONOCIDO';
+            throw new Error(`Respuesta vacía del modelo Gemini (FinishReason: ${reason})`);
+          }
+
+          this.geminiModel = m;
+          localStorage.setItem('gom_ai_gemini_model', m);
+
+          return { text, model: m };
+        } catch (err) {
+          lastError = err;
+          if (/API_KEY_INVALID|quota|PERMISSION_DENIED/i.test(err.message)) {
+            throw err;
+          }
         }
       }
     }
@@ -786,41 +1046,64 @@ En pintura y teoría cromática, el secreto de una pieza memorable no radica en 
   }
 
   async _callGeminiAPI(userQuery) {
-    const curHex = this.app.fgColor ? this.app.fgColor.hex : '#6366F1';
-    const bgHex = this.app.bgColor ? this.app.bgColor.hex : '#F43F5E';
-    const munsell = MunsellSystem.rgbToMunsell(this.app.fgColor.r, this.app.fgColor.g, this.app.fgColor.b);
+    const systemPrompt = this._buildSystemPrompt();
 
-    const systemPrompt = `Eres el Maestro de Arte y Asesor Cromático de élite de la suite GOM Color Picker Pro. Eres un experto consumado en teoría del color (Munsell, Johannes Itten, James Gurney, Florent Farges, Anders Zorn), química de pigmentos tradicionales (óleo, acrílico, acuarela) y arte digital. Conoces a fondo la obra de los grandes maestros (Sorolla, Rembrandt, Velázquez, Monet, Sargent, Vermeer, Caravaggio).
-Contexto del usuario en la suite en este momento:
-- Color Frontal activo en la rueda: ${curHex} (Notación Albert Munsell: ${munsell.notation})
-- Color de Fondo secundario: ${bgHex}
+    // Build multi-turn conversational history
+    // Filter last 10 messages (user and assistant turns)
+    const recent = this.messages.slice(-10);
+    const contents = [];
 
-Instrucciones:
-1. Responde de forma elocuente, técnica, pedagógica y práctica para pintores e ilustradores.
-2. Siempre que recomiendes o menciones colores concretos, escribe su código hexadecimal en formato #RRGGBB para que la suite genere automáticamente botones interactivos para el usuario.
-3. Si el usuario pregunta sobre cómo aplicar o armonizar su color actual, analiza ${curHex} y ofrécele combinaciones armónicas exactas.
-4. Mantén tus respuestas concisas, dinámicas y fáciles de leer con viñetas en Markdown.`;
+    for (const msg of recent) {
+      if (!msg.text || !msg.text.trim()) continue;
+      const role = msg.role === 'assistant' ? 'model' : 'user';
 
-    const result = await this._fetchGemini(this.apiKey, userQuery, systemPrompt, this.geminiModel || 'gemini-3.8-flash');
+      if (contents.length > 0 && contents[contents.length - 1].role === role) {
+        contents[contents.length - 1].parts[0].text += '\n\n' + msg.text;
+      } else {
+        contents.push({
+          role,
+          parts: [{ text: msg.text }]
+        });
+      }
+    }
+
+    // Ensure conversation starts with 'user'
+    while (contents.length > 0 && contents[0].role !== 'user') {
+      contents.shift();
+    }
+
+    if (contents.length === 0) {
+      contents.push({ role: 'user', parts: [{ text: userQuery }] });
+    }
+
+    const preferred = this.geminiModel || 'gemini-2.5-flash';
+    const result = await this._fetchGemini(this.apiKey, contents, systemPrompt, preferred);
     return result.text;
   }
 
   // --- LLM EN LA NUBE CON OPENAI COMPATIBLE ---
 
   async _callOpenAIAPI(userQuery) {
-    const curHex = this.app.fgColor ? this.app.fgColor.hex : '#6366F1';
     const endpoint = 'https://api.openai.com/v1/chat/completions';
+    const systemPrompt = this._buildSystemPrompt();
 
-    const systemPrompt = `Eres el Maestro de Arte y Asesor Cromático de GOM Picker Pro. Experto en color, pintura y maestros. Color activo actual del usuario: ${curHex}. Incluye siempre códigos hexadecimales #RRGGBB cuando recomiendes colores.`;
+    // Multi-turn history
+    const recent = this.messages.slice(-10);
+    const messages = [{ role: 'system', content: systemPrompt }];
+
+    for (const msg of recent) {
+      if (!msg.text || !msg.text.trim()) continue;
+      messages.push({
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        content: msg.text
+      });
+    }
 
     const body = {
       model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userQuery }
-      ],
+      messages,
       temperature: 0.7,
-      max_tokens: 700
+      max_tokens: 4096
     };
 
     const res = await fetch(endpoint, {
@@ -843,7 +1126,7 @@ Instrucciones:
 
   // --- DIAGNÓSTICO Y TEST DE CONECTIVIDAD PARA API KEYS ---
 
-  async testApiConnection(provider, apiKey) {
+  async testApiConnection(provider, apiKey, preferredModel = null) {
     if (provider === 'local') {
       return {
         success: true,
@@ -864,12 +1147,13 @@ Instrucciones:
 
     if (provider === 'gemini') {
       try {
-        // Query available models in the user's account first if possible
         const available = await this.getAvailableGeminiModels(apiKey);
-        let modelToTest = this.geminiModel || 'gemini-3.8-flash';
+        let modelToTest = preferredModel || this.geminiModel || 'gemini-2.5-flash';
         if (available && available.length > 0) {
-          const preferred = available.find(m => m.includes('3.8-flash')) || available.find(m => m.includes('flash')) || available[0];
-          if (preferred) modelToTest = preferred;
+          if (!available.includes(modelToTest)) {
+            const preferred = available.find(m => m.includes('2.5-flash')) || available.find(m => m.includes('3.8-flash')) || available.find(m => m.includes('flash')) || available[0];
+            if (preferred) modelToTest = preferred;
+          }
         }
 
         const res = await this._fetchGemini(apiKey, 'Responde exclusivamente la palabra OK.', null, modelToTest);
@@ -886,6 +1170,7 @@ Instrucciones:
           provider: 'gemini',
           model: res.model,
           latency,
+          availableModels: available,
           message: `✅ <strong>¡Conexión Exitosa con Google Gemini!</strong><br>Modelo verificado: <code>${res.model}</code> respondiendo con latencia de <strong>${latency}ms</strong>. Tu clave está activa y lista para el estudio.${extraModelsInfo}`
         };
       } catch (err) {

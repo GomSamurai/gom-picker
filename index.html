@@ -1749,10 +1749,15 @@
             <div class="ai-chat-input-bar">
               <div class="ai-chat-input-wrapper">
                 <textarea id="aiChatInput" class="ai-chat-input" rows="2" placeholder="Pregunta sobre color, pintura, maestros, pigmentos, composición... (Enter para enviar)"></textarea>
-                <button id="btnAiChatQuickInject" class="chat-input-quick-inject" title="Insertar color activo (#HEX) en la pregunta">
-                  <span id="chatInputActiveDot" class="chat-input-active-dot" style="background-color: #6366F1;"></span>
-                  <span>+ Color</span>
-                </button>
+                <div class="chat-input-actions-bar">
+                  <button id="btnAiChatInjectPalette" class="chat-input-quick-inject" title="Adjuntar paleta activa de Bibliotecas a la pregunta">
+                    <span>🎨 + Paleta</span>
+                  </button>
+                  <button id="btnAiChatQuickInject" class="chat-input-quick-inject" title="Insertar color activo (#HEX) en la pregunta">
+                    <span id="chatInputActiveDot" class="chat-input-active-dot" style="background-color: #6366F1;"></span>
+                    <span>+ Color</span>
+                  </button>
+                </div>
               </div>
               <button id="btnAiChatSend" class="ai-chat-send-btn" title="Enviar pregunta al Maestro IA">
                 <span>Enviar</span> ➔
@@ -2139,6 +2144,20 @@
           <input type="password" id="aiApiKeyInput" class="ai-prompt-input" placeholder="Pega aquí tu API Key (se guarda solo en tu navegador)..." style="width: 100%; box-sizing: border-box;" autocomplete="off" />
           <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
             Tu clave se almacena de forma privada y segura exclusivamente en el almacenamiento local (localStorage) de tu navegador.
+          </div>
+        </div>
+
+        <div id="aiModelField" class="setting-field-group" style="display: none;">
+          <label style="display: block; font-size: 0.76rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">
+            Modelo de Inteligencia Artificial (Gemini):
+          </label>
+          <select id="aiGeminiModelSelect" class="chip-select" style="width: 100%; padding: 8px; font-size: 0.8rem; background: rgba(0,0,0,0.4); border: 1px solid var(--border-accent); border-radius: 6px; color: #FFFFFF;">
+            <option value="gemini-2.5-flash">⚡ Gemini 2.5 Flash (Ultra Rápido y Recomendado)</option>
+            <option value="gemini-2.5-pro">🧠 Gemini 2.5 Pro (Máximo Razonamiento y Teoría)</option>
+            <option value="gemini-3.8-flash">✨ Gemini 3.8 Flash</option>
+          </select>
+          <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
+            Al hacer clic en "Probar Conexión", se detectan automáticamente los modelos activos en tu cuenta.
           </div>
         </div>
 
