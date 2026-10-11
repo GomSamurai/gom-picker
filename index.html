@@ -1661,6 +1661,15 @@
                   <input type="checkbox" id="chkHyper4DPalette" checked>
                   <span>Paleta</span>
                 </label>
+                <span style="display: inline-block; width: 1px; height: 16px; background: rgba(255,255,255,0.18); margin: 0 4px; vertical-align: middle;"></span>
+                <label class="hyper4d-layer-check" title="Invertir eje horizontal (X) del ratón al rotar la cámara orbital">
+                  <input type="checkbox" id="chkHyper4DInvertX">
+                  <span>⇄ Invertir X</span>
+                </label>
+                <label class="hyper4d-layer-check" title="Invertir eje vertical (Y) del ratón al rotar la cámara orbital">
+                  <input type="checkbox" id="chkHyper4DInvertY">
+                  <span>⇅ Invertir Y</span>
+                </label>
               </div>
 
               <!-- HUD Hint / Instrucciones de navegación -->
@@ -1809,41 +1818,119 @@
 
               </div>
 
-              <!-- Panel 3: Comparador Multidimensional (A vs B vs C vs D) -->
+              <!-- Panel 3: Comparador Multidimensional Dinámico (A, B, C, D, ...) -->
               <div id="hyper4dPanelCompare" class="hyper4d-tab-content" style="display: none;">
                 <div class="hyper4d-section-desc">
-                  Compara analíticamente dos o más muestras proyectadas en el hiperespacio 4D con cálculo Delta-E, contraste tonal, interacción compositiva y punto medio de colisión física.
+                  Compara analíticamente múltiples muestras simultáneas en el hiperespacio 4D. Añade o quita muestras dinámicamente, analiza matrices Delta-E, contraste WCAG, balance térmico, geometría y el baricentro de mezcla física colectiva.
                 </div>
 
-                <div class="hyper4d-compare-slots-grid">
-                  <div class="hyper4d-compare-slot active">
-                    <span class="slot-badge">Muestra A</span>
-                    <span id="hyper4dSlotASwatch" class="slot-color-circle" style="background-color: #6366F1;"></span>
-                    <span class="slot-name">Activa (#6366F1)</span>
+                <!-- Barra de Herramientas de Muestras del Comparador -->
+                <div class="hyper4d-compare-toolbar" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; justify-content: space-between;">
+                  <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button id="btnHyper4DAddCompareSlot" class="tool-action-btn" style="padding: 4px 10px; font-size: 0.73rem; background: rgba(99,102,241,0.2); border-color: rgba(99,102,241,0.5); color: #C7D2FE;" title="Añadir otra muestra a la comparativa">
+                      <span>➕</span> Añadir Muestra
+                    </button>
+                    <button id="btnHyper4DLoadActivePalette" class="tool-action-btn" style="padding: 4px 10px; font-size: 0.73rem;" title="Cargar todas las muestras de la paleta activa de Bibliotecas">
+                      <span>🎨</span> Cargar Paleta Activa
+                    </button>
+                    <button id="btnHyper4DLoadFgBg" class="tool-action-btn" style="padding: 4px 10px; font-size: 0.73rem;" title="Comparar Color Frontal (FG) vs Fondo (BG)">
+                      <span>🔄</span> Cargar FG & BG
+                    </button>
                   </div>
-                  <div class="hyper4d-compare-slot active">
-                    <span class="slot-badge">Muestra B</span>
-                    <span id="hyper4dSlotBSwatch" class="slot-color-circle" style="background-color: #F59E0B;"></span>
-                    <span class="slot-name">Ámbar (#F59E0B)</span>
-                  </div>
+                  <label style="display: flex; align-items: center; gap: 5px; font-size: 0.69rem; color: var(--text-muted); cursor: pointer;" title="Si está activo, la Muestra A se actualiza automáticamente al cambiar el color principal de la suite">
+                    <input type="checkbox" id="chkHyper4DAutoSyncSlotA" checked />
+                    <span>Auto-seguir FG</span>
+                  </label>
                 </div>
 
-                <div class="hyper4d-card-section" style="margin-top: 12px;">
-                  <div class="hyper4d-section-title">📊 Diagnóstico Perceptual & Físico:</div>
-                  <div id="hyper4dComparisonStats" class="hyper4d-stats-box">
-                    <!-- Updated dynamically by Hyper4DStudio -->
-                  </div>
+                <!-- Grid Dinámico de Muestras Comparadas (Generado dinámicamente) -->
+                <div id="hyper4dCompareSlotsGrid" class="hyper4d-compare-slots-grid">
+                  <!-- Rendered dynamically -->
                 </div>
 
-                <div class="hyper4d-card-section">
-                  <div class="hyper4d-section-title">🎨 Mezcla al 50/50 en el Espacio:</div>
-                  <p style="font-size: 0.72rem; color: var(--text-secondary); margin: 0 0 6px 0;">
-                    El nodo intermedio en la línea vectorial marca el punto exacto resultante de mezclar físicamente ambas muestras con pintura tradicional.
-                  </p>
-                  <div id="hyper4dCompareMixActionBox" style="margin-top: 8px;">
-                    <!-- Botón para cargar o guardar mezcla -->
-                  </div>
+                <!-- Pestañas de Vista Comparativa: Métricas & ΔE vs Composición vs Mezcla Colectiva -->
+                <div class="hyper4d-compare-views-nav" style="display: flex; gap: 6px; margin-top: 14px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px;">
+                  <button type="button" class="chip-select active-toggle hyper4d-comp-view-btn" data-view="metrics" style="padding: 4px 10px; font-size: 0.72rem;">
+                    📊 Métricas & ΔE
+                  </button>
+                  <button type="button" class="chip-select hyper4d-comp-view-btn" data-view="composition" style="padding: 4px 10px; font-size: 0.72rem;">
+                    📐 Geometría & Goethe
+                  </button>
+                  <button type="button" class="chip-select hyper4d-comp-view-btn" data-view="mix" style="padding: 4px 10px; font-size: 0.72rem;">
+                    🎨 Baricentro & Mezcla 4D
+                  </button>
                 </div>
+
+                <!-- Vista 1: Métricas Globales, Matriz Pairwise ΔE y Coordenadas 4D -->
+                <div id="hyper4dCompViewMetrics" class="hyper4d-comp-subview" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                  
+                  <div class="hyper4d-card-section" style="margin: 0;">
+                    <div class="hyper4d-section-title">📊 Estadísticas Globales del Conjunto:</div>
+                    <div id="hyper4dComparisonStats" class="hyper4d-stats-box">
+                      <!-- Dinámico -->
+                    </div>
+                  </div>
+
+                  <div class="hyper4d-card-section" style="margin: 0;">
+                    <div class="hyper4d-section-title">⚡ Matriz Cruzada de Contraste (Pairwise ΔE & WCAG):</div>
+                    <div id="hyper4dPairwiseMatrixBox" style="overflow-x: auto; max-height: 240px;">
+                      <!-- Dinámico -->
+                    </div>
+                  </div>
+
+                  <div class="hyper4d-card-section" style="margin: 0;">
+                    <div class="hyper4d-section-title">🌌 Coordenadas en el Hiperespacio 4D (X, Y, Z, W):</div>
+                    <div id="hyper4dCoordsTableBox" style="overflow-x: auto;">
+                      <!-- Dinámico -->
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Vista 2: Geometría, Relaciones de Goethe e Itten -->
+                <div id="hyper4dCompViewComposition" class="hyper4d-comp-subview" style="display: none; flex-direction: column; gap: 10px; margin-top: 10px;">
+                  
+                  <div class="hyper4d-card-section" style="margin: 0;">
+                    <div class="hyper4d-section-title">🎭 Relación Armónica & Tensión de Hue:</div>
+                    <div id="hyper4dCompHarmonyBox">
+                      <!-- Dinámico -->
+                    </div>
+                  </div>
+
+                  <div class="hyper4d-card-section" style="margin: 0;">
+                    <div class="hyper4d-section-title">⚖️ Jerarquía y Proporción Recomendada (J.W. Goethe):</div>
+                    <p style="font-size: 0.71rem; color: var(--text-muted); margin: 0 0 6px 0;">
+                      Distribución de superficie armónica para evitar que los colores de alta energía lumínica saturen la composición.
+                    </p>
+                    <div id="hyper4dCompGoetheHierarchyBox">
+                      <!-- Dinámico -->
+                    </div>
+                  </div>
+
+                  <div class="hyper4d-card-section" style="margin: 0;">
+                    <div class="hyper4d-section-title">🖼️ Roles Compositivos Asignados:</div>
+                    <div id="hyper4dCompRolesBox">
+                      <!-- Dinámico -->
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Vista 3: Baricentro & Mezcla Física Colectiva -->
+                <div id="hyper4dCompViewMix" class="hyper4d-comp-subview" style="display: none; flex-direction: column; gap: 10px; margin-top: 10px;">
+                  
+                  <div class="hyper4d-card-section" style="margin: 0;">
+                    <div class="hyper4d-section-title">🪐 Baricentro Físico y Colisión Sustractiva:</div>
+                    <p style="font-size: 0.72rem; color: var(--text-secondary); margin: 0 0 8px 0;">
+                      El baricentro representa el centroide exacto en 4D donde colisionan todas las muestras. La mezcla física simula el color resultante de combinar partes iguales de cada pigmento.
+                    </p>
+                    <div id="hyper4dCompareMixActionBox">
+                      <!-- Dinámico -->
+                    </div>
+                  </div>
+
+                </div>
+
               </div>
 
               <!-- Panel 4: Constelación de Paleta de Bibliotecas -->

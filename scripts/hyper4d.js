@@ -31,7 +31,9 @@ export class Hyper4DStudio {
       lastMouseX: 0,
       lastMouseY: 0,
       autoRotate: true,
-      autoRotateSpeed: 0.003
+      autoRotateSpeed: 0.003,
+      invertX: localStorage.getItem('gom_hyper4d_invert_x') === 'true',
+      invertY: localStorage.getItem('gom_hyper4d_invert_y') === 'true'
     };
 
     // Estado Hiperdimensional 4D
@@ -66,12 +68,12 @@ export class Hyper4DStudio {
       isSidebarHidden: false
     };
 
-    // Muestras en el Comparador (Hasta 4)
+    // Muestras en el Comparador Dinámico (Multimuestras A, B, C, D...)
+    this.autoSyncSlotA = true;
+    this.activeCompareSubView = 'metrics'; // 'metrics' | 'composition' | 'mix'
     this.compareSlots = [
-      { id: 'A', name: 'Muestra Activa A', hex: '#6366F1', rgb: { r: 99, g: 102, b: 241 }, active: true },
-      { id: 'B', name: 'Muestra Comparada B', hex: '#F59E0B', rgb: { r: 245, g: 158, b: 11 }, active: true },
-      { id: 'C', name: 'Muestra C', hex: '#10B981', rgb: { r: 16, g: 185, b: 129 }, active: false },
-      { id: 'D', name: 'Muestra D', hex: '#EC4899', rgb: { r: 236, g: 72, b: 153 }, active: false }
+      { id: 'A', name: 'Muestra A (Principal)', hex: '#6366F1', rgb: { r: 99, g: 102, b: 241 }, active: true },
+      { id: 'B', name: 'Muestra B (Comparada)', hex: '#F59E0B', rgb: { r: 245, g: 158, b: 11 }, active: true }
     ];
 
     // Presets Didácticos de Maestros
@@ -138,6 +140,8 @@ export class Hyper4DStudio {
 
     this._bindEvents();
     this._bindUI();
+    this._bindCompareControls();
+    this.renderCompareSlots();
     this._resizeCanvas();
     this.syncWithActiveColor();
 
@@ -1116,61 +1120,105 @@ export class Hyper4DStudio {
   }
 
   _collectCompareNodes(elements, lines) {
-    const activeSlots = this.compareSlots.filter(s => s.active);
+    const activeSlots = this.compareSlots.filter(s => s.active !== false);
     if (activeSlots.length < 2) return;
 
     const slotNodes = [];
-    activeSlots.forEach(slot => {
-      const hsv = ColorMath.rgbToHsv(slot.rgb.r, slot.rgb.g, slot.rgb.b);
-      const rad = (hsv.h * Math.PI) / 180;
-      const chromaRadius = (hsv.s * 14) * 14;
-      const x = chromaRadius * Math.cos(rad);
-      const z = chromaRadius * Math.sin(rad);
-      const y = (hsv.v * 9 - 5) * 32;
+    const rgbList = [];
+    let sumX = 0, sumY = 0, sumZ = 0, sumW = 0;
 
+    activeSlots.forEach((slot) => {
+      const coords = this._getColor4DCoords(slot.rgb);
       const node = {
         id: `compare_slot_${slot.id}`,
         type: 'compare_sample',
         slotId: slot.id,
-        x, y, z, w: 0,
+        x: coords.x,
+        y: coords.y,
+        z: coords.z,
+        w: coords.w,
         hex: slot.hex,
         rgb: slot.rgb,
-        name: `[${slot.id}] ${slot.name}`,
-        size: 9
+        name: `[${slot.id}] ${slot.name || ('Muestra ' + slot.id)}`,
+        munsell: coords.munsell.notation,
+        coords4D: `X:${coords.x.toFixed(0)} Y:${coords.y.toFixed(0)} Z:${coords.z.toFixed(0)} W:${coords.w.toFixed(0)}`,
+        size: 9.5
       };
       elements.push(node);
       slotNodes.push(node);
+      rgbList.push(slot.rgb);
+
+      sumX += coords.x;
+      sumY += coords.y;
+      sumZ += coords.z;
+      sumW += coords.w;
     });
 
-    // Conectar A y B con vector de comparación analítico
-    if (slotNodes.length >= 2) {
-      const nodeA = slotNodes[0];
-      const nodeB = slotNodes[1];
-      lines.push({
-        from: nodeA,
-        to: nodeB,
-        color: '#F59E0B',
-        width: 2.5,
-        dash: [5, 3],
-        label: 'Vector Comparativo A ↔ B'
-      });
+    const N = slotNodes.length;
+    if (N >= 2) {
+      // Conectar polígono perimetral dinámico
+      for (let i = 0; i < N; i++) {
+        const nextIdx = (i + 1) % N;
+        if (N === 2 && i === 1) break; // Si solo son 2 muestras, un solo vector de ida
+        lines.push({
+          from: slotNodes[i],
+          to: slotNodes[nextIdx],
+          color: '#F59E0B',
+          width: 2.2,
+          dash: [5, 3],
+          label: N === 2 ? 'Vector Comparativo A ↔ B' : (i === 0 ? 'Polígono 4D Comparativo' : '')
+        });
+      }
 
-      // Punto medio de colisión física (Mezcla 50/50)
-      const mixRgb = ColorMath.mixRyb(nodeA.rgb, nodeB.rgb, 0.5);
+      // Si hay de 4 a 6 muestras, trazar cuerdas diagonales sutiles para formar la red
+      if (N >= 4 && N <= 6) {
+        for (let i = 0; i < N; i++) {
+          for (let j = i + 2; j < N; j++) {
+            if (i === 0 && j === N - 1) continue;
+            lines.push({
+              from: slotNodes[i],
+              to: slotNodes[j],
+              color: 'rgba(245, 158, 11, 0.22)',
+              width: 1,
+              dash: [2, 4]
+            });
+          }
+        }
+      }
+
+      // Baricentro Colectivo Físico en 4D (Mezcla 1/N exacta)
+      const baryX = sumX / N;
+      const baryY = sumY / N;
+      const baryZ = sumZ / N;
+      const baryW = sumW / N;
+      const mixRgb = this._calculateMultiPhysicalMix(rgbList);
       const mixHex = ColorMath.rgbToHex(mixRgb.r, mixRgb.g, mixRgb.b);
+
       const mixNode = {
         id: 'compare_mix_point',
         type: 'compare_mix',
-        x: (nodeA.x + nodeB.x) / 2,
-        y: (nodeA.y + nodeB.y) / 2,
-        z: (nodeA.z + nodeB.z) / 2,
-        w: 0,
+        x: baryX,
+        y: baryY,
+        z: baryZ,
+        w: baryW,
         hex: mixHex,
         rgb: mixRgb,
-        name: `Mezcla 50/50 (${mixHex})`,
-        size: 6
+        name: `🪐 Baricentro 4D (${mixHex})`,
+        coords4D: `Baricentro Colectivo 1/${N}`,
+        size: 7.5
       };
       elements.push(mixNode);
+
+      // Rayos de conexión punteados desde cada muestra hacia el baricentro
+      slotNodes.forEach(sn => {
+        lines.push({
+          from: sn,
+          to: mixNode,
+          color: 'rgba(56, 189, 248, 0.35)',
+          width: 1.2,
+          dash: [3, 3]
+        });
+      });
     }
   }
 
@@ -1245,8 +1293,10 @@ export class Hyper4DStudio {
       if (this.camera.isDragging) {
         const dx = e.clientX - this.camera.lastMouseX;
         const dy = e.clientY - this.camera.lastMouseY;
-        this.camera.rotY += dx * 0.007;
-        this.camera.rotX = Math.max(-1.4, Math.min(1.4, this.camera.rotX + dy * 0.007));
+        const signX = this.camera.invertX ? -1 : 1;
+        const signY = this.camera.invertY ? -1 : 1;
+        this.camera.rotY += dx * 0.007 * signX;
+        this.camera.rotX = Math.max(-1.4, Math.min(1.4, this.camera.rotX + dy * 0.007 * signY));
         this.camera.lastMouseX = e.clientX;
         this.camera.lastMouseY = e.clientY;
         return;
@@ -1413,6 +1463,31 @@ export class Hyper4DStudio {
     bindToggle('chkHyper4DSSS', 'showSSSVector');
     bindToggle('chkHyper4DGoethe', 'showGoetheExtension');
     bindToggle('chkHyper4DPalette', 'showPaletteConstellation');
+
+    // Toggles de Inversión de Ejes del Ratón
+    const chkInvX = document.getElementById('chkHyper4DInvertX');
+    if (chkInvX) {
+      chkInvX.checked = this.camera.invertX;
+      chkInvX.addEventListener('change', (e) => {
+        this.camera.invertX = e.target.checked;
+        localStorage.setItem('gom_hyper4d_invert_x', this.camera.invertX);
+        if (this.app?.showToast) {
+          this.app.showToast(this.camera.invertX ? 'Eje horizontal X del ratón invertido' : 'Eje horizontal X normal', 'info');
+        }
+      });
+    }
+
+    const chkInvY = document.getElementById('chkHyper4DInvertY');
+    if (chkInvY) {
+      chkInvY.checked = this.camera.invertY;
+      chkInvY.addEventListener('change', (e) => {
+        this.camera.invertY = e.target.checked;
+        localStorage.setItem('gom_hyper4d_invert_y', this.camera.invertY);
+        if (this.app?.showToast) {
+          this.app.showToast(this.camera.invertY ? 'Eje vertical Y del ratón invertido' : 'Eje vertical Y normal', 'info');
+        }
+      });
+    }
 
     // 8. Control de Pantalla Completa Inmersiva
     const btnFullscreen = document.getElementById('btnHyper4DFullscreen');
@@ -1832,12 +1907,11 @@ export class Hyper4DStudio {
     const hsv = ColorMath.rgbToHsv(curRgb.r, curRgb.g, curRgb.b);
     const isWarm = (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320;
 
-    // Actualizar Muestra A del Comparador
-    if (this.compareSlots[0]) {
+    // Actualizar Muestra A del Comparador si autoSyncSlotA está activo
+    if (this.autoSyncSlotA && this.compareSlots && this.compareSlots[0]) {
       this.compareSlots[0].hex = hex;
       this.compareSlots[0].rgb = curRgb;
-      const slotASwatch = document.getElementById('hyper4dSlotASwatch');
-      if (slotASwatch) slotASwatch.style.backgroundColor = hex;
+      this.renderCompareSlots();
     }
 
     // Actualizar Tarjeta de Inspección HTML
@@ -2018,86 +2092,640 @@ export class Hyper4DStudio {
     }
   }
 
+  // --- MOTOR DE COMPARACIÓN MULTIMUESTRAS DINÁMICO (4D MULTI-SAMPLE COMPARATOR) ---
+
+  _getColor4DCoords(rgb) {
+    const hsv = ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b);
+    const munsell = MunsellSystem.rgbToMunsell(rgb.r, rgb.g, rgb.b);
+    const isWarm = (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320;
+    const rad = (hsv.h * Math.PI) / 180;
+    const chromaRadius = (munsell.chroma || (hsv.s * 14)) * 14;
+    const x = chromaRadius * Math.cos(rad);
+    const z = chromaRadius * Math.sin(rad);
+    const y = ((munsell.value || (hsv.v * 9)) - 5) * 32;
+
+    let w = 0;
+    if (this.dimension4D.wMode === 'thermal') {
+      w = (isWarm ? 30 : -30) + (this.dimension4D.wValue * 0.6);
+    } else if (this.dimension4D.wMode === 'subtractive') {
+      w = this.dimension4D.wValue;
+    } else if (this.dimension4D.wMode === 'diurnal') {
+      w = Math.sin(this.dimension4D.wValue * 0.05) * 50;
+    } else {
+      w = this.dimension4D.wValue * 0.8;
+    }
+
+    return { x, y, z, w, hsv, munsell, isWarm };
+  }
+
+  _calculateMultiPhysicalMix(rgbList) {
+    if (!rgbList || rgbList.length === 0) return { r: 128, g: 128, b: 128 };
+    if (rgbList.length === 1) return { ...rgbList[0] };
+
+    // Mezcla sustractiva física 1/N iterativa en espacio RYB
+    let accum = { ...rgbList[0] };
+    for (let i = 1; i < rgbList.length; i++) {
+      const weight = 1 / (i + 1);
+      accum = ColorMath.mixRyb(accum, rgbList[i], weight);
+    }
+    return accum;
+  }
+
+  _bindCompareControls() {
+    // 1. Botón Añadir Muestra
+    const btnAdd = document.getElementById('btnHyper4DAddCompareSlot');
+    if (btnAdd) {
+      btnAdd.addEventListener('click', () => this.addCompareSlot());
+    }
+
+    // 2. Botón Cargar Paleta Activa
+    const btnPal = document.getElementById('btnHyper4DLoadActivePalette');
+    if (btnPal) {
+      btnPal.addEventListener('click', () => this.loadActivePaletteIntoSlots());
+    }
+
+    // 3. Botón Cargar FG & BG
+    const btnFgBg = document.getElementById('btnHyper4DLoadFgBg');
+    if (btnFgBg) {
+      btnFgBg.addEventListener('click', () => this.loadFgBgIntoSlots());
+    }
+
+    // 4. Checkbox Auto-sync Slot A con FG
+    const chkSync = document.getElementById('chkHyper4DAutoSyncSlotA');
+    if (chkSync) {
+      chkSync.checked = this.autoSyncSlotA;
+      chkSync.addEventListener('change', (e) => {
+        this.autoSyncSlotA = e.target.checked;
+      });
+    }
+
+    // 5. Pestañas de Sub-vistas (Métricas, Composición, Mezcla 4D)
+    const viewButtons = document.querySelectorAll('.hyper4d-comp-view-btn');
+    const subViews = {
+      metrics: document.getElementById('hyper4dCompViewMetrics'),
+      composition: document.getElementById('hyper4dCompViewComposition'),
+      mix: document.getElementById('hyper4dCompViewMix')
+    };
+
+    viewButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const viewKey = btn.dataset.view;
+        this.activeCompareSubView = viewKey;
+        viewButtons.forEach(b => b.classList.toggle('active-toggle', b === btn));
+        Object.keys(subViews).forEach(k => {
+          if (subViews[k]) subViews[k].style.display = k === viewKey ? 'flex' : 'none';
+        });
+      });
+    });
+  }
+
+  addCompareSlot(customHex = null, customName = null) {
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+    if (this.compareSlots.length >= 8) {
+      if (this.app?.showToast) this.app.showToast('Máximo 8 muestras en comparativa simultánea', 'warning');
+      return;
+    }
+
+    const usedLetters = this.compareSlots.map(s => s.id);
+    const nextLetter = letters.find(l => !usedLetters.includes(l)) || `S${this.compareSlots.length + 1}`;
+
+    let hex = customHex;
+    if (!hex) {
+      // Color armónico con salto áureo de tono
+      const baseRgb = this.compareSlots[this.compareSlots.length - 1]?.rgb || { r: 99, g: 102, b: 241 };
+      const hsv = ColorMath.rgbToHsv(baseRgb.r, baseRgb.g, baseRgb.b);
+      const stepHue = (hsv.h + 137.5) % 360;
+      const newRgb = ColorMath.hsvToRgb(stepHue, Math.max(0.45, hsv.s), Math.max(0.65, hsv.v));
+      hex = ColorMath.rgbToHex(newRgb.r, newRgb.g, newRgb.b);
+    }
+    const rgb = ColorMath.hexToRgb(hex);
+
+    const newSlot = {
+      id: nextLetter,
+      name: customName || `Muestra ${nextLetter}`,
+      hex: hex.toUpperCase(),
+      rgb: rgb,
+      active: true
+    };
+
+    this.compareSlots.push(newSlot);
+    this.renderCompareSlots();
+    this._updateComparisonPanel();
+
+    if (this.app?.showToast) {
+      this.app.showToast(`Muestra [${nextLetter}] añadida a la comparativa 4D`, 'success');
+    }
+  }
+
+  removeCompareSlot(slotId) {
+    if (this.compareSlots.length <= 2) {
+      if (this.app?.showToast) this.app.showToast('Se requieren al menos 2 muestras para comparar', 'warning');
+      return;
+    }
+
+    const idx = this.compareSlots.findIndex(s => s.id === slotId);
+    if (idx !== -1) {
+      const removed = this.compareSlots.splice(idx, 1)[0];
+      this.renderCompareSlots();
+      this._updateComparisonPanel();
+      if (this.app?.showToast) {
+        this.app.showToast(`Muestra [${removed.id}] eliminada`, 'info');
+      }
+    }
+  }
+
+  updateSlotColor(slotId, newHex) {
+    const slot = this.compareSlots.find(s => s.id === slotId);
+    if (!slot) return;
+
+    if (!ColorMath.isValidHex(newHex)) return;
+    const cleanHex = (newHex.startsWith('#') ? newHex : '#' + newHex).toUpperCase();
+    slot.hex = cleanHex;
+    slot.rgb = ColorMath.hexToRgb(cleanHex);
+
+    this.renderCompareSlots();
+    this._updateComparisonPanel();
+  }
+
+  loadActivePaletteIntoSlots() {
+    let colors = [];
+    if (this.app?.swatchManager) {
+      const pal = this.app.swatchManager.getActivePalette();
+      if (pal && Array.isArray(pal.colors) && pal.colors.length >= 2) {
+        colors = pal.colors;
+      }
+    }
+
+    if (colors.length < 2) {
+      if (this.app?.showToast) this.app.showToast('La paleta activa debe contener al menos 2 colores', 'warning');
+      return;
+    }
+
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    const maxToLoad = Math.min(8, colors.length);
+    this.compareSlots = [];
+
+    for (let i = 0; i < maxToLoad; i++) {
+      const hex = colors[i].toUpperCase();
+      const rgb = ColorMath.hexToRgb(hex);
+      this.compareSlots.push({
+        id: letters[i] || `S${i+1}`,
+        name: `Color ${i+1}`,
+        hex: hex,
+        rgb: rgb,
+        active: true
+      });
+    }
+
+    this.renderCompareSlots();
+    this._updateComparisonPanel();
+
+    if (this.app?.showToast) {
+      this.app.showToast(`${this.compareSlots.length} muestras de la paleta cargadas en el Comparador`, 'success');
+    }
+  }
+
+  loadFgBgIntoSlots() {
+    const fg = this.app?.fgColor || { r: 99, g: 102, b: 241 };
+    const bg = this.app?.bgColor || { r: 245, g: 158, b: 11 };
+    const fgHex = ColorMath.rgbToHex(fg.r, fg.g, fg.b).toUpperCase();
+    const bgHex = ColorMath.rgbToHex(bg.r, bg.g, bg.b).toUpperCase();
+
+    this.compareSlots = [
+      { id: 'A', name: 'Color Frontal (FG)', hex: fgHex, rgb: fg, active: true },
+      { id: 'B', name: 'Color Fondo (BG)', hex: bgHex, rgb: bg, active: true }
+    ];
+
+    this.renderCompareSlots();
+    this._updateComparisonPanel();
+
+    if (this.app?.showToast) {
+      this.app.showToast('Comparando Color Frontal (FG) vs Fondo (BG)', 'info');
+    }
+  }
+
+  renderCompareSlots() {
+    const container = document.getElementById('hyper4dCompareSlotsGrid');
+    if (!container) return;
+
+    const canDelete = this.compareSlots.length > 2;
+
+    container.innerHTML = this.compareSlots.map((slot) => {
+      return `
+        <div class="hyper4d-compare-slot-card" data-slot-id="${slot.id}">
+          <div class="hyper4d-slot-header">
+            <span class="hyper4d-slot-badge">[${slot.id}]</span>
+            <span class="hyper4d-slot-title" title="${slot.name}">${slot.name}</span>
+            ${canDelete ? `<button class="hyper4d-slot-delete-btn" data-slot-id="${slot.id}" title="Eliminar esta muestra de la comparativa">✕</button>` : ''}
+          </div>
+          <div class="hyper4d-slot-body">
+            <div class="hyper4d-slot-swatch-wrapper" title="Click para cambiar color con el selector">
+              <div class="hyper4d-slot-swatch" style="background-color: ${slot.hex};"></div>
+              <input type="color" class="hyper4d-slot-color-picker" data-slot-id="${slot.id}" value="${slot.hex}">
+            </div>
+            <div class="hyper4d-slot-controls">
+              <input type="text" class="hyper4d-slot-hex-input" data-slot-id="${slot.id}" value="${slot.hex}" spellcheck="false" maxlength="7">
+              <div class="hyper4d-slot-quick-btns">
+                <button type="button" class="hyper4d-slot-qbtn" data-action="set-fg" data-slot-id="${slot.id}" title="Asignar color Frontal (FG) actual">FG</button>
+                <button type="button" class="hyper4d-slot-qbtn" data-action="set-bg" data-slot-id="${slot.id}" title="Asignar color Fondo (BG) actual">BG</button>
+                <button type="button" class="hyper4d-slot-qbtn" data-action="load-wheel" data-slot-id="${slot.id}" title="Cargar este color en la rueda principal">👁️ Rueda</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Event bindings para las tarjetas dinámicas
+    container.querySelectorAll('.hyper4d-slot-delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const slotId = btn.dataset.slotId;
+        this.removeCompareSlot(slotId);
+      });
+    });
+
+    container.querySelectorAll('.hyper4d-slot-color-picker').forEach(picker => {
+      picker.addEventListener('input', (e) => {
+        const slotId = picker.dataset.slotId;
+        this.updateSlotColor(slotId, e.target.value);
+      });
+    });
+
+    container.querySelectorAll('.hyper4d-slot-hex-input').forEach(input => {
+      input.addEventListener('change', (e) => {
+        const slotId = input.dataset.slotId;
+        let val = e.target.value.trim();
+        if (!val.startsWith('#')) val = '#' + val;
+        if (ColorMath.isValidHex(val)) {
+          this.updateSlotColor(slotId, val);
+        } else {
+          const slot = this.compareSlots.find(s => s.id === slotId);
+          if (slot) input.value = slot.hex;
+        }
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') input.blur();
+      });
+    });
+
+    container.querySelectorAll('.hyper4d-slot-qbtn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        const slotId = btn.dataset.slotId;
+        const slot = this.compareSlots.find(s => s.id === slotId);
+        if (!slot) return;
+
+        if (action === 'set-fg') {
+          const fg = this.app?.fgColor || { r: 99, g: 102, b: 241 };
+          const hex = ColorMath.rgbToHex(fg.r, fg.g, fg.b);
+          this.updateSlotColor(slotId, hex);
+        } else if (action === 'set-bg') {
+          const bg = this.app?.bgColor || { r: 245, g: 158, b: 11 };
+          const hex = ColorMath.rgbToHex(bg.r, bg.g, bg.b);
+          this.updateSlotColor(slotId, hex);
+        } else if (action === 'load-wheel') {
+          if (this.app) {
+            this.app.setColorDirectly(slot.rgb);
+            if (this.app.showToast) {
+              this.app.showToast(`Color ${slot.hex} ([${slot.id}]) cargado en la Rueda`, 'success');
+            }
+          }
+        }
+      });
+    });
+  }
+
   _updateComparisonPanel() {
-    const slotA = this.compareSlots[0];
-    const slotB = this.compareSlots[1];
-    if (!slotA || !slotB) return;
+    const activeSlots = this.compareSlots.filter(s => s.active !== false);
+    if (activeSlots.length < 2) return;
 
-    const compEl = document.getElementById('hyper4dComparisonStats');
-    if (!compEl) return;
+    // 1. Datos cromáticos y 4D para cada muestra
+    const slotData = activeSlots.map(slot => {
+      const lab = this._rgbToLab(slot.rgb);
+      const coords = this._getColor4DCoords(slot.rgb);
+      return {
+        slot,
+        lab,
+        coords,
+        hsv: coords.hsv,
+        munsell: coords.munsell,
+        isWarm: coords.isWarm
+      };
+    });
 
-    // Calcular Delta-E (CIE76 aproximado)
-    const labA = this._rgbToLab(slotA.rgb);
-    const labB = this._rgbToLab(slotB.rgb);
-    const deltaE = Math.sqrt(
-      Math.pow(labA.L - labB.L, 2) +
-      Math.pow(labA.a - labB.a, 2) +
-      Math.pow(labA.b - labB.b, 2)
-    );
+    const N = slotData.length;
 
-    // Contraste WCAG
-    const contrast = ColorMath.calculateContrastRatio(slotA.rgb, slotB.rgb);
+    // 2. Matriz Cruzada Pairwise (CIE76 ΔE y Contraste WCAG)
+    let sumDeltaE = 0;
+    let pairCount = 0;
+    let maxDeltaE = -1;
+    let maxPair = null;
+    let minDeltaE = 999999;
+    let minPair = null;
 
-    // Salto de temperatura
-    const hsvA = ColorMath.rgbToHsv(slotA.rgb.r, slotA.rgb.g, slotA.rgb.b);
-    const hsvB = ColorMath.rgbToHsv(slotB.rgb.r, slotB.rgb.g, slotB.rgb.b);
-    const warmA = (hsvA.h >= 0 && hsvA.h <= 75) || hsvA.h >= 320;
-    const warmB = (hsvB.h >= 0 && hsvB.h <= 75) || hsvB.h >= 320;
+    for (let i = 0; i < N; i++) {
+      for (let j = i + 1; j < N; j++) {
+        const itemA = slotData[i];
+        const itemB = slotData[j];
+        const de = Math.sqrt(
+          Math.pow(itemA.lab.L - itemB.lab.L, 2) +
+          Math.pow(itemA.lab.a - itemB.lab.a, 2) +
+          Math.pow(itemA.lab.b - itemB.lab.b, 2)
+        );
+        const cr = ColorMath.calculateContrastRatio(itemA.slot.rgb, itemB.slot.rgb);
 
-    let deltaInterpretation = 'Imperceptible a simple vista';
-    if (deltaE > 45) deltaInterpretation = 'Contraste perceptual extremo (Foco de atención)';
-    else if (deltaE > 25) deltaInterpretation = 'Contraste elevado y nítido';
-    else if (deltaE > 10) deltaInterpretation = 'Diferencia tonal clara y armónica';
-    else if (deltaE > 3) deltaInterpretation = 'Variación sutil / matiz cercano';
+        sumDeltaE += de;
+        pairCount++;
 
-    // Diagnóstico Compositivo Conjunto
-    const hueDiff = Math.abs(hsvA.h - hsvB.h);
-    const minHueDiff = Math.min(hueDiff, 360 - hueDiff);
-    let harmonyRelation = 'Relación Cromática Libre';
-    if (minHueDiff >= 165 && minHueDiff <= 195) harmonyRelation = '🔥 Oposición Complementaria Directa (Máxima Tensión)';
-    else if (minHueDiff <= 35) harmonyRelation = '🌿 Afinidad Análoga (Continuidad y Calma)';
-    else if (minHueDiff >= 105 && minHueDiff <= 135) harmonyRelation = '📐 Tríada Equidistante (Riqueza Vibrante)';
-    else if (minHueDiff >= 80 && minHueDiff <= 100) harmonyRelation = '⚖️ Cuadratura Térmica (Contraste Moderado)';
+        if (de > maxDeltaE) {
+          maxDeltaE = de;
+          maxPair = { a: itemA.slot, b: itemB.slot, de, cr };
+        }
+        if (de < minDeltaE) {
+          minDeltaE = de;
+          minPair = { a: itemA.slot, b: itemB.slot, de, cr };
+        }
+      }
+    }
 
-    compEl.innerHTML = `
-      <div class="hyper4d-stat-row">
-        <span>Distancia Perceptual ΔE:</span>
-        <strong style="color: #38BDF8;">${deltaE.toFixed(1)} (${deltaInterpretation})</strong>
-      </div>
-      <div class="hyper4d-stat-row">
-        <span>Ratio de Contraste Luminoso:</span>
-        <strong style="color: #FBBF24;">${contrast.toFixed(2)}:1 ${contrast >= 4.5 ? '✅ Legible en B/N' : '⚠️ Contraste suave'}</strong>
-      </div>
-      <div class="hyper4d-stat-row">
-        <span>Diálogo Térmico:</span>
-        <strong style="color: #F472B6;">${warmA !== warmB ? '⚡ Contraste Cálido / Frío directo' : 'Unidad térmica homogénea'}</strong>
-      </div>
-      <div class="hyper4d-stat-row">
-        <span>Relación Compositiva:</span>
-        <strong style="color: #34D399;">${harmonyRelation}</strong>
-      </div>
-    `;
+    const avgDeltaE = pairCount > 0 ? (sumDeltaE / pairCount) : 0;
 
-    // Botones de Acción de Mezcla 50/50
+    // 3. Rango de Luminosidad y Balance Térmico
+    const luminances = slotData.map(d => d.lab.L);
+    const minL = Math.min(...luminances);
+    const maxL = Math.max(...luminances);
+    const deltaL = maxL - minL;
+
+    const warmCount = slotData.filter(d => d.isWarm).length;
+    const coolCount = N - warmCount;
+    const warmPct = Math.round((warmCount / N) * 100);
+    const coolPct = 100 - warmPct;
+
+    // --- VISTA 1: ESTADÍSTICAS GLOBALES ---
+    const statsBox = document.getElementById('hyper4dComparisonStats');
+    if (statsBox) {
+      let deltaInterpretation = 'Diferencia tonal sutil y armónica';
+      if (avgDeltaE > 45) deltaInterpretation = 'Contraste perceptual extremo (Foco de atención)';
+      else if (avgDeltaE > 25) deltaInterpretation = 'Contraste cromático nítido y vivo';
+      else if (avgDeltaE > 12) deltaInterpretation = 'Diferenciación armónica clara';
+
+      statsBox.innerHTML = `
+        <div class="hyper4d-stat-row">
+          <span>Muestras Simultáneas Activas:</span>
+          <strong style="color: #FFFFFF;">${N} muestras dinámicas</strong>
+        </div>
+        <div class="hyper4d-stat-row">
+          <span>Distancia Perceptual Media ΔE (CIE76):</span>
+          <strong style="color: #38BDF8;">${avgDeltaE.toFixed(1)} <small style="font-size:0.68rem; color:#94A3B8;">(${deltaInterpretation})</small></strong>
+        </div>
+        <div class="hyper4d-stat-row">
+          <span>Mayor Tensión Visual (Max ΔE):</span>
+          <strong style="color: #F43F5E;">[${maxPair.a.id}] ↔ [${maxPair.b.id}]: ΔE ${maxDeltaE.toFixed(1)} (${maxPair.cr.toFixed(1)}:1)</strong>
+        </div>
+        <div class="hyper4d-stat-row">
+          <span>Mayor Afinidad / Transición (Min ΔE):</span>
+          <strong style="color: #34D399;">[${minPair.a.id}] ↔ [${minPair.b.id}]: ΔE ${minDeltaE.toFixed(1)} (${minPair.cr.toFixed(1)}:1)</strong>
+        </div>
+        <div class="hyper4d-stat-row">
+          <span>Rango Dinámico Luminoso (ΔL*):</span>
+          <strong style="color: #FBBF24;">${deltaL.toFixed(1)}% <small style="font-size:0.68rem; color:#94A3B8;">(L* ${minL.toFixed(0)}% a ${maxL.toFixed(0)}%)</small></strong>
+        </div>
+        <div class="hyper4d-stat-row">
+          <span>Polaridad Térmica Colectiva:</span>
+          <strong style="color: ${warmPct > coolPct ? '#F59E0B' : (coolPct > warmPct ? '#38BDF8' : '#A78BFA')};">
+            ${warmPct}% Cálido (${warmCount}) / ${coolPct}% Frío (${coolCount})
+          </strong>
+        </div>
+      `;
+    }
+
+    // --- VISTA 1: MATRIZ PAIRWISE ---
+    const matrixBox = document.getElementById('hyper4dPairwiseMatrixBox');
+    if (matrixBox) {
+      let tableHtml = `<table class="hyper4d-table-styled"><thead><tr><th>ΔE / Ratio</th>`;
+      for (let j = 0; j < N; j++) {
+        tableHtml += `<th><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${slotData[j].slot.hex}; margin-right:3px;"></span>[${slotData[j].slot.id}]</th>`;
+      }
+      tableHtml += `</tr></thead><tbody>`;
+
+      for (let i = 0; i < N; i++) {
+        tableHtml += `<tr><td><strong>[${slotData[i].slot.id}]</strong></td>`;
+        for (let j = 0; j < N; j++) {
+          if (i === j) {
+            tableHtml += `<td style="color: var(--text-muted); opacity: 0.35;">—</td>`;
+          } else {
+            const de = Math.sqrt(
+              Math.pow(slotData[i].lab.L - slotData[j].lab.L, 2) +
+              Math.pow(slotData[i].lab.a - slotData[j].lab.a, 2) +
+              Math.pow(slotData[i].lab.b - slotData[j].lab.b, 2)
+            );
+            const cr = ColorMath.calculateContrastRatio(slotData[i].slot.rgb, slotData[j].slot.rgb);
+            const isWcagAA = cr >= 4.5;
+            const deColor = de > 40 ? '#38BDF8' : (de > 20 ? '#FBBF24' : '#94A3B8');
+
+            tableHtml += `
+              <td>
+                <div style="font-weight:700; color:${deColor};">${de.toFixed(1)}</div>
+                <div style="font-size:0.65rem; color:${isWcagAA ? '#34D399' : '#94A3B8'};">
+                  ${cr.toFixed(1)}:1 ${isWcagAA ? 'AA' : ''}
+                </div>
+              </td>
+            `;
+          }
+        }
+        tableHtml += `</tr>`;
+      }
+      tableHtml += `</tbody></table>`;
+      matrixBox.innerHTML = tableHtml;
+    }
+
+    // --- VISTA 1: TABLA DE COORDENADAS 4D ---
+    const coordsBox = document.getElementById('hyper4dCoordsTableBox');
+    if (coordsBox) {
+      let coordsHtml = `
+        <table class="hyper4d-table-styled">
+          <thead>
+            <tr>
+              <th>Muestra</th>
+              <th>Color</th>
+              <th>Munsell</th>
+              <th>X (Hue·Chroma)</th>
+              <th>Y (Valor)</th>
+              <th>Z (Ortogonal)</th>
+              <th>W (4ª Dim)</th>
+              <th>T°</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      slotData.forEach(d => {
+        coordsHtml += `
+          <tr>
+            <td><strong>[${d.slot.id}] ${d.slot.name}</strong></td>
+            <td>
+              <div style="display:flex; align-items:center; gap:5px;">
+                <span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:${d.slot.hex};"></span>
+                <code>${d.slot.hex}</code>
+              </div>
+            </td>
+            <td><code>${d.munsell.notation}</code></td>
+            <td>${d.coords.x.toFixed(1)}</td>
+            <td>${d.coords.y.toFixed(1)}</td>
+            <td>${d.coords.z.toFixed(1)}</td>
+            <td><strong style="color:#38BDF8;">${d.coords.w.toFixed(1)}</strong></td>
+            <td><span class="hyper4d-badge-sub" style="font-size:0.64rem;">${d.isWarm ? '🔥 Cálido' : '❄️ Frío'}</span></td>
+          </tr>
+        `;
+      });
+      coordsHtml += `</tbody></table>`;
+      coordsBox.innerHTML = coordsHtml;
+    }
+
+    // --- VISTA 2: RELACIÓN ARMÓNICA Y GOETHE ---
+    const harmonyBox = document.getElementById('hyper4dCompHarmonyBox');
+    if (harmonyBox) {
+      let patternDesc = '';
+      if (N === 2) {
+        const diff = Math.min(Math.abs(slotData[0].hsv.h - slotData[1].hsv.h), 360 - Math.abs(slotData[0].hsv.h - slotData[1].hsv.h));
+        if (diff >= 160 && diff <= 200) patternDesc = '🔥 Oposición Complementaria Pura (Máxima Tensión y Resonancia)';
+        else if (diff <= 35) patternDesc = '🌿 Diada Análoga (Adyacencia Armónica y Unidad Calmada)';
+        else if (diff >= 80 && diff <= 100) patternDesc = '⚖️ Cuadratura Ortogonal (Contraste de Matiz Equilibrado)';
+        else patternDesc = `📐 Ángulo Cromático de ${diff.toFixed(0)}° (Relación Cromática Libre)`;
+      } else if (N === 3) {
+        patternDesc = '🔺 Tríada Compositiva en el Hiperespacio';
+      } else if (N === 4) {
+        patternDesc = '💎 Tétrada / Cuadrilátero Armónico Cuadridimensional';
+      } else {
+        patternDesc = `🌌 Polígono Estelar de ${N} Vértices Cromáticos`;
+      }
+
+      harmonyBox.innerHTML = `
+        <div style="font-size: 0.76rem; color: #FFFFFF; font-weight: 600; margin-bottom: 4px;">
+          ${patternDesc}
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-secondary); line-height: 1.4;">
+          El polígono generado en el visualizador 4D define el gamut dinámico de tu combinación, mostrando el equilibrio de distancias angulares y las fuerzas de oposición tonal.
+        </div>
+      `;
+    }
+
+    // Proporciones de Goethe
+    const goetheBox = document.getElementById('hyper4dCompGoetheHierarchyBox');
+    if (goetheBox) {
+      const goetheWeights = slotData.map(d => {
+        const h = d.hsv.h;
+        let w = 6;
+        if (h >= 45 && h < 75) w = 9;       // Amarillo = 9
+        else if (h >= 25 && h < 45) w = 8;  // Naranja = 8
+        else if (h >= 340 || h < 25) w = 6; // Rojo = 6
+        else if (h >= 270 && h < 340) w = 3;// Violeta = 3
+        else if (h >= 200 && h < 270) w = 4;// Azul = 4
+        else if (h >= 75 && h < 200) w = 6; // Verde = 6
+
+        const invWeight = 1 / w;
+        return { slot: d.slot, weight: w, invWeight };
+      });
+
+      const totalInv = goetheWeights.reduce((acc, cur) => acc + cur.invWeight, 0);
+      const proportions = goetheWeights.map(gw => {
+        const pct = (gw.invWeight / totalInv) * 100;
+        return { slot: gw.slot, pct, weight: gw.weight };
+      });
+
+      let barSegments = proportions.map(p => `
+        <div style="flex: ${p.pct}; background-color: ${p.slot.hex}; height: 14px; border-right: 1px solid rgba(0,0,0,0.5);" title="[${p.slot.id}] Goethe: ${p.pct.toFixed(1)}% de superficie recomendada"></div>
+      `).join('');
+
+      let detailList = proportions.map(p => `
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.7rem; padding: 2px 0;">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:${p.slot.hex};"></span>
+            <strong>[${p.slot.id}] ${p.slot.name}:</strong>
+          </div>
+          <span style="font-family:var(--font-mono); color:#FBBF24;"><strong>${p.pct.toFixed(1)}%</strong> del lienzo <small style="color:#94A3B8;">(Potencia ${p.weight}/9)</small></span>
+        </div>
+      `).join('');
+
+      goetheBox.innerHTML = `
+        <div style="display:flex; border-radius:4px; overflow:hidden; border:1px solid rgba(255,255,255,0.2); margin-bottom:8px;">
+          ${barSegments}
+        </div>
+        <div>${detailList}</div>
+      `;
+    }
+
+    // Roles Compositivos
+    const rolesBox = document.getElementById('hyper4dCompRolesBox');
+    if (rolesBox) {
+      const sortedByVal = [...slotData].sort((a, b) => b.hsv.v - a.hsv.v);
+      const sortedByChroma = [...slotData].sort((a, b) => b.hsv.s - a.hsv.s);
+
+      const focalLight = sortedByVal[0];
+      const shadowAnchor = sortedByVal[sortedByVal.length - 1];
+      const chromaSpark = sortedByChroma[0];
+
+      rolesBox.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:6px; font-size:0.71rem;">
+          <div style="display:flex; gap:8px; align-items:flex-start;">
+            <span class="hyper4d-badge-sub" style="background:rgba(251,191,36,0.2); color:#FDE68A;">💡 Foco Lumínico</span>
+            <div><strong>[${focalLight.slot.id}] ${focalLight.slot.name} (${focalLight.slot.hex})</strong>: Conduce la mirada por mayor energía lumínica inherente.</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:flex-start;">
+            <span class="hyper4d-badge-sub" style="background:rgba(129,140,248,0.2); color:#C7D2FE;">⚓ Anclaje de Sombra</span>
+            <div><strong>[${shadowAnchor.slot.id}] ${shadowAnchor.slot.name} (${shadowAnchor.slot.hex})</strong>: Otorga masa gravitacional y profundidad espacial.</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:flex-start;">
+            <span class="hyper4d-badge-sub" style="background:rgba(236,72,153,0.2); color:#FBCFE8;">⚡ Vibración Cromática</span>
+            <div><strong>[${chromaSpark.slot.id}] ${chromaSpark.slot.name} (${chromaSpark.slot.hex})</strong>: Máxima saturación pura; actúa como resonador armónico.</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- VISTA 3: BARICENTRO Y MEZCLA FÍSICA COLECTIVA ---
     const mixBox = document.getElementById('hyper4dCompareMixActionBox');
     if (mixBox) {
-      const mixRgb = ColorMath.mixRyb(slotA.rgb, slotB.rgb, 0.5);
-      const mixHex = ColorMath.rgbToHex(mixRgb.r, mixRgb.g, mixRgb.b);
+      const rgbList = slotData.map(d => d.slot.rgb);
+      const mixRgb = this._calculateMultiPhysicalMix(rgbList);
+      const mixHex = ColorMath.rgbToHex(mixRgb.r, mixRgb.g, mixRgb.b).toUpperCase();
+      const mixMunsell = MunsellSystem.rgbToMunsell(mixRgb.r, mixRgb.g, mixRgb.b);
+
       mixBox.innerHTML = `
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <div style="width: 22px; height: 22px; border-radius: 4px; background-color: ${mixHex}; border: 1px solid #FFF;"></div>
-          <button id="btnHyper4DLoadMix" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.7rem;">
-            <span>🎨</span> Cargar Mezcla (${mixHex})
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; background:rgba(255,255,255,0.03); padding:10px 14px; border-radius:6px; border:1px solid rgba(255,255,255,0.08);">
+          <div style="width:38px; height:38px; border-radius:6px; background-color:${mixHex}; border:2px solid #FFF; box-shadow:0 0 12px ${mixHex}88;"></div>
+          <div>
+            <div style="font-weight:700; color:#FFFFFF; font-size:0.84rem;">Mezcla Baricéntrica (1/${N} partes iguales en RYB)</div>
+            <div style="font-size:0.72rem; color:#38BDF8; font-family:var(--font-mono);">${mixHex} • Munsell: ${mixMunsell.notation}</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="btnHyper4DLoadMultiMix" class="tool-action-btn" style="padding:5px 12px; font-size:0.73rem; background:rgba(99,102,241,0.25); border-color:#6366F1; color:#C7D2FE;">
+            <span>🎨</span> Cargar Mezcla en Rueda (FG)
+          </button>
+          <button id="btnHyper4DSaveMultiMix" class="tool-action-btn" style="padding:5px 12px; font-size:0.73rem;">
+            <span>💾</span> Añadir a Paleta Activa
           </button>
         </div>
       `;
 
-      const btnLoad = document.getElementById('btnHyper4DLoadMix');
+      const btnLoad = document.getElementById('btnHyper4DLoadMultiMix');
       if (btnLoad && this.app) {
         btnLoad.addEventListener('click', () => {
           this.app.setColorDirectly(mixRgb);
           if (this.app.showToast) {
-            this.app.showToast(`Mezcla física 50/50 (${mixHex}) cargada en la Rueda`, 'success');
+            this.app.showToast(`Mezcla baricéntrica 4D (${mixHex}) cargada en la suite`, 'success');
+          }
+        });
+      }
+
+      const btnSave = document.getElementById('btnHyper4DSaveMultiMix');
+      if (btnSave && this.app?.swatchManager) {
+        btnSave.addEventListener('click', () => {
+          this.app.swatchManager.addColorToActivePalette(mixHex);
+          if (this.app.renderSwatches) this.app.renderSwatches();
+          if (this.app.showToast) {
+            this.app.showToast(`Muestra ${mixHex} añadida a la paleta activa`, 'success');
           }
         });
       }
