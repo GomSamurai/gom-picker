@@ -18,6 +18,7 @@ export class AIChatStudio {
     this.isGenerating = false;
     this.isExpanded = false;
     this.customHeight = typeof localStorage !== 'undefined' ? localStorage.getItem('gom_ai_chat_custom_height') : null;
+    this.geminiModel = (typeof localStorage !== 'undefined' ? localStorage.getItem('gom_ai_gemini_model') : null) || 'gemini-3.8-flash';
   }
 
   init() {
@@ -698,37 +699,90 @@ En pintura y teoría cromática, el secreto de una pieza memorable no radica en 
 
   // --- LLM EN LA NUBE CON GOOGLE GEMINI (API OFICIAL) ---
 
-  async _fetchGemini(apiKey, prompt, systemPrompt, model = 'gemini-1.5-flash') {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    const body = {
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 800 }
-    };
-    if (systemPrompt) {
-      body.systemInstruction = { parts: [{ text: systemPrompt }] };
+  async getAvailableGeminiModels(apiKey) {
+    try {
+      const cleanKey = (apiKey || '').trim();
+      if (!cleanKey) return null;
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data.models || !Array.isArray(data.models)) return null;
+      return data.models
+        .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+        .map(m => m.name.replace(/^models\//, ''));
+    } catch (e) {
+      return null;
     }
+  }
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
+  async _fetchGemini(apiKey, prompt, systemPrompt, preferredModel = null) {
+    const cleanKey = (apiKey || '').trim();
+    if (!cleanKey) throw new Error('API Key vacía');
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      const message = errData.error?.message || `HTTP ${res.status}`;
-      // Fallback: If 1.5-flash returns 404 or unsupported, retry with 2.0-flash
-      if (res.status === 404 && model === 'gemini-1.5-flash') {
-        return this._fetchGemini(apiKey, prompt, systemPrompt, 'gemini-2.0-flash');
+    // Ordered prioritized candidate models:
+    // 1. Preferred or previously verified model
+    // 2. gemini-3.8-flash (official 2026 current standard recommended by Google AI Studio)
+    // 3. gemini-2.5-flash
+    // 4. gemini-1.5-flash
+    const candidateModels = [];
+    if (preferredModel) candidateModels.push(preferredModel.replace(/^models\//, ''));
+    if (this.geminiModel) candidateModels.push(this.geminiModel.replace(/^models\//, ''));
+    candidateModels.push('gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-pro');
+
+    // Deduplicate preserving priority
+    const modelsToTry = Array.from(new Set(candidateModels));
+    let lastError = null;
+
+    for (const m of modelsToTry) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${cleanKey}`;
+        const body = {
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 800 }
+        };
+        if (systemPrompt) {
+          body.systemInstruction = { parts: [{ text: systemPrompt }] };
+        }
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          const message = errData.error?.message || `HTTP ${res.status}`;
+          lastError = new Error(message);
+
+          // If model is retired or not found, proceed to next candidate model
+          if (res.status === 404 || /not found|no longer available|unsupported/i.test(message)) {
+            console.warn(`[AIChatStudio] Modelo ${m} no disponible (${message}), probando siguiente candidato...`);
+            continue;
+          }
+          // If error is invalid API key, quota or permission, throw immediately
+          throw lastError;
+        }
+
+        const data = await res.json();
+        const candidate = data.candidates && data.candidates[0];
+        const text = candidate?.content?.parts?.[0]?.text;
+        if (!text) throw new Error('Respuesta vacía del modelo Gemini');
+
+        // Persist verified working model
+        this.geminiModel = m;
+        localStorage.setItem('gom_ai_gemini_model', m);
+
+        return { text, model: m };
+      } catch (err) {
+        lastError = err;
+        if (/API_KEY_INVALID|quota|PERMISSION_DENIED/i.test(err.message)) {
+          throw err;
+        }
       }
-      throw new Error(message);
     }
 
-    const data = await res.json();
-    const candidate = data.candidates && data.candidates[0];
-    const text = candidate?.content?.parts?.[0]?.text;
-    if (!text) throw new Error('Respuesta vacía del modelo Gemini');
-    return { text, model };
+    throw lastError || new Error('No se pudo establecer conexión con ningún modelo de Gemini disponible.');
   }
 
   async _callGeminiAPI(userQuery) {
@@ -747,7 +801,7 @@ Instrucciones:
 3. Si el usuario pregunta sobre cómo aplicar o armonizar su color actual, analiza ${curHex} y ofrécele combinaciones armónicas exactas.
 4. Mantén tus respuestas concisas, dinámicas y fáciles de leer con viñetas en Markdown.`;
 
-    const result = await this._fetchGemini(this.apiKey, userQuery, systemPrompt, 'gemini-1.5-flash');
+    const result = await this._fetchGemini(this.apiKey, userQuery, systemPrompt, this.geminiModel || 'gemini-3.8-flash');
     return result.text;
   }
 
@@ -810,14 +864,29 @@ Instrucciones:
 
     if (provider === 'gemini') {
       try {
-        const res = await this._fetchGemini(apiKey, 'Responde exclusivamente la palabra OK.', null, 'gemini-1.5-flash');
+        // Query available models in the user's account first if possible
+        const available = await this.getAvailableGeminiModels(apiKey);
+        let modelToTest = this.geminiModel || 'gemini-3.8-flash';
+        if (available && available.length > 0) {
+          const preferred = available.find(m => m.includes('3.8-flash')) || available.find(m => m.includes('flash')) || available[0];
+          if (preferred) modelToTest = preferred;
+        }
+
+        const res = await this._fetchGemini(apiKey, 'Responde exclusivamente la palabra OK.', null, modelToTest);
         const latency = Math.round(performance.now() - startTime);
+
+        let extraModelsInfo = '';
+        if (available && available.length > 0) {
+          const shortList = available.slice(0, 5).map(m => `<code>${m}</code>`).join(', ');
+          extraModelsInfo = `<br><span style="font-size: 0.68rem; color: var(--text-muted);">Modelos detectados en tu cuenta: ${shortList}</span>`;
+        }
+
         return {
           success: true,
           provider: 'gemini',
           model: res.model,
           latency,
-          message: `✅ <strong>¡Conexión Exitosa con Google Gemini!</strong><br>Modelo: <code>${res.model}</code> respondiendo con latencia de <strong>${latency}ms</strong>. Tu clave está activa y lista para el estudio.`
+          message: `✅ <strong>¡Conexión Exitosa con Google Gemini!</strong><br>Modelo verificado: <code>${res.model}</code> respondiendo con latencia de <strong>${latency}ms</strong>. Tu clave está activa y lista para el estudio.${extraModelsInfo}`
         };
       } catch (err) {
         return {
