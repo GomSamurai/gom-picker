@@ -141,10 +141,30 @@ export const SwatchSheetExporter = {
       .toLowerCase()
       .replace(/[^a-z0-9_-]/g, '_') + '.png';
 
-    const a = document.createElement('a');
-    a.download = cleanFileName;
-    a.href = canvas.toDataURL('image/png');
-    a.click();
+    const triggerDownload = (url, isBlob = false) => {
+      const a = document.createElement('a');
+      a.download = cleanFileName;
+      a.href = url;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        if (a.parentNode) a.parentNode.removeChild(a);
+        if (isBlob) URL.revokeObjectURL(url);
+      }, 500);
+    };
+
+    if (canvas.toBlob) {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          triggerDownload(URL.createObjectURL(blob), true);
+        } else {
+          triggerDownload(canvas.toDataURL('image/png'), false);
+        }
+      }, 'image/png');
+    } else {
+      triggerDownload(canvas.toDataURL('image/png'), false);
+    }
   },
 
   /**
@@ -405,11 +425,17 @@ export const SwatchSheetExporter = {
 
     const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
     const cleanFileName = (title || 'gom_palette').toLowerCase().replace(/[^a-z0-9_-]/g, '_') + '.svg';
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.download = cleanFileName;
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
+    a.style.display = 'none';
+    document.body.appendChild(a);
     a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+    setTimeout(() => {
+      if (a.parentNode) a.parentNode.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 500);
   },
 
   // =========================================================================
@@ -1478,3 +1504,7 @@ export const SwatchSheetExporter = {
     });
   }
 };
+
+if (typeof window !== 'undefined') {
+  window.SwatchSheetExporter = SwatchSheetExporter;
+}
