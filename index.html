@@ -45,6 +45,10 @@
           <span class="tab-icon">🎯</span>
           <span class="tab-label">Máscaras & Munsell</span>
         </button>
+        <button class="nav-tab-btn" data-tab="hyper4d" title="Hiperespacio 4D: Visualizador, Comparador & Estudio Cuadridimensional">
+          <span class="tab-icon">🔮</span>
+          <span class="tab-label">Hiperespacio 4D</span>
+        </button>
         <button class="nav-tab-btn" data-tab="chromilla" title="Chromilla: Catálogo de Tubos Reales">
           <span class="tab-icon">🧪</span>
           <span class="tab-label">Chromilla: Tubos</span>
@@ -1530,6 +1534,267 @@
             <button id="btnRampDownloadPng" class="tool-action-btn" title="Descargar rampa de muestras como imagen PNG">
               <span>🖼️</span> Descargar PNG de Rampa
             </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- NUEVA PESTAÑA REVOLUCIONARIA: HIPERESPACIO 4D DEL COLOR -->
+      <div id="viewHyper4D" class="tab-view" style="display: none;">
+        <div class="hyper4d-main-wrapper">
+          
+          <!-- Header & Toolbar Superior 4D -->
+          <div class="hyper4d-toolbar-header">
+            <div class="hyper4d-title-group">
+              <div class="hyper4d-badge-icon">🔮</div>
+              <div>
+                <div class="hyper4d-main-title">
+                  <span>Hiperespacio 4D del Color</span>
+                  <span class="hyper4d-version-tag">SO(4) Real</span>
+                </div>
+                <div class="hyper4d-subtitle">
+                  Visualizador, comparador y desglose cuadridimensional interactivo de muestras y teoría del color
+                </div>
+              </div>
+            </div>
+
+            <!-- Toolbar Controls -->
+            <div class="hyper4d-controls-strip">
+              <div class="hyper4d-ctrl-item">
+                <label for="hyper4dModelSelect">Geometría 4D:</label>
+                <select id="hyper4dModelSelect" class="hyper4d-select">
+                  <option value="munsell">🌳 Árbol Munsell 4D (Asimétrico Real)</option>
+                  <option value="tesseract">🧊 Hipercubo Tesseract 4D (Rotación 6 Planos)</option>
+                  <option value="cielab">👁️ Espacio Perceptual CIELAB 4D</option>
+                  <option value="hsl_cone">⏳ Doble Cono HSL 4D</option>
+                </select>
+              </div>
+
+              <div class="hyper4d-ctrl-item">
+                <label for="hyper4dWModeSelect">4ª Dimensión (W):</label>
+                <select id="hyper4dWModeSelect" class="hyper4d-select">
+                  <option value="thermal">🌡️ Balanza Térmica (Kelvin 2500K-9500K)</option>
+                  <option value="subtractive">🎨 Pigmento Físico (Glaze vs Tint PW6)</option>
+                  <option value="tesseract">🌀 Hiper-Rotación Ortogonal (Planos SO(4))</option>
+                  <option value="diurnal">🌅 Ciclo Solar / Diurno (Atmósfera)</option>
+                </select>
+              </div>
+
+              <!-- Quick Action Buttons -->
+              <div class="hyper4d-btn-group">
+                <button id="btnHyper4DResetCam" class="hyper4d-icon-btn" title="Restaurar cámara orbital a vista por defecto">🎯 Centrar</button>
+                <button id="btnHyper4DAutoRotate" class="hyper4d-icon-btn active" title="Alternar órbita cinemática automática">🔄 Giro</button>
+                <button id="btnHyper4DViewTop" class="hyper4d-icon-btn" title="Vista Cenital (Rueda Cromática)">📐 Cenital</button>
+                <button id="btnHyper4DViewFront" class="hyper4d-icon-btn" title="Vista Frontal (Valor / Matiz)">📐 Frontal</button>
+                <button id="btnHyper4DViewSide" class="hyper4d-icon-btn" title="Vista Lateral (Croma / Valor)">📐 Lateral</button>
+                <button id="btnHyper4DSnapshot" class="hyper4d-icon-btn hyper4d-btn-accent" title="Descargar captura PNG de alta definición">📸 Captura HD</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage Grid: Canvas a la izquierda + Panel de Control/Comparador a la derecha -->
+          <div class="hyper4d-stage-layout">
+            
+            <!-- Lienzo 4D Interactivo -->
+            <div class="hyper4d-canvas-container">
+              <canvas id="hyper4dCanvas"></canvas>
+
+              <!-- HUD Superior Flotante: Control de la 4ª Dimensión (W) -->
+              <div class="hyper4d-hud-w-bar">
+                <div class="hyper4d-hud-w-header">
+                  <div class="hyper4d-hud-w-title">
+                    <span class="hyper4d-w-pulse">●</span>
+                    <span>Hiper-Eje W (4ª Dimensión):</span>
+                    <strong id="hyper4dWLabel" style="color: #38BDF8;">T° Luz: 5500K (Luz Solar Blanca)</strong>
+                  </div>
+                  <button id="btnHyper4DPlayW" class="hyper4d-hud-play-btn" title="Reproducir / pausar evolución dimensional continua">▶️</button>
+                </div>
+                <div class="hyper4d-w-slider-row">
+                  <span style="font-size: 0.68rem; color: #818CF8;">-100 (Frío / Veladura)</span>
+                  <input type="range" id="hyper4dWSlider" class="hyper4d-slider" min="-100" max="100" value="0" step="1">
+                  <span style="font-size: 0.68rem; color: #F59E0B;">+100 (Cálido / Tintado)</span>
+                </div>
+              </div>
+
+              <!-- HUD Inferior Flotante: Toggles de Capas de Información -->
+              <div class="hyper4d-hud-layers-bar">
+                <label class="hyper4d-layer-check" title="Mostrar/ocultar nube de sólido base">
+                  <input type="checkbox" id="chkHyper4DSolid" checked>
+                  <span>Sólido Base</span>
+                </label>
+                <label class="hyper4d-layer-check" title="Mostrar/ocultar anillos y ejes de referencia espacial">
+                  <input type="checkbox" id="chkHyper4DAxes" checked>
+                  <span>Ejes de Valor</span>
+                </label>
+                <label class="hyper4d-layer-check" title="Mostrar/ocultar poliedro translúcido de armonías (tríadas y complementario)">
+                  <input type="checkbox" id="chkHyper4DHarmony" checked>
+                  <span>Armonías 4D</span>
+                </label>
+                <label class="hyper4d-layer-check" title="Mostrar/ocultar vectores de luz cenital y sombra de Sorolla">
+                  <input type="checkbox" id="chkHyper4DLightShadow" checked>
+                  <span>Luz & Sombra</span>
+                </label>
+                <label class="hyper4d-layer-check" title="Mostrar/ocultar curva sustractiva física de mezcla de Florent Farges">
+                  <input type="checkbox" id="chkHyper4DBowCurve" checked>
+                  <span>Curva Farges</span>
+                </label>
+                <label class="hyper4d-layer-check" title="Mostrar/ocultar constelación de la paleta activa en Bibliotecas">
+                  <input type="checkbox" id="chkHyper4DPalette" checked>
+                  <span>Red Paleta</span>
+                </label>
+              </div>
+
+              <!-- HUD Hint / Instrucciones de navegación -->
+              <div class="hyper4d-hud-nav-hint">
+                <span>🖱️ Click izq + arrastrar: Órbita 3D</span> • 
+                <span>Shift + arrastrar: Desplazar</span> • 
+                <span>Rueda: Zoom</span> • 
+                <span>Click en nodo: Cargar muestra</span>
+              </div>
+            </div>
+
+            <!-- Panel Lateral de Inteligencia y Comparación 4D -->
+            <div class="hyper4d-sidebar-panel">
+              
+              <!-- Subpestañas del Inspector -->
+              <div class="hyper4d-subtabs-nav">
+                <button class="hyper4d-subtab-btn active" data-subtab="inspect">🔍 Desglose</button>
+                <button class="hyper4d-subtab-btn" data-subtab="compare">⚖️ Comparador</button>
+                <button class="hyper4d-subtab-btn" data-subtab="palette">🌌 Constelación</button>
+                <button class="hyper4d-subtab-btn" data-subtab="masters">🏛️ Maestros</button>
+              </div>
+
+              <!-- Panel 1: Desglose Multidimensional de la Muestra Activa -->
+              <div id="hyper4dPanelInspect" class="hyper4d-tab-content active">
+                <div class="hyper4d-sample-card">
+                  <div class="hyper4d-sample-header">
+                    <div id="hyper4dActiveSwatch" class="hyper4d-swatch-large" style="background-color: #6366F1;"></div>
+                    <div class="hyper4d-sample-info">
+                      <div class="hyper4d-sample-label">MUESTRA ACTIVA EN ESTUDIO</div>
+                      <div id="hyper4dActiveHex" class="hyper4d-sample-hex">#6366F1</div>
+                      <div id="hyper4dActiveMunsell" class="hyper4d-sample-munsell">5PB 4.2/12</div>
+                    </div>
+                  </div>
+                  <div id="hyper4dActiveCoords" class="hyper4d-coords-badge">
+                    H:239° S:59% V:95% | Frío
+                  </div>
+                </div>
+
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">✨ Vectores Desplegados en 4D:</div>
+                  <ul class="hyper4d-vector-list">
+                    <li>
+                      <span class="hyper4d-vec-dot" style="background-color: #FBBF24;"></span>
+                      <div>
+                        <strong>Vector de Luz (Forma Iluminada):</strong>
+                        <p>Asciende hacia Blanco de Titanio PW6 con leve corrimiento cálido solar para evitar tiza blanca plana.</p>
+                      </div>
+                    </li>
+                    <li>
+                      <span class="hyper4d-vec-dot" style="background-color: #818CF8;"></span>
+                      <div>
+                        <strong>Vector de Sombra (Luminismo Sorolla):</strong>
+                        <p>Desciende térmicamente hacia violeta cobalto / siena, preservando riqueza y transparencia sin caer en negro barro.</p>
+                      </div>
+                    </li>
+                    <li>
+                      <span class="hyper4d-vec-dot" style="background-color: #F43F5E;"></span>
+                      <div>
+                        <strong>Eje Complementario (Foco Visual):</strong>
+                        <p>Atraviesa el centro neutro del hiperespacio para máxima vibración por contraste simultáneo.</p>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">👨‍🎨 Análisis de Mezcla (Florent Farges):</div>
+                  <div id="hyper4dFargesAdvice" class="hyper4d-farges-box">
+                    <div>Cargando análisis de pigmentos para la muestra...</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Panel 2: Comparador Multidimensional (A vs B vs C vs D) -->
+              <div id="hyper4dPanelCompare" class="hyper4d-tab-content" style="display: none;">
+                <div class="hyper4d-section-desc">
+                  Compara analíticamente dos o más muestras proyectadas en el hiperespacio 4D con cálculo Delta-E, contraste tonal y punto medio de colisión física.
+                </div>
+
+                <div class="hyper4d-compare-slots-grid">
+                  <div class="hyper4d-compare-slot active">
+                    <span class="slot-badge">Muestra A</span>
+                    <span id="hyper4dSlotASwatch" class="slot-color-circle" style="background-color: #6366F1;"></span>
+                    <span class="slot-name">Activa (#6366F1)</span>
+                  </div>
+                  <div class="hyper4d-compare-slot active">
+                    <span class="slot-badge">Muestra B</span>
+                    <span id="hyper4dSlotBSwatch" class="slot-color-circle" style="background-color: #F59E0B;"></span>
+                    <span class="slot-name">Ámbar (#F59E0B)</span>
+                  </div>
+                </div>
+
+                <div class="hyper4d-card-section" style="margin-top: 12px;">
+                  <div class="hyper4d-section-title">📊 Diagnóstico Perceptual & Físico:</div>
+                  <div id="hyper4dComparisonStats" class="hyper4d-stats-box">
+                    <!-- Updated dynamically by Hyper4DStudio -->
+                  </div>
+                </div>
+
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">🎨 Mezcla al 50/50 en el Espacio:</div>
+                  <p style="font-size: 0.72rem; color: var(--text-secondary); margin: 0 0 6px 0;">
+                    El nodo amarillo intermedio en la línea discontinua marca el punto exacto resultante de mezclar físicamente ambas muestras con pintura tradicional.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Panel 3: Constelación de Paleta de Bibliotecas -->
+              <div id="hyper4dPanelPalette" class="hyper4d-tab-content" style="display: none;">
+                <div class="hyper4d-section-desc">
+                  Visualiza todas las muestras de tu paleta activa en Bibliotecas como una constelación interconectada en 4D, revelando el volumen de gamut de tu obra y detectando zonas cromáticas desatendidas.
+                </div>
+
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">🌌 Envoltorio de Gamut:</div>
+                  <p style="font-size: 0.73rem; color: var(--text-secondary); line-height: 1.45; margin: 0 0 8px 0;">
+                    Las líneas celestes en el lienzo 4D representan los límites cromáticos cubiertos por tu paleta. Una constelación equilibrada debe tener presencia tanto en valores altos como en sombras y acentos de contraste.
+                  </p>
+                  <button id="btnHyper4DInspirePalette" class="tool-action-btn" style="width: 100%; justify-content: center; margin-top: 4px;">
+                    <span>✨</span> Inspirar Paleta Balanceada en Bibliotecas
+                  </button>
+                </div>
+              </div>
+
+              <!-- Panel 4: Estudio de Maestros Legendarios -->
+              <div id="hyper4dPanelMasters" class="hyper4d-tab-content" style="display: none;">
+                <div class="hyper4d-section-desc">
+                  Selecciona una constelación de un maestro histórico para proyectar su paleta en 4D y comprender por qué sus relaciones cromáticas son inmortales.
+                </div>
+
+                <div class="hyper4d-masters-chips-row">
+                  <button class="hyper4d-master-chip active" data-master="sorolla">☀️ Sorolla</button>
+                  <button class="hyper4d-master-chip" data-master="rembrandt">🕯️ Rembrandt</button>
+                  <button class="hyper4d-master-chip" data-master="monet">🌸 Monet</button>
+                  <button class="hyper4d-master-chip" data-master="zorn">🎭 Zorn</button>
+                  <button class="hyper4d-master-chip" data-master="farges">👨‍🎨 Farges</button>
+                </div>
+
+                <div id="hyper4dMasterDesc" class="hyper4d-master-info-card">
+                  <h4 style="margin: 0 0 6px 0; color: #FFFFFF; font-size: 0.86rem;">Joaquín Sorolla — Luminismo Mediterráneo</h4>
+                  <p style="margin: 0 0 8px 0; font-size: 0.74rem; color: var(--text-secondary); line-height: 1.45;">
+                    Distribución hiperdimensional de luz solar ardiente (#FFF2A3) y sombras violetas frías (#856B96). Sorolla evitaba el negro; su vector de sombra viaja directamente a violetas de cobalto de alto croma.
+                  </p>
+                  <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button class="chat-color-chip" data-hex="#FFF8D6"><span class="chat-chip-swatch" style="background-color: #FFF8D6;"></span>#FFF8D6</button>
+                    <button class="chat-color-chip" data-hex="#F5D77F"><span class="chat-chip-swatch" style="background-color: #F5D77F;"></span>#F5D77F</button>
+                    <button class="chat-color-chip" data-hex="#856B96"><span class="chat-chip-swatch" style="background-color: #856B96;"></span>#856B96</button>
+                    <button class="chat-color-chip" data-hex="#284E7A"><span class="chat-chip-swatch" style="background-color: #284E7A;"></span>#284E7A</button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
           </div>
 
         </div>

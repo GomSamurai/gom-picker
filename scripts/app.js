@@ -31,6 +31,7 @@ import { CVDSimulator } from './cvdSimulator.js';
 import { RampStudio } from './rampStudio.js';
 import { SwatchSheetExporter } from './swatchSheetExporter.js';
 import { ProfileBackup } from './profileBackup.js';
+import { Hyper4DStudio } from './hyper4d.js';
 
 class GomPickerApp {
   constructor() {
@@ -49,6 +50,7 @@ class GomPickerApp {
     this.swatchManager = new SwatchManager();
     this.imageExtractor = null;
     this.colorWheel = null;
+    this.hyper4dStudio = null;
     this.tooltipEngine = null;
     this.currentAiPalette = null;
     this.aiChat = null;
@@ -155,6 +157,8 @@ class GomPickerApp {
     safeBind('_bindRampStudioControls', this._bindRampStudioControls);
     safeBind('_bindCvdControls', this._bindCvdControls);
     safeBind('_bindProfileBackupControls', this._bindProfileBackupControls);
+    this.hyper4dStudio = new Hyper4DStudio(this);
+    safeBind('hyper4dInit', () => this.hyper4dStudio.init());
     safeBind('_restoreSavedSession', this._restoreSavedSession);
 
     // 6. Initial Renderings and Trigger Sync
@@ -261,6 +265,9 @@ class GomPickerApp {
     // Live reactive theme & WCAG contrast update
     this.updateLiveAccentTheme(hex, rgb);
     this.updateWcagBadge();
+    if (this.hyper4dStudio) {
+      this.hyper4dStudio.updateActiveColor(rgb);
+    }
     if (this.aiChat) {
       this.aiChat.updateContextDisplay();
     }
@@ -825,6 +832,7 @@ class GomPickerApp {
     const tabBtns = document.querySelectorAll('.nav-tab-btn');
     const centerViews = {
       studio: document.getElementById('viewStudio'),
+      hyper4d: document.getElementById('viewHyper4D'),
       gamut_munsell: document.getElementById('viewGamutMunsell'),
       chromilla: document.getElementById('viewChromilla'),
       florent: document.getElementById('viewFlorent'),
@@ -837,6 +845,7 @@ class GomPickerApp {
 
     const tabMeta = {
       studio: { title: 'Estudio Cromático', sub: 'Rueda Coolorus, Armonías interactivas y Bandas Compañeras', icon: '🎨' },
+      hyper4d: { title: 'Hiperespacio 4D del Color', sub: 'Visualizador, Comparador & Desglose Cuadridimensional SO(4)', icon: '🔮' },
       gamut_munsell: { title: 'Máscaras de Gama & Sistema Munsell', sub: 'Gamut Masking de James Gurney y espacio tridimensional Munsell', icon: '🎯' },
       chromilla: { title: 'Chromilla: Catálogo de Tubos Reales', sub: 'Inventario físico de pigmentos (Óleo, Acrílico, Acuarela)', icon: '🧪' },
       florent: { title: 'Teoría del Color de Florent Farges', sub: 'Rueda de mezcla sustractiva y paletas primarias de artista', icon: '👨‍🎨' },
@@ -928,6 +937,10 @@ class GomPickerApp {
         }
         if (tabKey === 'ramps') {
           this.renderRampStudio();
+        }
+        if (tabKey === 'hyper4d' && this.hyper4dStudio) {
+          this.hyper4dStudio._resizeCanvas();
+          this.hyper4dStudio.syncWithActiveColor();
         }
 
         // Scroll content wrapper smoothly to top when switching workspaces

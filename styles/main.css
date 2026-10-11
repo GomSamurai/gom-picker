@@ -5463,6 +5463,501 @@ body.value-check-mode {
   opacity: 0.8;
 }
 
+/* ==========================================================================
+   🔮 HIPERESPACIO 4D DEL COLOR (4D CHROMATIC HYPER-STUDIO)
+   ========================================================================== */
+
+.hyper4d-main-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hyper4d-toolbar-header {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(18, 22, 34, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hyper4d-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hyper4d-badge-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #6366F1, #312E81);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+}
+
+.hyper4d-main-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hyper4d-version-tag {
+  background: rgba(99, 102, 241, 0.25);
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  color: #C7D2FE;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.hyper4d-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.hyper4d-controls-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.hyper4d-ctrl-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.hyper4d-select {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.73rem;
+  color: #FFFFFF;
+  outline: none;
+}
+
+.hyper4d-select option {
+  background: #18181B;
+  color: #FFFFFF;
+}
+
+.hyper4d-btn-group {
+  display: flex;
+  gap: 4px;
+}
+
+.hyper4d-icon-btn {
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hyper4d-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+}
+
+.hyper4d-icon-btn.active {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: #818CF8;
+  color: #FFFFFF;
+}
+
+.hyper4d-btn-accent {
+  background: linear-gradient(135deg, #6366F1, #8B5CF6);
+  border: none;
+  color: #FFFFFF;
+}
+
+.hyper4d-stage-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.hyper4d-canvas-container {
+  position: relative;
+  width: 100%;
+  height: 460px;
+  min-height: 420px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: radial-gradient(circle at center, #0F121C, #05060A);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+#hyper4dCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+}
+
+#hyper4dCanvas:active {
+  cursor: grabbing;
+}
+
+.hyper4d-hud-w-bar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  background: rgba(13, 16, 26, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 6px 12px;
+  z-index: 5;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.hyper4d-hud-w-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hyper4d-hud-w-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  color: #FFFFFF;
+}
+
+.hyper4d-w-pulse {
+  color: #38BDF8;
+  animation: pulse 2s infinite;
+}
+
+.hyper4d-hud-play-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: #FFFFFF;
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 2px 6px;
+}
+
+.hyper4d-w-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+.hyper4d-slider {
+  flex: 1;
+  accent-color: #6366F1;
+  height: 4px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.hyper4d-hud-layers-bar {
+  position: absolute;
+  bottom: 26px;
+  left: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  background: rgba(13, 16, 26, 0.82);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 4px 8px;
+  z-index: 5;
+}
+
+.hyper4d-layer-check {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.hyper4d-layer-check input {
+  accent-color: #6366F1;
+  cursor: pointer;
+}
+
+.hyper4d-hud-nav-hint {
+  position: absolute;
+  bottom: 6px;
+  left: 10px;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.hyper4d-sidebar-panel {
+  background: rgba(15, 18, 28, 0.75);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hyper4d-subtabs-nav {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 6px;
+}
+
+.hyper4d-subtab-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 5px 2px;
+  color: var(--text-secondary);
+  font-size: 0.71rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.hyper4d-subtab-btn.active {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.45);
+  color: #FFFFFF;
+}
+
+.hyper4d-sample-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.hyper4d-sample-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.hyper4d-swatch-large {
+  width: 42px;
+  height: 42px;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.hyper4d-sample-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.hyper4d-sample-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.hyper4d-sample-hex {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  font-family: var(--font-mono);
+}
+
+.hyper4d-sample-munsell {
+  font-size: 0.75rem;
+  color: #A5B4FC;
+  font-family: var(--font-mono);
+}
+
+.hyper4d-coords-badge {
+  margin-top: 6px;
+  font-size: 0.7rem;
+  color: #94A3B8;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
+
+.hyper4d-card-section {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 5px;
+  padding: 8px;
+}
+
+.hyper4d-section-title {
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: #E2E8F0;
+  margin-bottom: 5px;
+}
+
+.hyper4d-section-desc {
+  font-size: 0.71rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.hyper4d-vector-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.hyper4d-vector-list li {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  font-size: 0.71rem;
+  line-height: 1.35;
+}
+
+.hyper4d-vec-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.hyper4d-vector-list p {
+  margin: 1px 0 0 0;
+  font-size: 0.67rem;
+  color: var(--text-muted);
+}
+
+.hyper4d-farges-box {
+  font-size: 0.71rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.hyper4d-compare-slots-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.hyper4d-compare-slot {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.slot-badge {
+  font-size: 0.63rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.slot-color-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.slot-name {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.hyper4d-stats-box {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.71rem;
+}
+
+.hyper4d-stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding-bottom: 3px;
+}
+
+.hyper4d-masters-chips-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.hyper4d-master-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.hyper4d-master-chip.active {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: #818CF8;
+  color: #FFFFFF;
+}
+
+.hyper4d-master-info-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  padding: 8px;
+}
+
+
 
 
 
