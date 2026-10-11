@@ -327,6 +327,25 @@ class GomPickerApp {
 
   // --- HERO ACTIVE COLOR DISPLAY & RELATIVE COMPANION BANDS ---
 
+  setActiveWell(well) {
+    this.activeWell = well;
+    const fg = document.getElementById('fgWell');
+    const bg = document.getElementById('bgWell');
+    const wFg = document.getElementById('wellFg');
+    const wBg = document.getElementById('wellBg');
+    if (well === 'fg') {
+      if (fg) fg.classList.add('active');
+      if (bg) bg.classList.remove('active');
+      if (wFg) wFg.classList.add('active');
+      if (wBg) wBg.classList.remove('active');
+    } else {
+      if (bg) bg.classList.add('active');
+      if (fg) fg.classList.remove('active');
+      if (wBg) wBg.classList.add('active');
+      if (wFg) wFg.classList.remove('active');
+    }
+  }
+
   _bindHeroColorAndCompanionBands() {
     const fg = document.getElementById('fgWell');
     const bg = document.getElementById('bgWell');
@@ -336,18 +355,14 @@ class GomPickerApp {
 
     if (fg) {
       fg.addEventListener('click', () => {
-        this.activeWell = 'fg';
-        fg.classList.add('active');
-        if (bg) bg.classList.remove('active');
+        this.setActiveWell('fg');
         this.setColorDirectly(this.fgColor);
       });
     }
 
     if (bg) {
       bg.addEventListener('click', () => {
-        this.activeWell = 'bg';
-        bg.classList.add('active');
-        if (fg) fg.classList.remove('active');
+        this.setActiveWell('bg');
         this.setColorDirectly(this.bgColor);
       });
     }
@@ -1680,7 +1695,8 @@ class GomPickerApp {
       icon: '🆕',
       label: 'Crear nueva paleta con este color',
       action: () => {
-        const newPal = this.swatchManager.createPalette(`Paleta ${hex}`, [hex]);
+        const createFn = this.swatchManager.createPalette || this.swatchManager.addPalette;
+        const newPal = createFn.call(this.swatchManager, `Paleta ${hex}`, [hex]);
         this.renderSwatchesCollection();
         this.renderQuickPalette();
         this.showToast(`Nueva paleta creada con ${hex}`, 'success');
@@ -1771,7 +1787,6 @@ class GomPickerApp {
       label: `Copiar HEX (${hex})`,
       action: () => {
         this.copyToClipboard(hex);
-        this.showToast(`HEX copiado: ${hex}`);
       }
     });
 
@@ -1780,7 +1795,6 @@ class GomPickerApp {
       label: `Copiar RGB (${rgb.r}, ${rgb.g}, ${rgb.b})`,
       action: () => {
         this.copyToClipboard(`rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
-        this.showToast(`RGB copiado: ${rgb.r}, ${rgb.g}, ${rgb.b}`);
       }
     });
 
@@ -1789,7 +1803,6 @@ class GomPickerApp {
       label: `Copiar CMYK (${cmyk.c}C ${cmyk.m}M ${cmyk.y}Y ${cmyk.k}K)`,
       action: () => {
         this.copyToClipboard(`${cmyk.c}% ${cmyk.m}% ${cmyk.y}% ${cmyk.k}%`);
-        this.showToast(`CMYK copiado: ${cmyk.c}C ${cmyk.m}M ${cmyk.y}Y ${cmyk.k}K`);
       }
     });
 
@@ -1798,7 +1811,6 @@ class GomPickerApp {
       label: `Copiar Munsell (${munsell.notation})`,
       action: () => {
         this.copyToClipboard(munsell.notation);
-        this.showToast(`Munsell copiado: ${munsell.notation}`);
       }
     });
 
@@ -1879,6 +1891,7 @@ class GomPickerApp {
       }
 
       const btn = document.createElement('button');
+      btn.type = 'button';
       btn.className = `context-menu-item ${it.danger ? 'danger' : ''} ${it.highlight ? 'btn-undo-glow' : ''}`;
       btn.innerHTML = `
         <span style="font-size: 0.9rem;">${it.icon}</span>
@@ -1891,6 +1904,7 @@ class GomPickerApp {
           this.openSwatchSubmenu(btn, it.submenuItems, menu);
         });
         btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
           ev.stopPropagation();
           this.openSwatchSubmenu(btn, it.submenuItems, menu);
         });
@@ -1899,16 +1913,30 @@ class GomPickerApp {
           const oldSub = document.querySelector('.swatch-context-submenu');
           if (oldSub) oldSub.remove();
         });
-        btn.addEventListener('click', () => {
-          it.action();
-          menu.remove();
-          const oldSub = document.querySelector('.swatch-context-submenu');
-          if (oldSub) oldSub.remove();
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          try {
+            if (typeof it.action === 'function') {
+              it.action();
+            }
+          } catch (err) {
+            console.error('[GOM Context Menu] Error executing action:', err);
+          } finally {
+            menu.remove();
+            const oldSub = document.querySelector('.swatch-context-submenu');
+            if (oldSub) oldSub.remove();
+          }
         });
       }
 
       menu.appendChild(btn);
     });
+
+    // Isolate clicks/pointer events inside menu from outside dismiss listeners
+    menu.addEventListener('pointerdown', (e) => e.stopPropagation());
+    menu.addEventListener('mousedown', (e) => e.stopPropagation());
+    menu.addEventListener('click', (e) => e.stopPropagation());
 
     document.body.appendChild(menu);
 
@@ -1937,7 +1965,7 @@ class GomPickerApp {
         document.removeEventListener('pointerdown', closeHandler);
       }
     };
-    setTimeout(() => document.addEventListener('pointerdown', closeHandler), 15);
+    setTimeout(() => document.addEventListener('pointerdown', closeHandler), 60);
   }
 
   openSwatchSubmenu(parentBtn, items, parentMenu) {
@@ -1946,18 +1974,31 @@ class GomPickerApp {
 
     const sub = document.createElement('div');
     sub.className = 'swatch-context-submenu';
+    sub.addEventListener('pointerdown', (e) => e.stopPropagation());
+    sub.addEventListener('mousedown', (e) => e.stopPropagation());
+    sub.addEventListener('click', (e) => e.stopPropagation());
 
     items.forEach(it => {
       const btn = document.createElement('button');
+      btn.type = 'button';
       btn.className = 'context-menu-item';
       btn.innerHTML = `
         <span style="flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${it.label}</span>
         ${it.badge ? `<span class="context-item-badge">${it.badge}</span>` : ''}
       `;
-      btn.addEventListener('click', () => {
-        it.action();
-        sub.remove();
-        if (parentMenu) parentMenu.remove();
+      btn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        try {
+          if (typeof it.action === 'function') {
+            it.action();
+          }
+        } catch (err) {
+          console.error('[GOM Context Menu] Error in submenu action:', err);
+        } finally {
+          sub.remove();
+          if (parentMenu) parentMenu.remove();
+        }
       });
       sub.appendChild(btn);
     });
@@ -1971,8 +2012,8 @@ class GomPickerApp {
     if (subX + 210 > window.innerWidth - 12) {
       subX = rect.left - 210 - 4;
     }
-    if (subY + sub.offsetHeight > window.innerHeight - 12) {
-      subY = Math.max(12, window.innerHeight - sub.offsetHeight - 12);
+    if (subY + (sub.offsetHeight || 200) > window.innerHeight - 12) {
+      subY = Math.max(12, window.innerHeight - (sub.offsetHeight || 200) - 12);
     }
 
     sub.style.left = `${Math.max(12, Math.round(subX))}px`;

@@ -91,6 +91,10 @@ export class SwatchManager {
     return newPal;
   }
 
+  createPalette(name, hexColors = []) {
+    return this.addPalette(name, hexColors);
+  }
+
   deletePalette(id) {
     this.palettes = this.palettes.filter(p => p.id !== id);
     if (this.activePaletteId === id) {
