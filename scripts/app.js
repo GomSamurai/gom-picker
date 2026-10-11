@@ -32,6 +32,7 @@ import { RampStudio } from './rampStudio.js';
 import { SwatchSheetExporter } from './swatchSheetExporter.js';
 import { ProfileBackup } from './profileBackup.js';
 import { Hyper4DStudio } from './hyper4d.js';
+import { PaletteImporterEngine } from './paletteImporter.js';
 
 class GomPickerApp {
   constructor() {
@@ -2171,6 +2172,20 @@ class GomPickerApp {
         run: () => {
           SwatchSheetExporter.openExportModal(pal.name, pal.colors, this);
         }
+      },
+      {
+        icon: '🌉',
+        label: 'Puente a Pigmentos & Copic (ΔE)...',
+        run: () => {
+          this.openColorBridgeModal(pal, 'physical');
+        }
+      },
+      {
+        icon: '👁️',
+        label: 'Auditoría Accesibilidad WCAG 2.1...',
+        run: () => {
+          this.openColorBridgeModal(pal, 'wcag');
+        }
       }
     ];
 
@@ -2193,6 +2208,222 @@ class GomPickerApp {
       }
     };
     setTimeout(() => document.addEventListener('pointerdown', close), 10);
+  }
+
+  showPaletteVariationsPopover(anchorBtn, pal) {
+    const existing = document.querySelector('.palette-variations-menu');
+    if (existing) {
+      const wasSame = existing.dataset.anchorId === (anchorBtn.id || pal.id);
+      existing.remove();
+      if (wasSame) return;
+    }
+
+    const pop = document.createElement('div');
+    pop.className = 'palette-variations-menu';
+    pop.dataset.anchorId = anchorBtn.id || pal.id;
+
+    const rect = anchorBtn.getBoundingClientRect();
+    pop.style.left = `${Math.min(rect.left, window.innerWidth - 280)}px`;
+    pop.style.top = `${rect.bottom + 4}px`;
+
+    const variations = [
+      {
+        icon: '🌑',
+        title: 'Sombras / Noche (Nocturne)',
+        desc: 'Enfría matices hacia azules, reduce valor y preserva luminosidad ambiental.',
+        type: 'shadow'
+      },
+      {
+        icon: '☀️',
+        title: 'Luz Solar / Pastel (High Key)',
+        desc: 'Aclara tonos, añade calidez y suaviza contraste para claves altas.',
+        type: 'light'
+      },
+      {
+        icon: '🍂',
+        title: 'Tierras Nobles / Desaturadas',
+        desc: 'Reduce saturación con tintes terrosos para fondos o realismo pictórico.',
+        type: 'muted'
+      },
+      {
+        icon: '⚡',
+        title: 'Tensión Complementaria (Clash)',
+        desc: 'Invierte los matices a sus opuestos directos manteniendo brillo y saturación.',
+        type: 'complementary'
+      }
+    ];
+
+    variations.forEach(v => {
+      const btn = document.createElement('button');
+      btn.className = 'palette-variations-item';
+      btn.innerHTML = `
+        <span style="font-size: 1.2rem; flex-shrink: 0;">${v.icon}</span>
+        <div style="flex-grow: 1;">
+          <div style="font-weight: 700; color: #FFFFFF;">${v.title}</div>
+          <span class="palette-variations-desc">${v.desc}</span>
+        </div>
+      `;
+      btn.addEventListener('click', () => {
+        const result = PaletteImporterEngine.generatePaletteVariation(pal, v.type);
+        if (result && result.colors.length > 0) {
+          const newPal = this.swatchManager.addPalette(result.name, result.colors);
+          this.renderSwatchesCollection();
+          this.renderQuickPalette();
+          this.showToast(`✓ Paleta derivada '${newPal.name}' creada con éxito`, 'success');
+        }
+        pop.remove();
+      });
+      pop.appendChild(btn);
+    });
+
+    document.body.appendChild(pop);
+    const close = (e) => {
+      if (!pop.contains(e.target) && e.target !== anchorBtn) {
+        pop.remove();
+        document.removeEventListener('pointerdown', close);
+      }
+    };
+    setTimeout(() => document.addEventListener('pointerdown', close), 10);
+  }
+
+  openColorBridgeModal(pal, initialTab = 'physical') {
+    const modal = document.getElementById('colorBridgeModal');
+    if (!modal) return;
+
+    const modalTitle = document.getElementById('colorBridgeModalTitle');
+    if (modalTitle) {
+      modalTitle.textContent = `Puente de Color & WCAG: ${pal.name} (${pal.colors.length} muestras)`;
+    }
+
+    const tabPhys = document.getElementById('tabBridgePhysical');
+    const tabWcag = document.getElementById('tabBridgeWcag');
+    const secPhys = document.getElementById('bridgePhysicalSection');
+    const secWcag = document.getElementById('bridgeWcagSection');
+    const tbodyPhys = document.getElementById('bridgePhysicalTableBody');
+    const tbodyWcag = document.getElementById('bridgeWcagTableBody');
+    const btnClose = document.getElementById('btnCloseColorBridgeModal');
+    const btnDismiss = document.getElementById('btnDismissColorBridge');
+
+    const setTab = (tab) => {
+      if (tab === 'physical') {
+        tabPhys?.classList.add('active-toggle');
+        tabWcag?.classList.remove('active-toggle');
+        if (secPhys) secPhys.style.display = 'flex';
+        if (secWcag) secWcag.style.display = 'none';
+      } else {
+        tabWcag?.classList.add('active-toggle');
+        tabPhys?.classList.remove('active-toggle');
+        if (secWcag) secWcag.style.display = 'flex';
+        if (secPhys) secPhys.style.display = 'none';
+      }
+    };
+
+    if (tabPhys) tabPhys.onclick = () => setTab('physical');
+    if (tabWcag) tabWcag.onclick = () => setTab('wcag');
+    setTab(initialTab);
+
+    // 1. Populate Physical Matches
+    if (tbodyPhys) {
+      tbodyPhys.innerHTML = '';
+      const bridges = PaletteImporterEngine.findPhysicalColorBridge(pal.colors);
+      bridges.forEach(b => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 22px; height: 22px; border-radius: 4px; background: ${b.hex}; border: 1px solid rgba(255,255,255,0.25); flex-shrink: 0;"></div>
+              <div>
+                <strong style="color: #FFFFFF; font-size: 0.76rem;">${b.hex}</strong>
+                <div style="color: var(--text-muted); font-size: 0.68rem;">${b.name}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            ${b.tubeMatch ? `
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 14px; height: 14px; border-radius: 3px; background: ${b.tubeMatch.hex}; border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0;"></div>
+                <div>
+                  <strong style="color: #FCD34D;">${b.tubeMatch.brand}: ${b.tubeMatch.name}</strong>
+                  <div style="color: var(--text-muted); font-size: 0.68rem;">Pigmento: ${b.tubeMatch.ci} (${b.tubeMatch.medium}) • <span style="color: ${b.tubeMatch.deltaE < 3 ? '#6EE7B7' : '#94A3B8'};">ΔE: ${b.tubeMatch.deltaE}</span></div>
+                </div>
+              </div>
+            ` : '<span style="color: var(--text-muted);">-</span>'}
+          </td>
+          <td>
+            ${b.copicMatch ? `
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 14px; height: 14px; border-radius: 3px; background: ${b.copicMatch.hex}; border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0;"></div>
+                <div>
+                  <strong style="color: #67E8F9;">${b.copicMatch.name}</strong>
+                  <div style="color: var(--text-muted); font-size: 0.68rem;">ΔE CIELAB: ${b.copicMatch.deltaE}</div>
+                </div>
+              </div>
+            ` : '<span style="color: var(--text-muted);">-</span>'}
+          </td>
+          <td>
+            ${b.pantoneMatch ? `
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 14px; height: 14px; border-radius: 3px; background: ${b.pantoneMatch.hex}; border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0;"></div>
+                <div>
+                  <strong style="color: #F472B6;">${b.pantoneMatch.name}</strong>
+                  <div style="color: var(--text-muted); font-size: 0.68rem;">ΔE PMS: ${b.pantoneMatch.deltaE}</div>
+                </div>
+              </div>
+            ` : '<span style="color: var(--text-muted);">-</span>'}
+          </td>
+        `;
+        tbodyPhys.appendChild(tr);
+      });
+    }
+
+    // 2. Populate WCAG Accessibility Matrix
+    if (tbodyWcag) {
+      tbodyWcag.innerHTML = '';
+      const audit = PaletteImporterEngine.analyzeWcagAccessibility(pal.colors);
+      if (audit.pairs.length === 0) {
+        tbodyWcag.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 16px;">Se necesitan al menos 2 colores para calcular contrastes.</td></tr>';
+      } else {
+        audit.pairs.slice(0, 30).forEach(pair => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-family: monospace; font-size: 0.74rem;">${pair.fg.hex} / ${pair.bg.hex}</span>
+              </div>
+            </td>
+            <td>
+              <div style="background: ${pair.bg.hex}; color: ${pair.fg.hex}; padding: 4px 10px; border-radius: 4px; font-weight: 700; font-size: 0.74rem; display: inline-block; border: 1px solid rgba(255,255,255,0.15);">
+                Texto Muestra
+              </div>
+            </td>
+            <td>
+              <strong style="color: ${pair.ratio >= 4.5 ? '#6EE7B7' : '#FCA5A5'}; font-size: 0.8rem;">
+                ${pair.ratio}:1
+              </strong>
+            </td>
+            <td>
+              <span class="${pair.passAA ? 'badge-wcag-pass' : 'badge-wcag-fail'}">
+                ${pair.passAA ? '✓ Cumple AA' : '✕ No cumple'}
+              </span>
+            </td>
+            <td>
+              <span class="${pair.passAAA ? 'badge-wcag-pass' : 'badge-wcag-fail'}">
+                ${pair.passAAA ? '✓ Cumple AAA' : '✕ No cumple'}
+              </span>
+            </td>
+          `;
+          tbodyWcag.appendChild(tr);
+        });
+      }
+    }
+
+    const closeModal = () => {
+      modal.style.display = 'none';
+    };
+
+    if (btnClose) btnClose.onclick = closeModal;
+    if (btnDismiss) btnDismiss.onclick = closeModal;
+    modal.style.display = 'flex';
   }
 
   // --- CHROMILLA PHYSICAL TUBE INVENTORY & BRANDS ---
@@ -4717,96 +4948,373 @@ class GomPickerApp {
       });
     }
 
-    // Smart Import Palette Modal
+    // =========================================================================
+    // UNIVERSAL PALETTE & LIBRARY IMPORTER STUDIO (.ASE, .GPL, .JSON, .CSS, TXT)
+    // =========================================================================
     const importModal = document.getElementById('importPaletteModal');
     const btnCloseImport = document.getElementById('btnCloseImportPaletteModal');
     const btnCancelImport = document.getElementById('btnCancelImportPalette');
     const btnConfirmImport = document.getElementById('btnConfirmImportPalette');
+
+    const tabImportFile = document.getElementById('tabImportFile');
+    const tabImportText = document.getElementById('tabImportText');
+    const importFileSection = document.getElementById('importFileSection');
+    const importTextSection = document.getElementById('importTextSection');
+
+    const importDropZone = document.getElementById('importDropZone');
+    const importFileInput = document.getElementById('importFileInput');
+    const importFileStatus = document.getElementById('importFileStatus');
+    const importFileNameText = document.getElementById('importFileNameText');
+    const btnRemoveFile = document.getElementById('btnRemoveFile');
+
     const importTextarea = document.getElementById('importPaletteTextarea');
+    const btnPasteClipboard = document.getElementById('btnPasteClipboard');
+    const btnLoadSample = document.getElementById('btnLoadSamplePalette');
+
     const importNameInput = document.getElementById('importPaletteNameInput');
-    const importPreview = document.getElementById('importPaletteLivePreview');
+    const importDestinationSelect = document.getElementById('importDestinationSelect');
+    const importSortSelect = document.getElementById('importSortSelect');
+    const chkDeduplicate = document.getElementById('chkDeduplicate');
+    const chkDeltaEFilter = document.getElementById('chkDeltaEFilter');
+
     const importCount = document.getElementById('importPaletteCount');
+    const importPreview = document.getElementById('importPaletteLivePreview');
+    const btnSelectAllPreview = document.getElementById('btnSelectAllPreview');
+    const btnClearPreview = document.getElementById('btnClearPreview');
 
-    let detectedHexes = [];
+    // Importer state
+    let extractedColors = []; // Array<{hex: string, name: string}>
+    let excludedSet = new Set(); // Indices of excluded colors
+    let activeImportFile = null;
 
-    const updateImportPreview = () => {
-      if (!importTextarea) return;
-      const text = importTextarea.value;
-      const hexRegex = /#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g;
-      const matches = text.match(hexRegex) || [];
-      detectedHexes = [];
-
-      matches.forEach(rawHex => {
-        let hex = rawHex.toUpperCase();
-        if (hex.length === 4) {
-          hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
-        }
-        if (!detectedHexes.includes(hex)) {
-          detectedHexes.push(hex);
-        }
-      });
-
-      if (importCount) {
-        importCount.textContent = `${detectedHexes.length} colores detectados`;
-      }
-      if (importPreview) {
-        importPreview.innerHTML = '';
-        if (detectedHexes.length === 0) {
-          importPreview.innerHTML = '<span style="font-size: 0.72rem; color: var(--text-muted); padding: 4px;">Sin colores detectados todavía</span>';
-        } else {
-          detectedHexes.forEach(hex => {
-            const dot = document.createElement('div');
-            dot.style.width = '24px';
-            dot.style.height = '24px';
-            dot.style.borderRadius = '4px';
-            dot.style.backgroundColor = hex;
-            dot.style.border = '1px solid rgba(255,255,255,0.2)';
-            dot.title = hex;
-            importPreview.appendChild(dot);
-          });
-        }
-      }
-      if (btnConfirmImport) {
-        btnConfirmImport.disabled = detectedHexes.length === 0;
+    const setImportTab = (mode) => {
+      if (mode === 'file') {
+        tabImportFile?.classList.add('active-toggle');
+        tabImportText?.classList.remove('active-toggle');
+        if (importFileSection) importFileSection.style.display = 'flex';
+        if (importTextSection) importTextSection.style.display = 'none';
+      } else {
+        tabImportText?.classList.add('active-toggle');
+        tabImportFile?.classList.remove('active-toggle');
+        if (importTextSection) importTextSection.style.display = 'flex';
+        if (importFileSection) importFileSection.style.display = 'none';
+        if (importTextarea) importTextarea.focus();
       }
     };
 
-    if (btnImportModal && importModal) {
-      btnImportModal.addEventListener('click', () => {
-        importModal.style.display = 'flex';
-        if (importTextarea) {
-          importTextarea.value = '';
-          updateImportPreview();
-          setTimeout(() => importTextarea.focus(), 60);
+    if (tabImportFile) tabImportFile.addEventListener('click', () => setImportTab('file'));
+    if (tabImportText) tabImportText.addEventListener('click', () => setImportTab('text'));
+
+    const renderImportPreview = () => {
+      if (!importPreview) return;
+
+      // 1. Filter out excluded colors
+      let candidateColors = extractedColors.filter((_, idx) => !excludedSet.has(idx));
+
+      // 2. Process with options (deduplication, deltaE, sort)
+      const options = {
+        removeDuplicates: chkDeduplicate ? chkDeduplicate.checked : true,
+        deltaEThreshold: chkDeltaEFilter && chkDeltaEFilter.checked ? 2.5 : 0,
+        sort: importSortSelect ? importSortSelect.value : 'original'
+      };
+
+      const finalColors = PaletteImporterEngine.processColors(candidateColors, options);
+
+      // 3. Update counter & confirm button
+      if (importCount) {
+        importCount.textContent = `${finalColors.length} colores`;
+      }
+      if (btnConfirmImport) {
+        btnConfirmImport.disabled = finalColors.length === 0;
+        btnConfirmImport.innerHTML = `<span>📥</span> Importar ${finalColors.length} Muestras`;
+      }
+
+      // 4. Render chips
+      importPreview.innerHTML = '';
+      if (finalColors.length === 0) {
+        importPreview.innerHTML = '<span style="font-size: 0.74rem; color: var(--text-muted); padding: 10px;">Sin colores detectados o todos los colores han sido excluidos.</span>';
+        return;
+      }
+
+      finalColors.forEach((col) => {
+        const chip = document.createElement('div');
+        chip.className = 'import-preview-chip';
+
+        const swatchBox = document.createElement('div');
+        swatchBox.className = 'import-chip-swatch';
+        swatchBox.style.backgroundColor = col.hex;
+
+        const nameLabel = document.createElement('span');
+        nameLabel.className = 'import-chip-name';
+        nameLabel.textContent = col.hex;
+        if (col.name && col.name !== col.hex) {
+          nameLabel.title = `${col.name} (${col.hex})`;
+        } else {
+          nameLabel.title = col.hex;
         }
-        if (importNameInput) {
-          importNameInput.value = `Paleta Importada #${this.swatchManager.palettes.length + 1}`;
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'import-chip-del';
+        delBtn.innerHTML = '✕';
+        delBtn.title = `Excluir ${col.hex} de la importación`;
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const origIdx = extractedColors.findIndex(c => c.hex.toUpperCase() === col.hex.toUpperCase());
+          if (origIdx !== -1) {
+            excludedSet.add(origIdx);
+          }
+          renderImportPreview();
+        });
+
+        chip.appendChild(swatchBox);
+        chip.appendChild(nameLabel);
+        chip.appendChild(delBtn);
+        importPreview.appendChild(chip);
+      });
+    };
+
+    const processLoadedFile = async (file) => {
+      if (!file) return;
+      activeImportFile = file;
+
+      if (importFileStatus) importFileStatus.style.display = 'flex';
+      if (importFileNameText) {
+        const sizeKb = (file.size / 1024).toFixed(1);
+        importFileNameText.textContent = `📄 ${file.name} (${sizeKb} KB)`;
+      }
+
+      try {
+        const res = await PaletteImporterEngine.parseFile(file);
+        if (res.success && res.colors.length > 0) {
+          extractedColors = res.colors;
+          excludedSet.clear();
+          if (importNameInput && res.title) {
+            importNameInput.value = res.title;
+          }
+          renderImportPreview();
+          this.showToast(`✓ Extraídos ${res.colors.length} colores de ${file.name} (${res.format})`, 'success');
+        } else {
+          this.showToast(`⚠️ No se pudieron extraer colores válidos de ${file.name}: ${res.error || 'Formato no reconocido'}`, 'warning');
+        }
+      } catch (err) {
+        console.error('Error procesando archivo de paleta:', err);
+        this.showToast(`Error al leer archivo: ${err.message}`, 'error');
+      }
+    };
+
+    // File input changes
+    if (importFileInput) {
+      importFileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) processLoadedFile(file);
+      });
+    }
+
+    // Dropzone interaction
+    if (importDropZone) {
+      importDropZone.addEventListener('click', () => {
+        if (importFileInput) importFileInput.click();
+      });
+
+      ['dragenter', 'dragover'].forEach(evt => {
+        importDropZone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          importDropZone.classList.add('drag-active');
+        });
+      });
+
+      ['dragleave', 'dragend'].forEach(evt => {
+        importDropZone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          importDropZone.classList.remove('drag-active');
+        });
+      });
+
+      importDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        importDropZone.classList.remove('drag-active');
+        const file = e.dataTransfer?.files?.[0];
+        if (file) processLoadedFile(file);
+      });
+    }
+
+    if (btnRemoveFile) {
+      btnRemoveFile.addEventListener('click', (e) => {
+        e.stopPropagation();
+        activeImportFile = null;
+        if (importFileInput) importFileInput.value = '';
+        if (importFileStatus) importFileStatus.style.display = 'none';
+        extractedColors = [];
+        excludedSet.clear();
+        renderImportPreview();
+      });
+    }
+
+    // Text parsing
+    const parseFromTextarea = () => {
+      if (!importTextarea) return;
+      const text = importTextarea.value;
+      if (!text.trim()) {
+        extractedColors = [];
+        excludedSet.clear();
+        renderImportPreview();
+        return;
+      }
+      const res = PaletteImporterEngine.parseRawText(text, importNameInput?.value || 'Paleta Pegada');
+      extractedColors = res.colors;
+      excludedSet.clear();
+      renderImportPreview();
+    };
+
+    if (importTextarea) {
+      importTextarea.addEventListener('input', parseFromTextarea);
+    }
+
+    if (btnPasteClipboard) {
+      btnPasteClipboard.addEventListener('click', async () => {
+        try {
+          const text = await navigator.clipboard.readText();
+          if (text && importTextarea) {
+            importTextarea.value = text;
+            parseFromTextarea();
+            this.showToast('✓ Contenido del portapapeles pegado y procesado');
+          }
+        } catch (e) {
+          this.showToast('No se pudo acceder al portapapeles directamente', 'warning');
         }
       });
     }
 
+    if (btnLoadSample) {
+      btnLoadSample.addEventListener('click', () => {
+        const sample = `/* Paleta de Iluminación Cinematográfica */\n:root {\n  --key-light: #FFE29F;\n  --fill-cyan: #00E5FF;\n  --rim-neon: #FF0055;\n  --shadow-indigo: #1A103C;\n  --deep-ambient: #0B0818;\n  --amber-spark: #FFAE19;\n}`;
+        if (importTextarea) {
+          importTextarea.value = sample;
+          if (importNameInput) importNameInput.value = 'Muestra Cinematográfica Studio';
+          parseFromTextarea();
+          this.showToast('✓ Ejemplo cromático cargado');
+        }
+      });
+    }
+
+    // Option change listeners
+    if (chkDeduplicate) chkDeduplicate.addEventListener('change', renderImportPreview);
+    if (chkDeltaEFilter) chkDeltaEFilter.addEventListener('change', renderImportPreview);
+    if (importSortSelect) importSortSelect.addEventListener('change', renderImportPreview);
+
+    if (btnSelectAllPreview) {
+      btnSelectAllPreview.addEventListener('click', () => {
+        excludedSet.clear();
+        renderImportPreview();
+      });
+    }
+
+    if (btnClearPreview) {
+      btnClearPreview.addEventListener('click', () => {
+        extractedColors.forEach((_, idx) => excludedSet.add(idx));
+        renderImportPreview();
+      });
+    }
+
+    const openImportModalWithFile = (file = null) => {
+      if (!importModal) return;
+      importModal.style.display = 'flex';
+      excludedSet.clear();
+      if (file) {
+        setImportTab('file');
+        processLoadedFile(file);
+      } else {
+        setImportTab('file');
+        if (importNameInput) {
+          importNameInput.value = `Paleta Importada #${this.swatchManager.palettes.length + 1}`;
+        }
+        renderImportPreview();
+      }
+    };
+
+    if (btnImportModal && importModal) {
+      btnImportModal.addEventListener('click', () => openImportModalWithFile(null));
+    }
+
     const closeImport = () => {
       if (importModal) importModal.style.display = 'none';
+      activeImportFile = null;
+      if (importFileInput) importFileInput.value = '';
+      if (importFileStatus) importFileStatus.style.display = 'none';
     };
 
     if (btnCloseImport) btnCloseImport.addEventListener('click', closeImport);
     if (btnCancelImport) btnCancelImport.addEventListener('click', closeImport);
 
-    if (importTextarea) {
-      importTextarea.addEventListener('input', updateImportPreview);
-    }
-
     if (btnConfirmImport) {
       btnConfirmImport.addEventListener('click', () => {
-        if (detectedHexes.length === 0) return;
-        const name = (importNameInput?.value || '').trim() || `Paleta Importada (${detectedHexes.length} colores)`;
-        const newPal = this.swatchManager.addPalette(name, detectedHexes);
+        const candidateColors = extractedColors.filter((_, idx) => !excludedSet.has(idx));
+        const options = {
+          removeDuplicates: chkDeduplicate ? chkDeduplicate.checked : true,
+          deltaEThreshold: chkDeltaEFilter && chkDeltaEFilter.checked ? 2.5 : 0,
+          sort: importSortSelect ? importSortSelect.value : 'original'
+        };
+        const finalColors = PaletteImporterEngine.processColors(candidateColors, options);
+        if (finalColors.length === 0) return;
+
+        const name = (importNameInput?.value || '').trim() || `Paleta Importada (${finalColors.length} colores)`;
+        const hexList = finalColors.map(c => c.hex);
+        const destination = importDestinationSelect ? importDestinationSelect.value : 'new';
+
+        if (destination === 'new') {
+          const newPal = this.swatchManager.addPalette(name, hexList);
+          this.showToast(`✓ Nueva paleta '${newPal.name}' creada con ${hexList.length} colores`, 'success');
+        } else if (destination === 'merge') {
+          const activePal = this.swatchManager.getActivePalette();
+          if (activePal) {
+            hexList.forEach(hex => this.swatchManager.addColorToPalette(activePal.id, hex));
+            this.showToast(`✓ Fusionadas ${hexList.length} muestras en '${activePal.name}'`, 'success');
+          } else {
+            this.swatchManager.addPalette(name, hexList);
+          }
+        } else if (destination === 'replace') {
+          const activePal = this.swatchManager.getActivePalette();
+          if (activePal) {
+            this.swatchManager.clearPaletteColors(activePal.id);
+            hexList.forEach(hex => this.swatchManager.addColorToPalette(activePal.id, hex));
+            this.showToast(`✓ Paleta '${activePal.name}' actualizada con ${hexList.length} colores`, 'success');
+          } else {
+            this.swatchManager.addPalette(name, hexList);
+          }
+        }
+
         closeImport();
         this.renderSwatchesCollection();
         this.renderQuickPalette();
-        this.showToast(`✓ Paleta '${newPal.name}' creada con ${detectedHexes.length} colores`, 'success');
       });
     }
+
+    // Direct Drag-and-Drop of palette files onto the Swatches View
+    const swatchesContainer = document.getElementById('swatchesCollection');
+    const viewSwatches = document.getElementById('viewSwatches');
+    [swatchesContainer, viewSwatches].forEach(zone => {
+      if (!zone) return;
+      zone.addEventListener('dragover', (e) => {
+        if (e.dataTransfer?.types?.includes('Files')) {
+          e.preventDefault();
+        }
+      });
+      zone.addEventListener('drop', (e) => {
+        if (e.dataTransfer?.files?.length > 0) {
+          const file = e.dataTransfer.files[0];
+          const ext = file.name.split('.').pop().toLowerCase();
+          if (['ase', 'gpl', 'json', 'css', 'scss', 'txt'].includes(ext)) {
+            e.preventDefault();
+            e.stopPropagation();
+            openImportModalWithFile(file);
+          }
+        }
+      });
+    });
 
     // Universal Export Bar Listeners (export active palette)
     if (btnAse) {
@@ -5097,6 +5605,17 @@ class GomPickerApp {
       });
       toolbar.appendChild(btnInvert);
 
+      // 5.5 Variations generator
+      const btnVariations = document.createElement('button');
+      btnVariations.className = 'palette-tool-btn';
+      btnVariations.innerHTML = '<span>🎨</span> Variaciones';
+      btnVariations.title = 'Derivar variaciones cromáticas (Noche, Pastel, Tierras, Complementarios)';
+      btnVariations.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showPaletteVariationsPopover(btnVariations, pal);
+      });
+      toolbar.appendChild(btnVariations);
+
       // 6. Export Menu
       const btnExport = document.createElement('button');
       btnExport.className = 'palette-tool-btn';
@@ -5158,6 +5677,16 @@ class GomPickerApp {
         }
       });
       toolbar.appendChild(btnClone);
+
+      const btnVariations = document.createElement('button');
+      btnVariations.className = 'palette-tool-btn';
+      btnVariations.innerHTML = '<span>🎨</span> Variaciones';
+      btnVariations.title = 'Derivar variaciones cromáticas de este catálogo';
+      btnVariations.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showPaletteVariationsPopover(btnVariations, pal);
+      });
+      toolbar.appendChild(btnVariations);
 
       const btnExport = document.createElement('button');
       btnExport.className = 'palette-tool-btn';

@@ -2651,46 +2651,212 @@
     </div>
   </div>
 
-  <!-- MODAL: IMPORTAR PALETA INTELIGENTE -->
+  <!-- MODAL: IMPORTADOR UNIVERSAL DE BIBLIOTECAS Y PALETAS -->
   <div id="importPaletteModal" class="master-modal-backdrop" style="display: none;">
-    <div class="master-modal-container compact" style="max-width: 540px;">
-      <div class="master-modal-header">
+    <div class="master-modal-container import-palette-container" style="max-width: 680px; width: 92vw; max-height: 90vh; display: flex; flex-direction: column;">
+      
+      <!-- Header -->
+      <div class="master-modal-header" style="flex-shrink: 0;">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="master-modal-badge">📥 Importador</span>
-          <span style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Importar Paleta de Colores Inteligente</span>
+          <span class="master-modal-badge" style="background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(6,182,212,0.2)); border: 1px solid rgba(16,185,129,0.4); color: #6EE7B7;">📥 Importador Universal</span>
+          <span style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF;">Importar Paleta o Colección</span>
         </div>
-        <button id="btnCloseImportPaletteModal" class="modal-close-btn" title="Cerrar modal (Esc)">✕</button>
+        <button id="btnCloseImportPaletteModal" class="modal-close-btn" title="Cerrar ventana (Esc)">✕</button>
       </div>
 
-      <div class="shortcuts-modal-body" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
-        <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
-          Pega cualquier lista de códigos HEX (<code>#FF0055, #00FFCC</code>), variables CSS (<code>--color: #ABC;</code>), JSON de tokens o formato GPL. El extractor detectará automáticamente todos los colores válidos.
-        </div>
+      <!-- Modal Scrollable Body -->
+      <div class="shortcuts-modal-body" style="padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; flex-grow: 1;">
         
-        <div>
-          <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Nombre de la Paleta:</label>
-          <input type="text" id="importPaletteNameInput" class="palette-search-input" placeholder="Ej: Mi Paleta de Concept Art" />
+        <!-- Explanation Bar -->
+        <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45; background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px;">
+          Compatible con archivos binarios de <strong>Adobe Photoshop (.ASE)</strong>, paletas de <strong>GIMP/Krita (.GPL)</strong>, tokens de diseño <strong>JSON</strong>, variables <strong>CSS/SCSS</strong> o texto pegado con códigos HEX, RGB y HSL.
         </div>
 
-        <div>
-          <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Pega tus colores o código:</label>
-          <textarea id="importPaletteTextarea" class="palette-import-textarea" rows="5" placeholder="#2B1B17, #5C2C16, #C25925, #E69C24, #F4D06F&#10;o pega variables CSS :root { --c1: #... }"></textarea>
+        <!-- Mode Selector Tabs: Archivo vs Texto/Código -->
+        <div class="import-tab-nav" style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+          <button type="button" id="tabImportFile" class="chip-select active-toggle" style="padding: 6px 14px; font-size: 0.78rem;">
+            📁 Archivo (.ASE, .GPL, .JSON, .CSS)
+          </button>
+          <button type="button" id="tabImportText" class="chip-select" style="padding: 6px 14px; font-size: 0.78rem;">
+            📋 Pegar Texto / Código / HEX
+          </button>
         </div>
 
-        <div>
-          <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 6px;">
-            <span style="color: var(--text-muted);">Muestras detectadas:</span>
-            <span id="importPaletteCount" style="color: var(--accent-cyan); font-weight: 700;">0 colores</span>
+        <!-- View 1: Drag & Drop File Zone -->
+        <div id="importFileSection" style="display: flex; flex-direction: column; gap: 10px;">
+          <div id="importDropZone" class="import-drop-area" tabindex="0">
+            <input type="file" id="importFileInput" accept=".ase,.gpl,.json,.css,.scss,.txt" style="display: none;" />
+            <div class="import-drop-icon">📦</div>
+            <div style="font-size: 0.86rem; font-weight: 600; color: #FFFFFF;">
+              Arrastra y suelta tu archivo aquí, o haz <span style="color: var(--accent-cyan); text-decoration: underline; cursor: pointer;">clic para explorar</span>
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">
+              Formatos soportados: Adobe Swatch Exchange (.ase), GIMP (.gpl), Design Tokens (.json), CSS / SCSS (.css)
+            </div>
+            <div id="importFileStatus" style="display: none; margin-top: 8px; padding: 6px 12px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); border-radius: 6px; font-size: 0.78rem; color: #A7F3D0; align-items: center; justify-content: space-between; width: 100%; max-width: 420px;">
+              <span id="importFileNameText">archivo.ase</span>
+              <button type="button" id="btnRemoveFile" style="background: none; border: none; color: #F87171; cursor: pointer; font-size: 0.85rem;" title="Quitar archivo">✕</button>
+            </div>
           </div>
-          <div id="importPaletteLivePreview" style="display: flex; gap: 6px; flex-wrap: wrap; min-height: 36px; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px dashed var(--border-subtle); align-items: center;">
-            <span style="font-size: 0.72rem; color: var(--text-muted); padding: 4px;">Sin colores detectados todavía</span>
+        </div>
+
+        <!-- View 2: Textarea / Raw text (hidden by default) -->
+        <div id="importTextSection" style="display: none; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label style="font-size: 0.75rem; color: var(--text-muted);">Pega tus colores, variables o código:</label>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" id="btnPasteClipboard" class="tool-action-btn" style="padding: 2px 8px; font-size: 0.7rem;">📋 Pegar Portapapeles</button>
+              <button type="button" id="btnLoadSamplePalette" class="tool-action-btn" style="padding: 2px 8px; font-size: 0.7rem;">✨ Cargar Ejemplo</button>
+            </div>
+          </div>
+          <textarea id="importPaletteTextarea" class="palette-import-textarea" rows="4" placeholder="#2B1B17, #5C2C16, #C25925, #E69C24, #F4D06F&#10;o variables CSS: :root { --primary: #00FFCC; --secondary: rgb(255, 100, 50); }"></textarea>
+        </div>
+
+        <!-- Import Options: Name, Destination, Filters -->
+        <div class="import-options-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; background: rgba(0,0,0,0.25); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px;">
+          
+          <div>
+            <label style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Nombre de la Paleta:</label>
+            <input type="text" id="importPaletteNameInput" class="palette-search-input" placeholder="Ej: Paleta de Arte Conceptual" />
+          </div>
+
+          <div>
+            <label style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Destino de Importación:</label>
+            <select id="importDestinationSelect" class="palette-search-input" style="cursor: pointer;">
+              <option value="new">➕ Crear como Nueva Paleta</option>
+              <option value="merge">🔀 Fusionar / Añadir a Paleta Activa</option>
+              <option value="replace">🔄 Reemplazar Muestras de Paleta Activa</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Ordenar Muestras:</label>
+            <select id="importSortSelect" class="palette-search-input" style="cursor: pointer;">
+              <option value="original">Orden Original del Archivo</option>
+              <option value="hue">Por Tono Cromático (Hue 0° - 360°)</option>
+              <option value="lum-asc">Por Luminosidad (Oscuro a Claro)</option>
+              <option value="lum-desc">Por Luminosidad (Claro a Oscuro)</option>
+              <option value="sat-desc">Por Saturación (Vívido a Neutro)</option>
+            </select>
+          </div>
+
+          <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; padding-top: 4px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.74rem; color: var(--text-secondary); cursor: pointer;">
+              <input type="checkbox" id="chkDeduplicate" checked />
+              <span>Eliminar colores duplicados exactos</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.74rem; color: var(--text-secondary); cursor: pointer;" title="Filtra muestras perceptualmente indistinguibles usando la fórmula CIELAB Delta-E">
+              <input type="checkbox" id="chkDeltaEFilter" />
+              <span>Filtro perceptual (Omitir indistinguibles ΔE &lt; 2.5)</span>
+            </label>
+          </div>
+
+        </div>
+
+        <!-- Live Preview Grid of Extracted Colors with Exclusion Chips -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 0.78rem; font-weight: 600; color: #FFFFFF;">Muestras Extraídas:</span>
+              <span id="importPaletteCount" style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 700; background: rgba(6,182,212,0.15); padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(6,182,212,0.3);">0 colores</span>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" id="btnSelectAllPreview" class="tool-action-btn" style="padding: 2px 8px; font-size: 0.68rem;">Todos</button>
+              <button type="button" id="btnClearPreview" class="tool-action-btn" style="padding: 2px 8px; font-size: 0.68rem;">Limpiar</button>
+            </div>
+          </div>
+
+          <div id="importPaletteLivePreview" class="import-preview-box">
+            <span style="font-size: 0.74rem; color: var(--text-muted); padding: 12px;">Arrastra un archivo o pega códigos para extraer los colores...</span>
+          </div>
+          <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;">
+            💡 Haz clic en la ✕ de cualquier muestra para excluirla antes de importar.
           </div>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-          <button id="btnCancelImportPalette" class="tool-action-btn" style="padding: 6px 14px; font-size: 0.78rem;">Cancelar</button>
-          <button id="btnConfirmImportPalette" class="ai-gen-btn" style="padding: 6px 18px; font-size: 0.78rem;" disabled>Crear Paleta</button>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="master-modal-footer" style="padding: 12px 16px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: flex-end; gap: 10px; background: rgba(0,0,0,0.2); flex-shrink: 0;">
+        <button id="btnCancelImportPalette" class="tool-action-btn" style="padding: 7px 16px; font-size: 0.8rem;">Cancelar</button>
+        <button id="btnConfirmImportPalette" class="ai-gen-btn" style="padding: 7px 22px; font-size: 0.8rem; background: linear-gradient(135deg, #10B981, #06B6D4);" disabled>
+          <span>📥</span> Importar Muestras
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: PUENTE A PIGMENTOS REALES Y AUDITORÍA WCAG DE PALETA -->
+  <div id="colorBridgeModal" class="master-modal-backdrop" style="display: none;">
+    <div class="master-modal-container compact" style="max-width: 820px; width: 92vw; max-height: 88vh; display: flex; flex-direction: column;">
+      <div class="master-modal-header" style="flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="master-modal-badge" style="background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(239,68,68,0.2)); border: 1px solid rgba(245,158,11,0.4); color: #FCD34D;">🌉 Color Bridge & Accesibilidad</span>
+          <span id="colorBridgeModalTitle" style="font-size: 0.92rem; font-weight: 700; color: #FFFFFF;">Puente Físico a Pigmentos & WCAG</span>
         </div>
+        <button id="btnCloseColorBridgeModal" class="modal-close-btn" title="Cerrar ventana (Esc)">✕</button>
+      </div>
+
+      <div class="shortcuts-modal-body" style="padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; flex-grow: 1;">
+        <!-- Tabs: Puente Físico vs WCAG -->
+        <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+          <button type="button" id="tabBridgePhysical" class="chip-select active-toggle" style="padding: 5px 12px; font-size: 0.76rem;">
+            🎨 Tubos Reales & Copic/Pantone (ΔE CIELAB)
+          </button>
+          <button type="button" id="tabBridgeWcag" class="chip-select" style="padding: 5px 12px; font-size: 0.76rem;">
+            👁️ Matriz de Contraste WCAG 2.1 (AA / AAA)
+          </button>
+        </div>
+
+        <!-- Section 1: Physical Matches -->
+        <div id="bridgePhysicalSection" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.4;">
+            Correspondencias espectrales más cercanas entre tus colores digitales y las fórmulas físicas de <strong>Winsor & Newton, Sennelier, Golden, Old Holland</strong>, marcadores <strong>Copic Sketch</strong> y tintas <strong>Pantone PMS</strong> (calculado con distancia perceptual ΔE CIELAB).
+          </div>
+          <div style="overflow-x: auto; background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 6px;">
+            <table class="color-bridge-table">
+              <thead>
+                <tr>
+                  <th>Color Digital</th>
+                  <th>Pigmento Real (Tubo)</th>
+                  <th>Copic Marker</th>
+                  <th>Pantone PMS</th>
+                </tr>
+              </thead>
+              <tbody id="bridgePhysicalTableBody">
+                <!-- Injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Section 2: WCAG Accessibility Matrix -->
+        <div id="bridgeWcagSection" style="display: none; flex-direction: column; gap: 8px;">
+          <div style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.4;">
+            Análisis de contraste relativo de texto/fondo según las directrices de accesibilidad web <strong>WCAG 2.1</strong>. Ratios mínimos: <strong>4.5:1</strong> para nivel AA y <strong>7.0:1</strong> para nivel AAA.
+          </div>
+          <div style="overflow-x: auto; max-height: 320px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 6px;">
+            <table class="color-bridge-table">
+              <thead>
+                <tr>
+                  <th>Combinación</th>
+                  <th>Muestra de Lectura</th>
+                  <th>Ratio</th>
+                  <th>WCAG AA (4.5:1)</th>
+                  <th>WCAG AAA (7.0:1)</th>
+                </tr>
+              </thead>
+              <tbody id="bridgeWcagTableBody">
+                <!-- Injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="master-modal-footer" style="padding: 10px 16px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: flex-end; background: rgba(0,0,0,0.2); flex-shrink: 0;">
+        <button id="btnDismissColorBridge" class="tool-action-btn" style="padding: 6px 16px; font-size: 0.78rem;">Cerrar</button>
       </div>
     </div>
   </div>
