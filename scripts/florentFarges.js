@@ -1,15 +1,25 @@
 /**
- * GOM Picker - Florent Farges Practical Color Theory & Color Mixing System
+ * GOM Picker - Florent Farges Practical Color Theory & Physical Color Mixing System
  * Implements Florent Farges' "Three Wheel System", Real Pigment Mapping,
  * Inherent Value Scales, Subtractive Bow Curves, Academic Flesh Gamut,
- * and the Classic "Yellow + Black" Olive Phenomenon.
+ * Automatic Workshop Library Generation, Physical Mixture Simulator with
+ * Tinting Strength Non-Linearity, and Pedagogical "Por Qué de las Cosas".
  */
 
 import { ColorMath } from './colorMath.js';
 
 export const FlorentFargesEngine = {
+  // Current active wheel in the Three-Wheel-System viewer:
+  // 1: Pigment Placement & Tinting Strength, 2: Mixing Lines & Bow Curves, 3: Inherent Value 3D Spiral
+  activeWheelIndex: 1,
+
+  // Selected pigments in the physical mixing lab
+  labPigment1Id: 'cad_yellow_med',
+  labPigment2Id: 'ivory_black',
+  labRatio: 0.5,
+
   // --- FLORENT FARGES PIGMENT DATABASE ---
-  // Pigments mapped by their optical hue angle, inherent value (1-9), tinting strength, and properties
+  // Pigments mapped by their optical hue angle, inherent value (1-9.8), tinting strength (1-10), and properties
   PIGMENTS: [
     {
       id: 'cad_lemon',
@@ -335,9 +345,84 @@ export const FlorentFargesEngine = {
     }
   ],
 
-  // Current active wheel in the Three-Wheel-System viewer:
-  // 1: Pigment Placement Wheel, 2: Mixing Lines & Bow Curves, 3: Inherent Value Scale
-  activeWheelIndex: 1,
+  getPigmentById(id) {
+    return this.PIGMENTS.find(p => p.id === id) || this.PIGMENTS[0];
+  },
+
+  // --- COLECCIÓN CANÓNICA DE BIBLIOTECAS DE ESTUDIO DE FLORENT FARGES ---
+  CANONICAL_PALETTES: [
+    {
+      id: 'farges_split_primaries',
+      name: 'Florent Farges — 6 Primarios Divididos de Taller',
+      desc: 'La paleta fundamental de caballete recomendada por Florent Farges: 2 amarillos (frío/cálido), 2 rojos (cálido/frío), 2 azules (cálido/frío), con Blanco de Titanio y Sombra Natural.',
+      colors: [
+        { id: 'cad_lemon', name: 'Amarillo Limón (PY35)', hex: '#FFF200', role: 'Primario Amarillo Frío' },
+        { id: 'cad_yellow_med', name: 'Amarillo Cadmio Medio (PY35)', hex: '#FFD700', role: 'Primario Amarillo Cálido' },
+        { id: 'cad_red_light', name: 'Rojo Cadmio Claro (PR108)', hex: '#E62E00', role: 'Primario Rojo Cálido' },
+        { id: 'quin_magenta', name: 'Magenta Quinacridona (PR122)', hex: '#C01368', role: 'Primario Rojo/Magenta Frío' },
+        { id: 'phthalo_blue', name: 'Azul Ftalo S.V. (PB15:3)', hex: '#003366', role: 'Primario Azul Frío (Cian)' },
+        { id: 'ultramarine_blue', name: 'Azul Ultramar Francés (PB29)', hex: '#1B2682', role: 'Primario Azul Cálido' },
+        { id: 'titanium_white', name: 'Blanco de Titanio (PW6)', hex: '#FDFBF7', role: 'Aclarador Opaco' },
+        { id: 'raw_umber', name: 'Sombra Natural (PBr7)', hex: '#463A2B', role: 'Oscurecedor Universal' }
+      ]
+    },
+    {
+      id: 'farges_academic_portrait',
+      name: 'Florent Farges — Retrato Académico & Tríada Facial',
+      desc: 'Formulación para el modelado de la encarnación y las 3 zonas térmicas del rostro humano según Florent Farges.',
+      colors: [
+        { id: 'titanium_white', name: 'Blanco de Titanio (PW6)', hex: '#FDFBF7', role: 'Luz y Valor' },
+        { id: 'yellow_ochre', name: 'Ocre Amarillo (PY43)', hex: '#CC9933', role: 'Frente & Sienes' },
+        { id: 'burnt_sienna', name: 'Siena Tostada (PBr7)', hex: '#8D361F', role: 'Sombras Cálidas' },
+        { id: 'cad_red_light', name: 'Rojo Cadmio Claro (PR108)', hex: '#E62E00', role: 'Mejillas & Nariz' },
+        { id: 'alizarin_crimson', name: 'Carmín Alizarina (PR177)', hex: '#9E1338', role: 'Labios & Acentos Fríos' },
+        { id: 'ultramarine_blue', name: 'Azul Ultramar (PB29)', hex: '#1B2682', role: 'Mandíbula & Cuello' },
+        { id: 'ivory_black', name: 'Negro Marfil (PBk9)', hex: '#1E1D1B', role: 'Azul Frío Secreto' }
+      ]
+    },
+    {
+      id: 'farges_plein_air',
+      name: 'Florent Farges — Paisaje de Estudio & Plenairismo',
+      desc: 'Equilibrio de atmósfera exterior, verdes orgánicos no chillones, cielos limpios y veladuras transparentes.',
+      colors: [
+        { id: 'titanium_white', name: 'Blanco de Titanio (PW6)', hex: '#FDFBF7', role: 'Nubes & Luces' },
+        { id: 'cad_lemon', name: 'Amarillo Limón (PY35)', hex: '#FFF200', role: 'Sol Radiante' },
+        { id: 'yellow_ochre', name: 'Ocre Amarillo (PY43)', hex: '#CC9933', role: 'Suelo & Hierba Seca' },
+        { id: 'burnt_sienna', name: 'Siena Tostada (PBr7)', hex: '#8D361F', role: 'Troncos & Rocas' },
+        { id: 'cobalt_blue', name: 'Azul Cobalto (PB28)', hex: '#0047AB', role: 'Bóveda Celeste' },
+        { id: 'phthalo_blue', name: 'Azul Ftalo (PB15:3)', hex: '#003366', role: 'Distancias Profundas' },
+        { id: 'viridian', name: 'Verde Viridián (PG18)', hex: '#126848', role: 'Agua & Hojas Transparentes' },
+        { id: 'raw_umber', name: 'Sombra Natural (PBr7)', hex: '#463A2B', role: 'Sombra Terrestre' }
+      ]
+    },
+    {
+      id: 'farges_chiaroscuro',
+      name: 'Florent Farges — Claroscuro & Tierras Nobles',
+      desc: 'Para modelado tonal estricto, bodegón clásico y atmósfera de luz lateral dirigida estilo barroco atelier.',
+      colors: [
+        { id: 'titanium_white', name: 'Blanco de Titanio (PW6)', hex: '#FDFBF7', role: 'Foco Lumínico' },
+        { id: 'raw_sienna', name: 'Siena Natural (PBr7)', hex: '#C67128', role: 'Halftone Luminoso' },
+        { id: 'yellow_ochre', name: 'Ocre Amarillo (PY43)', hex: '#CC9933', role: 'Medio Tono' },
+        { id: 'burnt_sienna', name: 'Siena Tostada (PBr7)', hex: '#8D361F', role: 'Penumbra Cálida' },
+        { id: 'raw_umber', name: 'Sombra Natural (PBr7)', hex: '#463A2B', role: 'Núcleo de Sombra Fría' },
+        { id: 'burnt_umber', name: 'Sombra Tostada (PBr7)', hex: '#462C1E', role: 'Sombra Chocolate Profunda' },
+        { id: 'ivory_black', name: 'Negro Marfil (PBk9)', hex: '#1E1D1B', role: 'Oclusión Tonal Absoluta' }
+      ]
+    },
+    {
+      id: 'farges_natural_greens',
+      name: 'Florent Farges — Verdes Orgánicos sin Viridián',
+      desc: 'Formulación magistral de verdes vivos y naturales mezclando amarillos y tierras con negros y azules, evitando el verde sintético estridente.',
+      colors: [
+        { name: 'Oliva Farges (Limón + Negro)', hex: '#4D511A', role: 'Verde Oliva Vegetal (Olive Shift)' },
+        { name: 'Verde Musgo (Cadmio + Ultramar)', hex: '#2F4F24', role: 'Verde Bosque Cálido Profundo' },
+        { name: 'Verde Césped Claro (Limón + Cobalto)', hex: '#589139', role: 'Pradera Soleada Vibrante' },
+        { name: 'Oliva Dorado (Ocre + Negro)', hex: '#484422', role: 'Follaje de Sombra Envejecido' },
+        { name: 'Verde Esmeralda Velado (Ftalo + Ocre)', hex: '#1B6344', role: 'Agua y Vegetación Húmeda' },
+        { name: 'Sombra Verde Fría (Sombra + Ultramar)', hex: '#222C2E', role: 'Sombra de Vegetación Profunda' }
+      ]
+    }
+  ],
 
   // --- ACADEMIC FLESH TONE GAMUT (TRÍADA FACIAL DE FLORENT FARGES) ---
   FLESH_ZONES: [
@@ -392,7 +477,6 @@ export const FlorentFargesEngine = {
     const targetAngle = hsl.h;
     const targetSaturation = hsl.s; // 0 to 1
     const targetLightness = hsl.l;  // 0 to 1
-    const targetValue = hsv.v * 9;   // Scaled to 1-9 value scale
 
     // Chromatic pigments with specific angle (filter out pure whites and blacks)
     const spectralPigs = this.PIGMENTS.filter(p => !['titanium_white', 'zinc_white', 'ivory_black'].includes(p.id));
@@ -404,11 +488,9 @@ export const FlorentFargesEngine = {
       return diffA - diffB;
     });
 
-    // Top 2 candidate pigments that flank the target hue
     let cand1 = sortedByAngle[0];
     let cand2 = sortedByAngle[1];
 
-    // Ensure cand1 and cand2 bracket the target angle if possible
     const angle1 = cand1.angle;
     const angle2 = cand2.angle;
     let weight1 = 0.5;
@@ -436,8 +518,7 @@ export const FlorentFargesEngine = {
       valueAdvice = `Añadir ${whitePigment} generosamente para elevar el valor. Si buscas una veladura transparente, usa Blanco de Zinc (PW4).`;
     } else if (targetLightness < 0.3) {
       if (targetAngle >= 30 && targetAngle <= 80) {
-        // Special yellow rule by Florent Farges!
-        valueAdvice = `¡ATENCIÓN DE FARGES!: El amarillo NO se oscurece con negro (lo convertiría en verde oliva). Usa Sombra Natural (PBr7) o Siena Tostada para mantener la calidez dorada.`;
+        valueAdvice = `¡REGLA DE ORO DE FARGES!: El amarillo NUNCA se oscurece con negro (lo viraría a verde oliva). Usa Sombra Natural (PBr7) o Siena Tostada para mantener la calidez dorada.`;
       } else {
         valueAdvice = `Bajar el valor utilizando ${darkPigment}. Evita el negro puro para no matar la vibración luminosa del lienzo.`;
       }
@@ -458,7 +539,7 @@ export const FlorentFargesEngine = {
     // Physical Pigment Behavior Note
     let behaviorNote = '';
     if (cand1.id.includes('phthalo') || cand2.id.includes('phthalo') || cand1.id.includes('dioxazine') || cand2.id.includes('dioxazine')) {
-      behaviorNote = '⚠️ ADVERTENCIA DE TINTE: Este pigmento orgánico moderno tiene una fuerza de tinte monstruosa. Añádelo solo con la punta del pincel o devorará toda la mezcla.';
+      behaviorNote = '⚠️ ADVERTENCIA DE TINTE: Este pigmento orgánico moderno tiene una fuerza de tinte monstruosa (10/10). Añádelo solo con la punta del pincel o devorará toda la mezcla.';
     } else if (cand1.id.includes('cad') || cand2.id.includes('cad')) {
       behaviorNote = '💡 PROPIEDAD: Los cadmios minerales son pesados, densos y cubrientes. Otorgan un cuerpo pictórico incomparable.';
     } else {
@@ -491,15 +572,240 @@ export const FlorentFargesEngine = {
     return diff > 180 ? 360 - diff : diff;
   },
 
+  // --- GENERADOR AUTOMÁTICO DE BIBLIOTECA DE TALLER SEGÚN REGLAS DE FARGES ---
+  generateFargesWorkshopPalette(activeRgb) {
+    const hex = ColorMath.rgbToHex(activeRgb.r, activeRgb.g, activeRgb.b);
+    const solver = this.solveMixingForColor(activeRgb);
+    const hsl = solver.targetHsl;
+
+    // Build the tailored workshop palette:
+    const paletteColors = [
+      {
+        name: `Color Objetivo (${hex})`,
+        hex: hex,
+        rgb: activeRgb,
+        role: 'Tono Local de Referencia'
+      },
+      {
+        name: `${solver.cand1.name} (${solver.cand1.ci})`,
+        hex: solver.cand1.hex,
+        rgb: solver.cand1.rgb,
+        role: `Primario Flanqueante Principal (${solver.cand1.percent}%)`
+      },
+      {
+        name: `${solver.cand2.name} (${solver.cand2.ci})`,
+        hex: solver.cand2.hex,
+        rgb: solver.cand2.rgb,
+        role: `Primario Secundario (${solver.cand2.percent}%)`
+      },
+      {
+        name: `${solver.complement.name} (${solver.complement.ci})`,
+        hex: solver.complement.hex,
+        rgb: solver.complement.rgb,
+        role: 'Neutralizador Óptico Complementario (Gris Cromático)'
+      }
+    ];
+
+    // Lightening pigment: Zinc if transparent/high saturation needed, Titanium if opaque
+    if (hsl.s > 0.65 || hsl.l > 0.75) {
+      const p = this.getPigmentById('zinc_white');
+      paletteColors.push({
+        name: `${p.name} (${p.ci})`,
+        hex: p.hex,
+        rgb: p.rgb,
+        role: 'Aclarador de Veladura Luminosa (Sin blanquear en exceso)'
+      });
+    } else {
+      const p = this.getPigmentById('titanium_white');
+      paletteColors.push({
+        name: `${p.name} (${p.ci})`,
+        hex: p.hex,
+        rgb: p.rgb,
+        role: 'Aclarador Opaco de Máximo Poder Cubriente'
+      });
+    }
+
+    // Shading pigment: Strictly follow Farges rule (Never black on yellow!)
+    if (solver.targetAngle >= 25 && solver.targetAngle <= 85) {
+      const p = this.getPigmentById('raw_umber');
+      paletteColors.push({
+        name: `${p.name} (${p.ci})`,
+        hex: p.hex,
+        rgb: p.rgb,
+        role: 'Sombra Tonal Farges (Mantiene oro sin virar a verde oliva)'
+      });
+    } else if (solver.targetAngle >= 0 && solver.targetAngle < 25) {
+      const p = this.getPigmentById('burnt_sienna');
+      paletteColors.push({
+        name: `${p.name} (${p.ci})`,
+        hex: p.hex,
+        rgb: p.rgb,
+        role: 'Sombra Cálida Transparente de Gran Vibración'
+      });
+    } else {
+      const p = this.getPigmentById('ultramarine_blue');
+      paletteColors.push({
+        name: `${p.name} (${p.ci})`,
+        hex: p.hex,
+        rgb: p.rgb,
+        role: 'Sombra Fría Atmosférica y Profundidad Clásica'
+      });
+    }
+
+    // Earth bridging pigment
+    const ochre = this.getPigmentById('yellow_ochre');
+    paletteColors.push({
+      name: `${ochre.name} (${ochre.ci})`,
+      hex: ochre.hex,
+      rgb: ochre.rgb,
+      role: 'Tierra de Enlace y Carnaciones'
+    });
+
+    return {
+      id: `farges_workshop_${Date.now()}`,
+      name: `Paleta Taller Farges (${hex})`,
+      desc: `Paleta física de caballete calculada para el tono ${hex}. Combina primarios divididos, neutralizador de gris cromático y oscurecimiento libre de efecto oliva.`,
+      colors: paletteColors
+    };
+  },
+
+  // --- SIMULADOR DE MEZCLA FÍSICA & COMPARADOR DINÁMICO DE TUBOS ---
+  simulatePigmentMixture(pig1, pig2, ratio = 0.5) {
+    const p1 = typeof pig1 === 'string' ? this.getPigmentById(pig1) : pig1;
+    const p2 = typeof pig2 === 'string' ? this.getPigmentById(pig2) : pig2;
+
+    const r = Math.max(0, Math.min(1, ratio));
+    const s1 = p1.tintingStrength || 6;
+    const s2 = p2.tintingStrength || 6;
+
+    // Non-linear tinting strength curve:
+    // Real pigments with strength 10 (e.g. Phthalo Blue) physically overpower strength 5 (Ochre)
+    const effectiveWeight = (r * s2) / ((1 - r) * s1 + r * s2);
+
+    // Check for Olive Shift (Yellow + Carbon Black)
+    const isP1Yellow = (p1.id === 'cad_lemon' || p1.id === 'cad_yellow_med' || p1.id === 'yellow_ochre');
+    const isP2Yellow = (p2.id === 'cad_lemon' || p2.id === 'cad_yellow_med' || p2.id === 'yellow_ochre');
+    const isP1Black = (p1.id === 'ivory_black');
+    const isP2Black = (p2.id === 'ivory_black');
+
+    let mixedRgb;
+    let isOliveShift = false;
+
+    if ((isP1Yellow && isP2Black) || (isP2Yellow && isP1Black)) {
+      isOliveShift = true;
+      // Empirically simulated Olive Shift absorption spectrum
+      const yellowPig = isP1Yellow ? p1 : p2;
+      const yellowWeight = isP1Yellow ? (1 - effectiveWeight) : effectiveWeight;
+      const blackWeight = 1 - yellowWeight;
+
+      // When black enters, the absorption of red wavelengths causes chlorophyll olive shift
+      const oliveR = Math.round(yellowPig.rgb.r * Math.pow(yellowWeight, 1.2) * (1 - blackWeight * 0.72));
+      const oliveG = Math.round(yellowPig.rgb.g * Math.pow(yellowWeight, 0.65) * (1 - blackWeight * 0.45));
+      const oliveB = Math.round(25 + yellowPig.rgb.b * Math.pow(yellowWeight, 2) * (1 - blackWeight * 0.9));
+
+      mixedRgb = {
+        r: Math.max(20, Math.min(255, oliveR)),
+        g: Math.max(25, Math.min(255, oliveG)),
+        b: Math.max(15, Math.min(255, oliveB))
+      };
+    } else {
+      // Subtractive RYB physical mixture with natural bow curvature
+      mixedRgb = ColorMath.mixRyb(p1.rgb, p2.rgb, effectiveWeight);
+    }
+
+    const mixedHex = ColorMath.rgbToHex(mixedRgb.r, mixedRgb.g, mixedRgb.b);
+    const mixedHsv = ColorMath.rgbToHsv(mixedRgb.r, mixedRgb.g, mixedRgb.b);
+
+    // Inherent Value Calculation
+    const v1 = p1.inherentValue || 5.0;
+    const v2 = p2.inherentValue || 5.0;
+    const deltaV = Math.abs(v1 - v2);
+
+    // Angular span between pigments on the wheel
+    const angSpan = (p1.angle !== undefined && p2.angle !== undefined) ? this._angularDiff(p1.angle, p2.angle) : 60;
+    const bowDip = Math.sin(r * Math.PI) * (angSpan / 180) * 0.65;
+    const mixedValue = Math.max(1.0, Math.min(9.8, (1 - effectiveWeight) * v1 + effectiveWeight * v2 - bowDip));
+
+    // Tinting strength ratio & dominance
+    const tintRatio = s1 >= s2 ? (s1 / s2) : (s2 / s1);
+    const dominant = s1 >= s2 ? p1 : p2;
+    const submissive = s1 >= s2 ? p2 : p1;
+
+    // Resulting film opacity
+    let resultingOpacity = 'Semi-opaco equilibrado';
+    if (p1.opacity?.includes('Opaco') && p2.opacity?.includes('Opaco')) {
+      resultingOpacity = 'Opaco denso (Cuerpo cubriente)';
+    } else if (p1.opacity?.includes('Transparente') && p2.opacity?.includes('Transparente')) {
+      resultingOpacity = 'Transparente puro (Ideal para veladuras / glazes)';
+    } else if (p1.opacity?.includes('Transparente') || p2.opacity?.includes('Transparente')) {
+      resultingOpacity = 'Semi-transparente (Permite visibilidad de capas inferiores)';
+    }
+
+    // Pedagogical insight based on the pair
+    let pedagogicalNote = '';
+    if (isOliveShift) {
+      pedagogicalNote = '🔬 FENÓMENO OLIVE SHIFT: El Negro Marfil (PBk9) absorbe selectivamente el rojo y refleja sutilmente el azul-cian. Al encontrarse con el amarillo, la física sustractiva produce este Verde Oliva. Para una sombra dorada natural, sustituye el negro por Sombra Natural (PBr7).';
+    } else if ((p1.id === 'ultramarine_blue' && isP2Yellow) || (p2.id === 'ultramarine_blue' && isP1Yellow)) {
+      pedagogicalNote = '🔬 POR QUÉ EL VERDE RESULTA APAGADO: El Azul Ultramar (PB29) posee un subtono rojizo cálido. Ese componente rojo actúa como neutralizador complementario del verde, hundiendo el croma hacia el centro de la rueda. Si buscas un verde eléctrico vibrante, usa Azul Ftalo o Cerúleo.';
+    } else if ((p1.id === 'ultramarine_blue' && p2.id === 'burnt_sienna') || (p2.id === 'ultramarine_blue' && p1.id === 'burnt_sienna')) {
+      pedagogicalNote = '🎨 NEUTRO MAGISTRAL DE ATELIER: Azul Ultramar + Siena Tostada es la mezcla maestra de los grandes maestros para obtener negros cromáticos profundos y grises perlados sin usar negro mineral plano.';
+    } else if (p1.id.includes('phthalo') || p2.id.includes('phthalo')) {
+      pedagogicalNote = `⚡ DOMINANCIA DE TINTE: El pigmento Ftalo tiene fuerza 10/10. Incluso con solo un 15% en volumen, tiñe más del 40% del color visible.`;
+    } else if (deltaV > 4.5) {
+      pedagogicalNote = `📊 GRAN SALTO TONAL (ΔV=${deltaV.toFixed(1)}): Hay una disparidad extrema de valor entre ambos tubos. Mezcla en pequeños toques para no apagar el tubo más luminoso.`;
+    } else {
+      pedagogicalNote = `✨ MEZCLA ARMÓNICA: Intervalo de ángulo de ${angSpan}° en la rueda cromática con transición suave de valor.`;
+    }
+
+    return {
+      p1,
+      p2,
+      ratio: r,
+      effectiveWeight,
+      rgb: mixedRgb,
+      hex: mixedHex,
+      hsv: mixedHsv,
+      deltaV: parseFloat(deltaV.toFixed(1)),
+      inherentValue: parseFloat(mixedValue.toFixed(1)),
+      angSpan,
+      tintRatio: parseFloat(tintRatio.toFixed(1)),
+      dominant,
+      submissive,
+      resultingOpacity,
+      isOliveShift,
+      pedagogicalNote
+    };
+  },
+
+  // Generates 7 intermediate physical mixture steps for the interactive gradient strip
+  generateMixingSteps(pig1, pig2, stepsCount = 7) {
+    const steps = [];
+    for (let i = 0; i < stepsCount; i++) {
+      const ratio = i / (stepsCount - 1);
+      const sim = this.simulatePigmentMixture(pig1, pig2, ratio);
+      steps.push({
+        stepIndex: i,
+        ratio: Math.round(ratio * 100),
+        rgb: sim.rgb,
+        hex: sim.hex,
+        inherentValue: sim.inherentValue,
+        isOliveShift: sim.isOliveShift,
+        name: i === 0 ? sim.p1.name : (i === stepsCount - 1 ? sim.p2.name : `Mezcla ${Math.round(ratio * 100)}%`)
+      });
+    }
+    return steps;
+  },
+
   // --- RENDER DEDICATED FLORENT FARGES WHEEL CANVAS ---
-  drawFargesWheel(canvas, activeColorRgb) {
+  drawFargesWheel(canvas, activeColorRgb, customPig1 = null, customPig2 = null) {
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const width = canvas.width;
     const height = canvas.height;
     const cx = width / 2;
     const cy = height / 2;
-    const radius = cx - 24;
-    const innerRadius = radius - 30;
+    const radius = cx - 26;
+    const innerRadius = radius - 34;
 
     ctx.clearRect(0, 0, width, height);
 
@@ -527,7 +833,7 @@ export const FlorentFargesEngine = {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // 2. Central Chromatic Gray Area (The Neutral Heart)
+    // 2. Central Chromatic Gray Core
     const centerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, innerRadius);
     centerGrad.addColorStop(0, '#555555');
     centerGrad.addColorStop(0.5, '#333333');
@@ -537,29 +843,53 @@ export const FlorentFargesEngine = {
     ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2);
     ctx.fill();
 
-    // 3. Mode-specific overlays:
     const solver = this.solveMixingForColor(activeColorRgb);
+    const pigA = customPig1 || solver.cand1;
+    const pigB = customPig2 || solver.cand2;
 
+    // 3. Wheel Specific Visualizations
     if (this.activeWheelIndex === 2) {
-      // WHEEL 2: Mixing Trajectories & Bow Curves
-      // Draw subtractive bow curve between Cand1 and Cand2 through center
-      const rad1 = (solver.cand1.angle * Math.PI) / 180;
-      const rad2 = (solver.cand2.angle * Math.PI) / 180;
-      const radComp = (solver.complement.angle * Math.PI) / 180;
+      // WHEEL 2: Mixing Trajectories & Subtractive Bow Curves
+      if (pigA && pigB && pigA.angle !== undefined && pigB.angle !== undefined) {
+        const rad1 = (pigA.angle * Math.PI) / 180;
+        const rad2 = (pigB.angle * Math.PI) / 180;
+        const p1 = { x: cx + innerRadius * Math.cos(rad1), y: cy + innerRadius * Math.sin(rad1) };
+        const p2 = { x: cx + innerRadius * Math.cos(rad2), y: cy + innerRadius * Math.sin(rad2) };
 
-      const p1 = { x: cx + innerRadius * Math.cos(rad1), y: cy + innerRadius * Math.sin(rad1) };
-      const p2 = { x: cx + innerRadius * Math.cos(rad2), y: cy + innerRadius * Math.sin(rad2) };
-      const pComp = { x: cx + innerRadius * Math.cos(radComp), y: cy + innerRadius * Math.sin(radComp) };
+        // Bow curve pulling towards central gray
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.quadraticCurveTo(cx, cy, p2.x, p2.y);
+        ctx.strokeStyle = '#10B981';
+        ctx.lineWidth = 3;
+        ctx.stroke();
 
-      // Neutral complementary bow curve
-      ctx.beginPath();
-      ctx.moveTo(p1.x, p1.y);
-      ctx.quadraticCurveTo(cx, cy, pComp.x, pComp.y);
-      ctx.strokeStyle = '#F59E0B';
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([4, 4]);
-      ctx.stroke();
-      ctx.setLineDash([]);
+        // Intermediate step beads along bow curve
+        for (let t = 0.2; t <= 0.8; t += 0.2) {
+          const invT = 1 - t;
+          const bx = invT * invT * p1.x + 2 * invT * t * cx + t * t * p2.x;
+          const by = invT * invT * p1.y + 2 * invT * t * cy + t * t * p2.y;
+          ctx.beginPath();
+          ctx.arc(bx, by, 4, 0, Math.PI * 2);
+          ctx.fillStyle = '#34D399';
+          ctx.fill();
+          ctx.strokeStyle = '#064E3B';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+
+        // Draw complementary neutral line
+        const radComp = (solver.complement.angle * Math.PI) / 180;
+        const pComp = { x: cx + innerRadius * Math.cos(radComp), y: cy + innerRadius * Math.sin(radComp) };
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(pComp.x, pComp.y);
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
       // Center neutral intersection point
       ctx.beginPath();
@@ -574,24 +904,43 @@ export const FlorentFargesEngine = {
       ctx.font = 'bold 9px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('Gris Neutro', cx, cy - 10);
+
     } else if (this.activeWheelIndex === 3) {
-      // WHEEL 3: Inherent Value Circles
-      // Draw concentric rings for Value 2, 4, 6, 8
-      [0.25, 0.5, 0.75].forEach((ratio, idx) => {
+      // WHEEL 3: Inherent Value Circles & 3D Spiral Gamut
+      [0.2, 0.4, 0.6, 0.8].forEach((ratio, idx) => {
         const r = innerRadius * ratio;
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = '8px monospace';
-        ctx.fillText(`Val ${[2, 5, 8][idx]}`, cx + r - 12, cy - 4);
+        ctx.fillText(`Val ${[2, 4, 6, 8][idx]}`, cx + r - 14, cy - 4);
+      });
+
+      // Plot pigments at their inherent value depth
+      this.PIGMENTS.forEach(p => {
+        if (p.angle !== undefined && p.inherentValue) {
+          const valRatio = (p.inherentValue / 10);
+          const rPos = innerRadius * valRatio;
+          const rad = (p.angle * Math.PI) / 180;
+          const px = cx + rPos * Math.cos(rad);
+          const py = cy + rPos * Math.sin(rad);
+
+          ctx.beginPath();
+          ctx.arc(px, py, 4, 0, Math.PI * 2);
+          ctx.fillStyle = p.hex;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
       });
     }
 
-    // 4. Draw Genuine Artist Pigment Beads on the Ring
+    // 4. Draw Genuine Artist Pigment Beads on the Perimeter Ring
     const spectralPigs = this.PIGMENTS.filter(p => !['titanium_white', 'zinc_white', 'ivory_black'].includes(p.id));
     const ringMidR = (radius + innerRadius) / 2;
 
@@ -601,30 +950,30 @@ export const FlorentFargesEngine = {
       const y = cy + ringMidR * Math.sin(rad);
 
       const isCandidate = p.id === solver.cand1.id || p.id === solver.cand2.id;
+      const isLabPig = p.id === pigA.id || p.id === pigB.id;
       const isComplement = p.id === solver.complement.id;
 
       ctx.beginPath();
-      ctx.arc(x, y, isCandidate ? 8 : (isComplement ? 7 : 5), 0, Math.PI * 2);
+      ctx.arc(x, y, isLabPig || isCandidate ? 8.5 : (isComplement ? 7 : 5), 0, Math.PI * 2);
       ctx.fillStyle = p.hex;
       ctx.fill();
-      ctx.strokeStyle = isCandidate ? '#FFFFFF' : (isComplement ? '#F59E0B' : '#000000');
-      ctx.lineWidth = isCandidate ? 2.5 : 1.5;
+      ctx.strokeStyle = isLabPig ? '#10B981' : (isCandidate ? '#FFFFFF' : (isComplement ? '#F59E0B' : '#000000'));
+      ctx.lineWidth = isLabPig || isCandidate ? 2.5 : 1.5;
       ctx.stroke();
 
-      // Label candidate pigments
-      if (isCandidate || isComplement) {
-        const textDist = radius + 14;
+      if (isLabPig || isCandidate || isComplement) {
+        const textDist = radius + 15;
         const tx = cx + textDist * Math.cos(rad);
         const ty = cy + textDist * Math.sin(rad);
-        ctx.fillStyle = isCandidate ? '#FFFFFF' : '#FBBF24';
-        ctx.font = isCandidate ? 'bold 9px sans-serif' : '8px sans-serif';
+        ctx.fillStyle = isLabPig ? '#34D399' : (isCandidate ? '#FFFFFF' : '#FBBF24');
+        ctx.font = isLabPig || isCandidate ? 'bold 9px sans-serif' : '8px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(p.ci, tx, ty);
       }
     });
 
-    // 5. Draw active target color indicator in the center
+    // 5. Active Target Color Center Indicator
     ctx.beginPath();
     ctx.arc(cx, cy, 18, 0, Math.PI * 2);
     ctx.fillStyle = `rgb(${activeColorRgb.r}, ${activeColorRgb.g}, ${activeColorRgb.b})`;
@@ -632,5 +981,36 @@ export const FlorentFargesEngine = {
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 2.5;
     ctx.stroke();
+  },
+
+  // --- PEDAGOGICAL "POR QUÉ DE LAS COSAS" KNOWLEDGE BASE ---
+  explainWhy(topicKey) {
+    const topics = {
+      olive_shift: {
+        title: 'El Fenómeno del Amarillo + Negro (Olive Shift)',
+        subtitle: 'La física de absorción selectiva de longitudes de onda del carbón',
+        explanation: 'En las escuelas de arte tradicionales se enseña erróneamente que "el negro solo oscurece". Sin embargo, al mezclar Amarillo Cadmio (PY35) con Negro Marfil (PBk9), ¡el resultado no es un amarillo oscuro, sino un VERDE OLIVA inconfundible! Esto se debe a que el Negro Marfil se fabrica calcinando huesos de animales; su espectro de reflectancia no es neutro, sino que refleja más energía en la banda del azul-cian (480nm). Al combinarse con el amarillo, la absorción sustractiva actúa como una mezcla de amarillo + azul, generando clorofila viva.',
+        solution: 'Florent Farges enseña que para oscurecer el amarillo manteniendo su calidez dorada, se debe usar Tierra de Sombra Natural (Raw Umber, PBr7) o Siena Tostada (Burnt Sienna).'
+      },
+      ultramarine_green: {
+        title: 'Por qué Azul Ultramar + Amarillo produce un Verde Apagado',
+        subtitle: 'El subtono rojizo cálido del pigmento PB29',
+        explanation: 'Muchos estudiantes se frustran porque al mezclar Azul Ultramar con Amarillo Limón obtienen un verde oliva apagado en vez de un verde esmeralda brillante. La razón radica en que el Azul Ultramar es un azul CÁLIDO que vira hacia el violeta (ángulo ~236°), conteniendo longitudes de onda rojas. En la síntesis sustractiva, el rojo actúa como el complementario directo del verde, neutralizándolo y reduciendo su croma.',
+        solution: 'Para obtener verdes intensos, puros y luminosos, Florent Farges recomienda usar un azul FRÍO con matiz verdoso: Azul Ftalo (PB15:3) o Azul Cerúleo (PB35).'
+      },
+      titanium_vs_zinc: {
+        title: 'Blanco de Titanio (PW6) vs Blanco de Zinc (PW4)',
+        subtitle: 'Opacidad total cubriente vs transparencia cristalina para veladuras',
+        explanation: 'El Blanco de Titanio posee un índice de refracción colosal (2.7) y una fuerza de tinte de 10/10. Es indispensable para bloquear la luz y crear empastes luminosos, pero tiene el defecto de "empolvar" y enfriar los colores, volviéndolos lechosos. En contraste, el Blanco de Zinc tiene fuerza de tinte 3/10 y es translúcido, permitiendo elevar el valor tonal sin matar la luminosidad interior de los pigmentos transparentes.',
+        solution: 'Usa Blanco de Titanio para luces altas y pintura directa (alla prima). Usa Blanco de Zinc para veladuras, tonos medios delicados y carnes transparentes.'
+      },
+      inherent_value: {
+        title: 'La Escala de Valor Intrínseco de los Pigmentos',
+        subtitle: 'Por qué no existe un amarillo puro oscuro ni un violeta puro claro',
+        explanation: 'Cada pigmento en su estado de máxima pureza química reside en un valor tonal fijo (1 a 9). El Amarillo Limón puro solo puede existir en valores altos (8.5), mientras que el Violeta Dioxacina o el Azul Ultramar residen en valores bajos (1.8 a 2.2). No es posible físicamente oscurecer un amarillo manteniendo su pureza cromática, ni aclarar un violeta sin convertirlo en lavanda desaturada.',
+        solution: 'Aprende a mapear los tubos en el espacio 3D según su valor intrínseco para no forzar mezclas imposibles.'
+      }
+    };
+    return topics[topicKey] || topics.olive_shift;
   }
 };

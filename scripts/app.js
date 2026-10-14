@@ -3153,10 +3153,19 @@ class GomPickerApp {
     }
   }
 
-  // --- FLORENT FARGES ---
+  // --- TAB NAVIGATION HELPER ---
+  switchTab(tabKey) {
+    const btn = document.querySelector(`.nav-tab-btn[data-tab="${tabKey}"]`);
+    if (btn) {
+      btn.click();
+    }
+  }
+
+  // --- FLORENT FARGES FINE ART STUDIO & PHYSICAL MIXING LAB ---
 
   _bindFlorentControls() {
-    const wheelTabs = document.querySelectorAll('#florentWheelTabs button');
+    // 1. Wheel Mode Tabs (1: Pigmentos, 2: Curvas de Arco, 3: Valores 3D)
+    const wheelTabs = document.querySelectorAll('#florentWheelTabs button[data-fwheel]');
     wheelTabs.forEach(btn => {
       btn.addEventListener('click', () => {
         wheelTabs.forEach(b => b.classList.remove('active-toggle'));
@@ -3165,114 +3174,799 @@ class GomPickerApp {
         FlorentFargesEngine.activeWheelIndex = idx;
         const currentRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
         this.renderFlorentFarges(currentRgb);
-        this.showToast(`Modo Farges: Rueda ${idx}`);
+        this.showToast(`Modo Farges: Rueda ${idx} (${['Pigmentos & Tinte', 'Curvas de Arco', 'Valores 3D'][idx - 1]})`);
       });
     });
 
-    const fleshGrid = document.getElementById('florentFleshGrid');
-    if (fleshGrid) {
-      fleshGrid.innerHTML = '';
-      FlorentFargesEngine.FLESH_ZONES.forEach(zone => {
-        const card = document.createElement('div');
-        card.style.background = 'rgba(0,0,0,0.3)';
-        card.style.border = '1px solid var(--border-subtle)';
-        card.style.borderRadius = 'var(--radius-md)';
-        card.style.padding = '10px';
-        card.style.cursor = 'pointer';
-        card.draggable = true;
-        card.dataset.swatchHex = zone.hex;
-
-        const topRow = document.createElement('div');
-        topRow.style.display = 'flex';
-        topRow.style.alignItems = 'center';
-        topRow.style.gap = '8px';
-
-        const pill = document.createElement('div');
-        pill.style.width = '30px';
-        pill.style.height = '30px';
-        pill.style.borderRadius = '6px';
-        pill.style.backgroundColor = zone.hex;
-
-        const titleBox = document.createElement('div');
-        const title = document.createElement('span');
-        title.style.fontSize = '0.74rem';
-        title.style.fontWeight = '600';
-        title.style.color = '#FFFFFF';
-        title.textContent = zone.title;
-
-        const hex = document.createElement('span');
-        hex.style.fontFamily = 'var(--font-mono)';
-        hex.style.fontSize = '0.68rem';
-        hex.className = 'copyable-hex';
-        hex.textContent = zone.hex;
-
-        titleBox.appendChild(title);
-        titleBox.appendChild(hex);
-        topRow.appendChild(pill);
-        topRow.appendChild(titleBox);
-
-        const recipe = document.createElement('div');
-        recipe.style.fontSize = '0.68rem';
-        recipe.style.color = '#E2E8F0';
-        recipe.style.marginTop = '6px';
-        recipe.innerHTML = `<strong>Receta:</strong> ${zone.recipe}`;
-
-        card.appendChild(topRow);
-        card.appendChild(recipe);
-
-        card.addEventListener('click', () => {
-          this.setColorDirectly(zone.rgb);
-          this.showToast(`Carnación: ${zone.title}`);
-        });
-
-        fleshGrid.appendChild(card);
+    // 2. Direct Bridge to Hyper4D Studio
+    const btnJump4D = document.getElementById('btnFlorentJump4D');
+    if (btnJump4D) {
+      btnJump4D.addEventListener('click', () => {
+        const curRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        const solver = FlorentFargesEngine.solveMixingForColor(curRgb);
+        if (this.hyper4dStudio) {
+          this.hyper4dStudio.options.showMixingBowCurve = true;
+          this.hyper4dStudio.compareSlots = [
+            { id: 'A', name: `${solver.cand1.name} (${solver.cand1.ci})`, hex: solver.cand1.hex, rgb: solver.cand1.rgb, active: true },
+            { id: 'B', name: `${solver.cand2.name} (${solver.cand2.ci})`, hex: solver.cand2.hex, rgb: solver.cand2.rgb, active: true }
+          ];
+          this.hyper4dStudio.renderCompareSlots();
+          this.hyper4dStudio.updateActiveColor(curRgb);
+        }
+        this.switchTab('hyper4d');
+        this.showToast('🔮 Rueda y Curvas de Arco de Farges proyectadas en el Hiperespacio 4D');
       });
     }
 
-    const tubesList = document.getElementById('florentStudioTubesList');
-    if (tubesList) {
-      tubesList.innerHTML = '';
-      FlorentFargesEngine.PIGMENTS.forEach(p => {
-        const pill = document.createElement('div');
-        pill.style.display = 'flex';
-        pill.style.alignItems = 'center';
-        pill.style.gap = '6px';
-        pill.style.background = 'rgba(0,0,0,0.3)';
-        pill.style.padding = '3px 8px';
-        pill.style.borderRadius = '6px';
-        pill.style.cursor = 'pointer';
-        pill.draggable = true;
-        pill.dataset.swatchHex = p.hex;
+    // 3. Auto Palette Generator Scroll Button
+    const btnAutoPal = document.getElementById('btnFlorentAutoPalette');
+    if (btnAutoPal) {
+      btnAutoPal.addEventListener('click', () => {
+        const genCard = document.getElementById('florentGenPalTitle');
+        if (genCard) {
+          genCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        const curRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        this.renderFlorentWorkshopPalette(curRgb);
+        this.showToast('✨ Paleta de taller generada según las reglas de Florent Farges');
+      });
+    }
 
-        const dot = document.createElement('div');
-        dot.style.width = '12px';
-        dot.style.height = '12px';
-        dot.style.borderRadius = '50%';
-        dot.style.backgroundColor = p.hex;
+    // 4. Physical Mixing Lab: Populate Tube Selectors
+    this._populateFlorentLabSelects();
 
-        const name = document.createElement('span');
-        name.style.fontSize = '0.72rem';
-        name.textContent = `${p.name} (${p.ci})`;
+    const selectT1 = document.getElementById('florentLabTube1Select');
+    const selectT2 = document.getElementById('florentLabTube2Select');
+    const ratioSlider = document.getElementById('florentLabRatioSlider');
 
-        pill.appendChild(dot);
-        pill.appendChild(name);
-        pill.addEventListener('click', () => {
-          this.setColorDirectly(p.rgb);
-          this.showToast(`Pigmento Farges: ${p.name}`);
+    if (selectT1) {
+      selectT1.value = FlorentFargesEngine.labPigment1Id;
+      selectT1.addEventListener('change', (e) => {
+        FlorentFargesEngine.labPigment1Id = e.target.value;
+        this.renderFlorentMixingLab();
+      });
+    }
+
+    if (selectT2) {
+      selectT2.value = FlorentFargesEngine.labPigment2Id;
+      selectT2.addEventListener('change', (e) => {
+        FlorentFargesEngine.labPigment2Id = e.target.value;
+        this.renderFlorentMixingLab();
+      });
+    }
+
+    if (ratioSlider) {
+      ratioSlider.value = Math.round(FlorentFargesEngine.labRatio * 100);
+      ratioSlider.addEventListener('input', (e) => {
+        FlorentFargesEngine.labRatio = parseInt(e.target.value, 10) / 100;
+        this.renderFlorentMixingLab();
+      });
+    }
+
+    // Ratio Quick Buttons
+    const btnR20 = document.getElementById('btnLabRatio20');
+    const btnR50 = document.getElementById('btnLabRatio50');
+    const btnR80 = document.getElementById('btnLabRatio80');
+
+    if (btnR20) {
+      btnR20.addEventListener('click', () => {
+        FlorentFargesEngine.labRatio = 0.2;
+        if (ratioSlider) ratioSlider.value = 20;
+        this.renderFlorentMixingLab();
+      });
+    }
+    if (btnR50) {
+      btnR50.addEventListener('click', () => {
+        FlorentFargesEngine.labRatio = 0.5;
+        if (ratioSlider) ratioSlider.value = 50;
+        this.renderFlorentMixingLab();
+      });
+    }
+    if (btnR80) {
+      btnR80.addEventListener('click', () => {
+        FlorentFargesEngine.labRatio = 0.8;
+        if (ratioSlider) ratioSlider.value = 80;
+        this.renderFlorentMixingLab();
+      });
+    }
+
+    // Lab Presets Chips
+    const presetChips = document.querySelectorAll('#florentLabPresetChips button');
+    presetChips.forEach(btn => {
+      btn.addEventListener('click', () => {
+        presetChips.forEach(b => b.classList.remove('active-toggle'));
+        btn.classList.add('active-toggle');
+        const p1Id = btn.dataset.p1;
+        const p2Id = btn.dataset.p2;
+        if (p1Id && p2Id) {
+          FlorentFargesEngine.labPigment1Id = p1Id;
+          FlorentFargesEngine.labPigment2Id = p2Id;
+          if (selectT1) selectT1.value = p1Id;
+          if (selectT2) selectT2.value = p2Id;
+          this.renderFlorentMixingLab();
+          this.showToast(`Caso de estudio cargado: ${btn.textContent.trim()}`);
+        }
+      });
+    });
+
+    // Lab Action: Usar en Caballete (FG)
+    const btnLabSetFg = document.getElementById('btnFlorentLabSetFg');
+    if (btnLabSetFg) {
+      btnLabSetFg.addEventListener('click', () => {
+        const curRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        const p1 = this._getLabPigment(FlorentFargesEngine.labPigment1Id, curRgb);
+        const p2 = this._getLabPigment(FlorentFargesEngine.labPigment2Id, curRgb);
+        const sim = FlorentFargesEngine.simulatePigmentMixture(p1, p2, FlorentFargesEngine.labRatio);
+        this.setColorDirectly(sim.rgb);
+        this.showToast(`🎯 Color de mezcla (${sim.hex}) fijado como Primer Plano (FG)`);
+      });
+    }
+
+    // Lab Action: Añadir a Paleta Activa
+    const btnLabAddPal = document.getElementById('btnFlorentLabAddToPalette');
+    if (btnLabAddPal) {
+      btnLabAddPal.addEventListener('click', () => {
+        const curRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        const p1 = this._getLabPigment(FlorentFargesEngine.labPigment1Id, curRgb);
+        const p2 = this._getLabPigment(FlorentFargesEngine.labPigment2Id, curRgb);
+        const sim = FlorentFargesEngine.simulatePigmentMixture(p1, p2, FlorentFargesEngine.labRatio);
+        this.swatchManager.addColorToActivePalette(sim.hex);
+        this.renderQuickPalette();
+        this.renderSwatchesCollection();
+        this.showToast(`➕ Mezcla ${sim.hex} añadida a tu paleta activa`);
+      });
+    }
+
+    // Lab Action: Proyectar Mezcla en Hiperespacio 4D
+    const btnLabJump4D = document.getElementById('btnFlorentLabJump4D');
+    if (btnLabJump4D) {
+      btnLabJump4D.addEventListener('click', () => {
+        const curRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        const p1 = this._getLabPigment(FlorentFargesEngine.labPigment1Id, curRgb);
+        const p2 = this._getLabPigment(FlorentFargesEngine.labPigment2Id, curRgb);
+        const sim = FlorentFargesEngine.simulatePigmentMixture(p1, p2, FlorentFargesEngine.labRatio);
+
+        if (this.hyper4dStudio) {
+          this.hyper4dStudio.options.showMixingBowCurve = true;
+          this.hyper4dStudio.compareSlots = [
+            { id: 'A', name: `T1: ${p1.name}`, hex: p1.hex, rgb: p1.rgb, active: true },
+            { id: 'B', name: `T2: ${p2.name}`, hex: p2.hex, rgb: p2.rgb, active: true },
+            { id: 'C', name: `Mezcla (${Math.round(FlorentFargesEngine.labRatio * 100)}%)`, hex: sim.hex, rgb: sim.rgb, active: true }
+          ];
+          this.hyper4dStudio.renderCompareSlots();
+          this.hyper4dStudio.updateActiveColor(sim.rgb);
+        }
+        this.switchTab('hyper4d');
+        this.showToast(`🔮 Curva Bow de ${p1.name} + ${p2.name} proyectada en el Hiperespacio 4D`);
+      });
+    }
+
+    // 5. Automatic Generated Palette Actions
+    const btnSaveGenPal = document.getElementById('btnFlorentSaveGenPal');
+    if (btnSaveGenPal) {
+      btnSaveGenPal.addEventListener('click', () => {
+        const curRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        const genPal = FlorentFargesEngine.generateFargesWorkshopPalette(curRgb);
+        const hexArray = genPal.colors.map(c => c.hex);
+        this.swatchManager.addPalette(genPal.name, hexArray);
+        this.renderQuickPalette();
+        this.renderSwatchesCollection();
+        this.showToast(`💾 Paleta '${genPal.name}' guardada con éxito en Bibliotecas`);
+      });
+    }
+
+    const btn4DGenPal = document.getElementById('btnFlorent4DGenPal');
+    if (btn4DGenPal) {
+      btn4DGenPal.addEventListener('click', () => {
+        const curRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        const genPal = FlorentFargesEngine.generateFargesWorkshopPalette(curRgb);
+        if (this.hyper4dStudio) {
+          this.hyper4dStudio.options.showPaletteConstellation = true;
+          this.hyper4dStudio.options.showMixingBowCurve = true;
+          this.hyper4dStudio.compareSlots = genPal.colors.slice(0, 6).map((c, idx) => ({
+            id: String.fromCharCode(65 + idx),
+            name: c.name,
+            hex: c.hex,
+            rgb: c.rgb || ColorMath.hexToRgb(c.hex),
+            active: true
+          }));
+          this.hyper4dStudio.renderCompareSlots();
+        }
+        this.switchTab('hyper4d');
+        this.showToast(`🔮 Constelación Farges proyectada en el Hiperespacio 4D`);
+      });
+    }
+
+    // 6. "Por Qué de las Cosas" Tabs
+    const whyTabs = document.querySelectorAll('#florentWhyTabs button[data-why]');
+    whyTabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        whyTabs.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.renderFlorentWhy(btn.dataset.why);
+      });
+    });
+
+    // Initial renders
+    const initialRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+    this.renderFlorentFarges(initialRgb);
+    this.renderFlorentMixingLab();
+    this.renderFlorentWorkshopPalette(initialRgb);
+    this.renderFlorentCanonicalPalettes();
+    this.renderFlorentWhy('olive_shift');
+    this.renderFlorentFleshGrid();
+    this.renderFlorentStudioTubes();
+  }
+
+  _populateFlorentLabSelects() {
+    const sel1 = document.getElementById('florentLabTube1Select');
+    const sel2 = document.getElementById('florentLabTube2Select');
+    if (!sel1 || !sel2) return;
+
+    let html = `<option value="active_color">🎨 Color Activo del Caballete</option>`;
+    FlorentFargesEngine.PIGMENTS.forEach(p => {
+      html += `<option value="${p.id}">${p.name} (${p.ci}) — Tinte: ${p.tintingStrength}/10</option>`;
+    });
+
+    sel1.innerHTML = html;
+    sel2.innerHTML = html;
+  }
+
+  _getLabPigment(id, activeRgb) {
+    if (id === 'active_color') {
+      const hex = ColorMath.rgbToHex(activeRgb.r, activeRgb.g, activeRgb.b);
+      const hsv = ColorMath.rgbToHsv(activeRgb.r, activeRgb.g, activeRgb.b);
+      return {
+        id: 'active_color',
+        name: `Color Caballete (${hex})`,
+        ci: 'Muestra',
+        hex,
+        rgb: activeRgb,
+        angle: hsv.h,
+        inherentValue: parseFloat((hsv.v * 9).toFixed(1)),
+        tintingStrength: 7,
+        opacity: 'Semi-opaco',
+        temperature: (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320 ? 'Cálido' : 'Frío'
+      };
+    }
+    return FlorentFargesEngine.getPigmentById(id);
+  }
+
+  renderFlorentMixingLab() {
+    const curRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+    const p1 = this._getLabPigment(FlorentFargesEngine.labPigment1Id, curRgb);
+    const p2 = this._getLabPigment(FlorentFargesEngine.labPigment2Id, curRgb);
+    const ratio = FlorentFargesEngine.labRatio;
+
+    // Run simulation
+    const sim = FlorentFargesEngine.simulatePigmentMixture(p1, p2, ratio);
+
+    // Update Strength Badges & Details
+    const t1Badge = document.getElementById('florentLabT1StrengthBadge');
+    const t2Badge = document.getElementById('florentLabT2StrengthBadge');
+    const t1Details = document.getElementById('florentLabT1Details');
+    const t2Details = document.getElementById('florentLabT2Details');
+
+    if (t1Badge) t1Badge.textContent = `Fuerza: ${p1.tintingStrength || 6}/10`;
+    if (t2Badge) t2Badge.textContent = `Fuerza: ${p2.tintingStrength || 6}/10`;
+
+    if (t1Details) {
+      t1Details.innerHTML = `
+        <div style="width: 10px; height: 10px; border-radius: 50%; background: ${p1.hex};"></div>
+        <span>Val: ${p1.inherentValue || 5.0} | ${p1.opacity || 'Semi-opaco'}</span>
+      `;
+    }
+    if (t2Details) {
+      t2Details.innerHTML = `
+        <div style="width: 10px; height: 10px; border-radius: 50%; background: ${p2.hex};"></div>
+        <span>Val: ${p2.inherentValue || 5.0} | ${p2.opacity || 'Semi-opaco'}</span>
+      `;
+    }
+
+    // Ratio display
+    const ratioDisp = document.getElementById('florentLabRatioDisplay');
+    if (ratioDisp) {
+      const p1Pct = Math.round((1 - ratio) * 100);
+      const p2Pct = Math.round(ratio * 100);
+      const effPct = Math.round(sim.effectiveWeight * 100);
+      ratioDisp.textContent = `${p1Pct}% T1 / ${p2Pct}% T2 (Efectivo Físico: ${effPct}% T2)`;
+    }
+
+    // Result swatch pill & labels
+    const pill = document.getElementById('florentLabResultPill');
+    const resName = document.getElementById('florentLabResultName');
+    const resHex = document.getElementById('florentLabResultHex');
+    const resVal = document.getElementById('florentLabResultValue');
+    const resOpac = document.getElementById('florentLabResultOpacity');
+
+    if (pill) pill.style.backgroundColor = sim.hex;
+    if (resName) {
+      resName.textContent = sim.isOliveShift ? 'Verde Oliva Farges (Olive Shift)' : `Mezcla: ${p1.name.split(' ')[0]} + ${p2.name.split(' ')[0]}`;
+    }
+    if (resHex) {
+      resHex.textContent = sim.hex;
+      resHex.dataset.hex = sim.hex;
+    }
+    if (resVal) resVal.textContent = `Valor: ${sim.inherentValue} / 9`;
+    if (resOpac) resOpac.textContent = sim.resultingOpacity;
+
+    // 7-step physical mixing gradient strip
+    const stepStrip = document.getElementById('florentLabStepStrip');
+    if (stepStrip) {
+      stepStrip.innerHTML = '';
+      const steps = FlorentFargesEngine.generateMixingSteps(p1, p2, 7);
+      steps.forEach(st => {
+        const item = document.createElement('div');
+        item.className = 'farges-step-item';
+        item.style.backgroundColor = st.hex;
+        item.title = `${st.name} (${st.hex}) — Haz clic para usar`;
+        item.dataset.swatchHex = st.hex;
+
+        const ratioTag = document.createElement('span');
+        ratioTag.className = 'farges-step-ratio';
+        ratioTag.textContent = `${st.ratio}%`;
+
+        item.appendChild(ratioTag);
+        item.addEventListener('click', () => {
+          FlorentFargesEngine.labRatio = st.ratio / 100;
+          const slider = document.getElementById('florentLabRatioSlider');
+          if (slider) slider.value = st.ratio;
+          this.renderFlorentMixingLab();
+          this.setColorDirectly(st.rgb);
+          this.showToast(`Paso seleccionado: ${st.name} (${st.hex})`);
         });
 
-        tubesList.appendChild(pill);
+        stepStrip.appendChild(item);
+      });
+    }
+
+    // Statistics Meters
+    const tintMeter = document.getElementById('florentLabTintMeter');
+    const deltaVMeter = document.getElementById('florentLabDeltaVMeter');
+    const bowMeter = document.getElementById('florentLabBowMeter');
+    const pedNote = document.getElementById('florentLabPedagogicalNote');
+
+    if (tintMeter) {
+      tintMeter.textContent = `${sim.dominant.name.split(' ')[0]} domina ${sim.tintRatio}x sobre ${sim.submissive.name.split(' ')[0]}`;
+    }
+    if (deltaVMeter) {
+      deltaVMeter.textContent = `ΔV: ${sim.deltaV} (${sim.deltaV >= 4.0 ? 'Disparidad Extrema' : 'Transición Gradual'})`;
+    }
+    if (bowMeter) {
+      bowMeter.textContent = `Arco: ${sim.angSpan}° (${sim.angSpan >= 120 ? 'Desaturación Profunda al Centro' : 'Mantiene Pureza'})`;
+    }
+    if (pedNote) {
+      pedNote.textContent = sim.pedagogicalNote;
+    }
+
+    // Refresh canvas to highlight this lab pair in wheel 2 and wheel 1
+    const canvas = document.getElementById('florentWheelCanvas');
+    if (canvas) {
+      FlorentFargesEngine.drawFargesWheel(canvas, curRgb, p1, p2);
+    }
+  }
+
+  renderFlorentWorkshopPalette(targetRgb) {
+    const pal = FlorentFargesEngine.generateFargesWorkshopPalette(targetRgb);
+    const titleEl = document.getElementById('florentGenPalTitle');
+    const descEl = document.getElementById('florentGenPalDesc');
+    const swatchesEl = document.getElementById('florentGenPalSwatches');
+
+    if (titleEl) titleEl.textContent = `🎨 ${pal.name}`;
+    if (descEl) descEl.textContent = pal.desc;
+
+    if (swatchesEl) {
+      swatchesEl.innerHTML = '';
+      pal.colors.forEach(col => {
+        const card = document.createElement('div');
+        card.style.background = 'rgba(0,0,0,0.4)';
+        card.style.border = '1px solid rgba(255,255,255,0.08)';
+        card.style.borderRadius = '6px';
+        card.style.padding = '8px';
+        card.style.display = 'flex';
+        card.style.alignItems = 'center';
+        card.style.gap = '8px';
+        card.style.cursor = 'pointer';
+        card.draggable = true;
+        card.dataset.swatchHex = col.hex;
+        card.title = `${col.name} — ${col.role}`;
+
+        const pill = document.createElement('div');
+        pill.style.width = '32px';
+        pill.style.height = '32px';
+        pill.style.borderRadius = '6px';
+        pill.style.backgroundColor = col.hex;
+        pill.style.border = '1px solid rgba(255,255,255,0.2)';
+        pill.style.flexShrink = '0';
+
+        const info = document.createElement('div');
+        info.style.display = 'flex';
+        info.style.flexDirection = 'column';
+        info.style.gap = '1px';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.style.fontSize = '0.73rem';
+        nameSpan.style.fontWeight = '700';
+        nameSpan.style.color = '#FFFFFF';
+        nameSpan.textContent = col.name;
+
+        const roleSpan = document.createElement('span');
+        roleSpan.style.fontSize = '0.64rem';
+        roleSpan.style.color = 'var(--text-muted)';
+        roleSpan.textContent = col.role;
+
+        const hexSpan = document.createElement('span');
+        hexSpan.className = 'copyable-hex';
+        hexSpan.style.fontFamily = 'var(--font-mono)';
+        hexSpan.style.fontSize = '0.65rem';
+        hexSpan.style.color = 'var(--accent-cyan)';
+        hexSpan.textContent = col.hex;
+
+        info.appendChild(nameSpan);
+        info.appendChild(roleSpan);
+        info.appendChild(hexSpan);
+
+        card.appendChild(pill);
+        card.appendChild(info);
+
+        card.addEventListener('click', () => {
+          this.setColorDirectly(col.rgb || ColorMath.hexToRgb(col.hex));
+          this.showToast(`Color cargado: ${col.name}`);
+        });
+
+        swatchesEl.appendChild(card);
       });
     }
   }
 
-  renderFlorentFarges(targetRgb) {
-    const canvas = document.getElementById('florentWheelCanvas');
-    if (canvas) {
-      FlorentFargesEngine.drawFargesWheel(canvas, targetRgb);
+  renderFlorentCanonicalPalettes() {
+    const container = document.getElementById('florentCanonicalPalettesList');
+    if (!container) return;
+    container.innerHTML = '';
+
+    FlorentFargesEngine.CANONICAL_PALETTES.forEach(pal => {
+      const card = document.createElement('div');
+      card.className = 'farges-canon-card';
+
+      const header = document.createElement('div');
+      header.style.display = 'flex';
+      header.style.justifyContent = 'space-between';
+      header.style.alignItems = 'flex-start';
+      header.style.gap = '8px';
+
+      const titleBox = document.createElement('div');
+      const title = document.createElement('span');
+      title.style.fontSize = '0.78rem';
+      title.style.fontWeight = '700';
+      title.style.color = '#FFFFFF';
+      title.textContent = pal.name;
+
+      const desc = document.createElement('p');
+      desc.style.fontSize = '0.68rem';
+      desc.style.color = 'var(--text-secondary)';
+      desc.style.margin = '4px 0 0 0';
+      desc.style.lineHeight = '1.35';
+      desc.textContent = pal.desc;
+
+      titleBox.appendChild(title);
+      titleBox.appendChild(desc);
+      header.appendChild(titleBox);
+
+      // Swatches row
+      const swatchRow = document.createElement('div');
+      swatchRow.style.display = 'flex';
+      swatchRow.style.gap = '4px';
+      swatchRow.style.flexWrap = 'wrap';
+      swatchRow.style.margin = '4px 0';
+
+      pal.colors.forEach(c => {
+        const dot = document.createElement('div');
+        dot.style.width = '20px';
+        dot.style.height = '20px';
+        dot.style.borderRadius = '4px';
+        dot.style.backgroundColor = c.hex;
+        dot.style.border = '1px solid rgba(255,255,255,0.2)';
+        dot.style.cursor = 'pointer';
+        dot.title = `${c.name} (${c.role || c.hex})`;
+        dot.dataset.swatchHex = c.hex;
+        dot.draggable = true;
+
+        dot.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const rgb = ColorMath.hexToRgb(c.hex);
+          this.setColorDirectly(rgb);
+          this.showToast(`Tubo: ${c.name}`);
+        });
+
+        swatchRow.appendChild(dot);
+      });
+
+      // Actions row
+      const actRow = document.createElement('div');
+      actRow.style.display = 'flex';
+      actRow.style.gap = '6px';
+      actRow.style.flexWrap = 'wrap';
+      actRow.style.marginTop = '4px';
+
+      const btnSave = document.createElement('button');
+      btnSave.className = 'farges-action-btn farges-action-btn-emerald';
+      btnSave.innerHTML = '<span>💾</span> Guardar en Bibliotecas';
+      btnSave.addEventListener('click', () => {
+        this.swatchManager.addPalette(pal.name, pal.colors.map(c => c.hex));
+        this.renderQuickPalette();
+        this.renderSwatchesCollection();
+        this.showToast(`✅ Paleta '${pal.name}' guardada en tus Bibliotecas`);
+      });
+
+      const btnLoad = document.createElement('button');
+      btnLoad.className = 'farges-action-btn';
+      btnLoad.innerHTML = '<span>🎨</span> Cargar Caballete';
+      btnLoad.addEventListener('click', () => {
+        const first = pal.colors.find(c => c.hex !== '#FDFBF7') || pal.colors[0];
+        this.setColorDirectly(ColorMath.hexToRgb(first.hex));
+        this.showToast(`Paleta cargada en caballete: ${pal.name}`);
+      });
+
+      const btn4D = document.createElement('button');
+      btn4D.className = 'farges-action-btn farges-action-btn-amber';
+      btn4D.innerHTML = '<span>🔮</span> 4D';
+      btn4D.title = 'Ver paleta en Hiperespacio 4D';
+      btn4D.addEventListener('click', () => {
+        if (this.hyper4dStudio) {
+          this.hyper4dStudio.options.showPaletteConstellation = true;
+          this.hyper4dStudio.compareSlots = pal.colors.slice(0, 6).map((c, idx) => ({
+            id: String.fromCharCode(65 + idx),
+            name: c.name,
+            hex: c.hex,
+            rgb: ColorMath.hexToRgb(c.hex),
+            active: true
+          }));
+          this.hyper4dStudio.renderCompareSlots();
+        }
+        this.switchTab('hyper4d');
+        this.showToast(`🔮 '${pal.name}' proyectada en el Hiperespacio 4D`);
+      });
+
+      actRow.appendChild(btnSave);
+      actRow.appendChild(btnLoad);
+      actRow.appendChild(btn4D);
+
+      card.appendChild(header);
+      card.appendChild(swatchRow);
+      card.appendChild(actRow);
+      container.appendChild(card);
+    });
+  }
+
+  renderFlorentWhy(topicKey = 'olive_shift') {
+    const box = document.getElementById('florentWhyDisplayBox');
+    if (!box) return;
+    const why = FlorentFargesEngine.explainWhy(topicKey);
+
+    let visualDemoHtml = '';
+    if (topicKey === 'olive_shift') {
+      visualDemoHtml = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+          <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.3);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 0.72rem; font-weight: 700; color: #FCA5A5;">❌ Error Clásico: Amarillo + Negro Marfil</span>
+              <span style="font-size: 0.65rem; color: #F87171;">Vira a Verde Oliva</span>
+            </div>
+            <div style="height: 32px; border-radius: 4px; background: linear-gradient(to right, #FFD700 0%, #4D511A 100%); border: 1px solid rgba(255,255,255,0.15);"></div>
+            <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;">Cadmium Yellow (PY35) + Ivory Black (PBk9) = Clorofila deslucida</div>
+          </div>
+          <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 6px; border: 1px solid rgba(16,185,129,0.3);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 0.72rem; font-weight: 700; color: #6EE7B7;">✔️ Solución Farges: Amarillo + Tierras</span>
+              <span style="font-size: 0.65rem; color: #34D399;">Mantiene Oro Luminoso</span>
+            </div>
+            <div style="height: 32px; border-radius: 4px; background: linear-gradient(to right, #FFD700 0%, #8D541B 50%, #463A2B 100%); border: 1px solid rgba(255,255,255,0.15);"></div>
+            <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;">Cadmium Yellow (PY35) + Siena Tostada / Raw Umber = Oro profundo vivo</div>
+          </div>
+        </div>
+      `;
+    } else if (topicKey === 'ultramarine_green') {
+      visualDemoHtml = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+          <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 6px; border: 1px solid rgba(245,158,11,0.3);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 0.72rem; font-weight: 700; color: #FCD34D;">⚠️ Ultramar (PB29) + Amarillo Limón</span>
+              <span style="font-size: 0.65rem; color: #FBBF24;">Subtono Rojo Desatura</span>
+            </div>
+            <div style="height: 32px; border-radius: 4px; background: linear-gradient(to right, #FFF200 0%, #2F4F24 50%, #1B2682 100%); border: 1px solid rgba(255,255,255,0.15);"></div>
+            <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;">Produce Verde Musgo de bajo croma (el rojo actúa como neutralizador)</div>
+          </div>
+          <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 6px; border: 1px solid rgba(16,185,129,0.3);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 0.72rem; font-weight: 700; color: #6EE7B7;">✔️ Ftalo Verde (PB15:3) + Amarillo Limón</span>
+              <span style="font-size: 0.65rem; color: #34D399;">Verde Eléctrico Puro</span>
+            </div>
+            <div style="height: 32px; border-radius: 4px; background: linear-gradient(to right, #FFF200 0%, #00B050 50%, #003366 100%); border: 1px solid rgba(255,255,255,0.15);"></div>
+            <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;">Sin interferencia de longitudes rojas: máxima saturación espectral</div>
+          </div>
+        </div>
+      `;
+    } else if (topicKey === 'titanium_vs_zinc') {
+      visualDemoHtml = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+          <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2);">
+            <span style="font-size: 0.72rem; font-weight: 700; color: #FFFFFF;">Blanco de Titanio (PW6) — Fuerza 10/10</span>
+            <div style="height: 32px; border-radius: 4px; background: linear-gradient(to right, #C01368 0%, #F59DB8 50%, #FDFBF7 100%); border: 1px solid rgba(255,255,255,0.15); margin-top: 4px;"></div>
+            <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;">Opaco, empaste denso. Puede empolvar y volver lechosos los medios tonos.</div>
+          </div>
+          <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 6px; border: 1px solid rgba(56,189,248,0.3);">
+            <span style="font-size: 0.72rem; font-weight: 700; color: #38BDF8;">Blanco de Zinc (PW4) — Fuerza 3/10</span>
+            <div style="height: 32px; border-radius: 4px; background: linear-gradient(to right, #C01368 0%, #E83884 50%, #F9FBFD 100%); border: 1px solid rgba(255,255,255,0.15); margin-top: 4px;"></div>
+            <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 4px;">Transparente y limpio. Eleva el valor sin destruir la vibración cromática interior.</div>
+          </div>
+        </div>
+      `;
+    } else if (topicKey === 'inherent_value') {
+      visualDemoHtml = `
+        <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 6px; border: 1px solid var(--border-subtle); margin-top: 10px;">
+          <div style="font-size: 0.72rem; font-weight: 700; color: #FBBF24; margin-bottom: 6px;">Escala de Valor Intrínseco de los Pigmentos (1-9):</div>
+          <div style="display: flex; gap: 4px; align-items: flex-end; height: 50px;">
+            <div style="flex: 1; height: 12%; background: #1E1D1B; border-radius: 3px;" title="Negro Marfil (Val 1.0)"></div>
+            <div style="flex: 1; height: 20%; background: #4A154B; border-radius: 3px;" title="Dioxacina (Val 1.8)"></div>
+            <div style="flex: 1; height: 24%; background: #1B2682; border-radius: 3px;" title="Azul Ultramar (Val 2.2)"></div>
+            <div style="flex: 1; height: 35%; background: #9E1338; border-radius: 3px;" title="Alizarina (Val 3.2)"></div>
+            <div style="flex: 1; height: 44%; background: #D91424; border-radius: 3px;" title="Rojo Cadmio (Val 4.0)"></div>
+            <div style="flex: 1; height: 60%; background: #C67128; border-radius: 3px;" title="Siena Natural (Val 5.5)"></div>
+            <div style="flex: 1; height: 68%; background: #CC9933; border-radius: 3px;" title="Ocre Amarillo (Val 6.2)"></div>
+            <div style="flex: 1; height: 85%; background: #FFD700; border-radius: 3px;" title="Cadmio Medio (Val 8.0)"></div>
+            <div style="flex: 1; height: 92%; background: #FFF200; border-radius: 3px;" title="Cadmio Limón (Val 8.5)"></div>
+            <div style="flex: 1; height: 100%; background: #FDFBF7; border-radius: 3px;" title="Blanco Titanio (Val 9.8)"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); margin-top: 4px;">
+            <span>Val 1 (Oscuro / Frío)</span>
+            <span>Val 5 (Tierra / Equilibrado)</span>
+            <span>Val 9 (Luz / Amarillo)</span>
+          </div>
+        </div>
+      `;
     }
 
-    const solver = FlorentFargesEngine.solveMixingForColor(targetRgb);
+    box.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-size: 0.84rem; font-weight: 700; color: #FFFFFF;">${why.title}</span>
+        <span style="font-size: 0.68rem; color: var(--accent-amber); font-weight: 600;">${why.subtitle}</span>
+      </div>
+      <p style="font-size: 0.74rem; color: var(--text-secondary); line-height: 1.45; margin: 0 0 6px 0;">
+        ${why.explanation}
+      </p>
+      <div style="background: rgba(16,185,129,0.08); border-left: 3px solid #10B981; padding: 6px 10px; border-radius: 0 4px 4px 0; font-size: 0.72rem; color: #A7F3D0; line-height: 1.4;">
+        <strong>Regla Magistral de Taller:</strong> ${why.solution}
+      </div>
+      ${visualDemoHtml}
+    `;
+  }
+
+  renderFlorentFleshGrid() {
+    const fleshGrid = document.getElementById('florentFleshGrid');
+    if (!fleshGrid) return;
+    fleshGrid.innerHTML = '';
+
+    FlorentFargesEngine.FLESH_ZONES.forEach(zone => {
+      const card = document.createElement('div');
+      card.style.background = 'rgba(0,0,0,0.3)';
+      card.style.border = '1px solid var(--border-subtle)';
+      card.style.borderRadius = 'var(--radius-md)';
+      card.style.padding = '10px';
+      card.style.cursor = 'pointer';
+      card.draggable = true;
+      card.dataset.swatchHex = zone.hex;
+
+      const topRow = document.createElement('div');
+      topRow.style.display = 'flex';
+      topRow.style.alignItems = 'center';
+      topRow.style.gap = '8px';
+
+      const pill = document.createElement('div');
+      pill.style.width = '30px';
+      pill.style.height = '30px';
+      pill.style.borderRadius = '6px';
+      pill.style.backgroundColor = zone.hex;
+      pill.style.border = '1px solid rgba(255,255,255,0.2)';
+
+      const titleBox = document.createElement('div');
+      const title = document.createElement('span');
+      title.style.fontSize = '0.74rem';
+      title.style.fontWeight = '600';
+      title.style.color = '#FFFFFF';
+      title.textContent = zone.title;
+
+      const hex = document.createElement('span');
+      hex.style.fontFamily = 'var(--font-mono)';
+      hex.style.fontSize = '0.68rem';
+      hex.className = 'copyable-hex';
+      hex.textContent = zone.hex;
+
+      titleBox.appendChild(title);
+      titleBox.appendChild(hex);
+      topRow.appendChild(pill);
+      topRow.appendChild(titleBox);
+
+      const anat = document.createElement('div');
+      anat.style.fontSize = '0.65rem';
+      anat.style.color = 'var(--text-muted)';
+      anat.style.marginTop = '4px';
+      anat.textContent = zone.anatomical;
+
+      const recipe = document.createElement('div');
+      recipe.style.fontSize = '0.68rem';
+      recipe.style.color = '#E2E8F0';
+      recipe.style.marginTop = '4px';
+      recipe.innerHTML = `<strong>Receta:</strong> ${zone.recipe}`;
+
+      card.appendChild(topRow);
+      card.appendChild(anat);
+      card.appendChild(recipe);
+
+      card.addEventListener('click', () => {
+        this.setColorDirectly(zone.rgb);
+        this.showToast(`Carnación: ${zone.title}`);
+      });
+
+      fleshGrid.appendChild(card);
+    });
+  }
+
+  renderFlorentStudioTubes() {
+    const tubesList = document.getElementById('florentStudioTubesList');
+    if (!tubesList) return;
+    tubesList.innerHTML = '';
+
+    FlorentFargesEngine.PIGMENTS.forEach(p => {
+      const pill = document.createElement('div');
+      pill.style.display = 'flex';
+      pill.style.alignItems = 'center';
+      pill.style.gap = '6px';
+      pill.style.background = 'rgba(0,0,0,0.35)';
+      pill.style.border = '1px solid var(--border-subtle)';
+      pill.style.padding = '4px 8px';
+      pill.style.borderRadius = '6px';
+      pill.style.cursor = 'pointer';
+      pill.draggable = true;
+      pill.dataset.swatchHex = p.hex;
+      pill.title = `${p.name} (${p.ci}) — Valor: ${p.inherentValue}, Tinte: ${p.tintingStrength}/10, ${p.opacity}`;
+
+      const dot = document.createElement('div');
+      dot.style.width = '12px';
+      dot.style.height = '12px';
+      dot.style.borderRadius = '50%';
+      dot.style.backgroundColor = p.hex;
+      dot.style.border = '1px solid rgba(255,255,255,0.2)';
+
+      const name = document.createElement('span');
+      name.style.fontSize = '0.72rem';
+      name.textContent = `${p.name} (${p.ci})`;
+
+      pill.appendChild(dot);
+      pill.appendChild(name);
+      pill.addEventListener('click', () => {
+        this.setColorDirectly(p.rgb);
+        // Also update tube 1 in lab for immediate mixing exploration
+        FlorentFargesEngine.labPigment1Id = p.id;
+        const sel1 = document.getElementById('florentLabTube1Select');
+        if (sel1) sel1.value = p.id;
+        this.renderFlorentMixingLab();
+        this.showToast(`Tubo seleccionado: ${p.name}`);
+      });
+
+      tubesList.appendChild(pill);
+    });
+  }
+
+  renderFlorentFarges(targetRgb) {
+    const curRgb = targetRgb || (this.activeWell === 'fg' ? this.fgColor : this.bgColor);
+    const canvas = document.getElementById('florentWheelCanvas');
+    if (canvas) {
+      const p1 = this._getLabPigment(FlorentFargesEngine.labPigment1Id, curRgb);
+      const p2 = this._getLabPigment(FlorentFargesEngine.labPigment2Id, curRgb);
+      FlorentFargesEngine.drawFargesWheel(canvas, curRgb, p1, p2);
+    }
+
+    const solver = FlorentFargesEngine.solveMixingForColor(curRgb);
     const badge = document.getElementById('florentActiveHueBadge');
     if (badge) {
       badge.textContent = `Matiz: ${solver.targetAngle}° (S:${Math.round(solver.targetHsl.s * 100)}% L:${Math.round(solver.targetHsl.l * 100)}%)`;
@@ -3316,7 +4010,11 @@ class GomPickerApp {
 
     const behNote = document.getElementById('florentBehaviorNote');
     if (behNote) behNote.textContent = solver.behaviorNote;
+
+    // Refresh dynamic tailored workshop palette for active color
+    this.renderFlorentWorkshopPalette(curRgb);
   }
+
 
   // --- MASTER PAINTERS GALLERY & MULTI-CATALOG STUDIO ---
 
@@ -7012,4 +7710,6 @@ window.addEventListener('DOMContentLoaded', () => {
   const app = new GomPickerApp();
   app.init();
   window.gomPicker = app;
+  window.app = app;
 });
+

@@ -18,3 +18,7 @@ desktop.ini
 # Environment
 .env
 .env.local
+
+# Test data & Browser caches
+edge_user_data*/
+

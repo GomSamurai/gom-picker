@@ -829,21 +829,27 @@
       <div id="viewFlorent" class="tab-view" style="display: none;">
         
         <div class="glass-panel">
-          <div class="panel-header">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
             <div class="panel-title">
-              <span>👨‍🎨</span> Florent Farges: Color Mixing Wheel & Teoría Práctica
+              <span>👨‍🎨</span> Florent Farges: Bellas Artes, Laboratorio de Mezcla & Fisiología del Color
             </div>
-            <div style="display: flex; gap: 6px;" id="florentWheelTabs">
-              <button class="chip-select active-toggle" data-fwheel="1">Rueda 1: Pigmentos</button>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;" id="florentWheelTabs">
+              <button class="chip-select active-toggle" data-fwheel="1">Rueda 1: Pigmentos & Tinte</button>
               <button class="chip-select" data-fwheel="2">Rueda 2: Curvas de Arco</button>
               <button class="chip-select" data-fwheel="3">Rueda 3: Valores 3D</button>
+              <button id="btnFlorentJump4D" class="farges-action-btn" title="Proyectar rueda y curvas en el Hiperespacio 4D">
+                <span>🔮</span> Ver en Hiperespacio 4D
+              </button>
+              <button id="btnFlorentAutoPalette" class="farges-action-btn farges-action-btn-amber" title="Generar paleta de taller según reglas de Farges">
+                <span>✨</span> Generar Paleta de Taller
+              </button>
             </div>
           </div>
 
           <div class="pedagogical-banner">
             <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
-              El educador de bellas artes <strong>Florent Farges</strong> sustituyó la teoría abstracta por la <strong>física de pigmentos reales de caballete</strong>. 
-              Su <em>Three Wheel System</em> demuestra que los tubos no se mezclan en línea recta sino mediante <strong>curvas de arco hacia el gris neutro</strong>, con valores intrínsecos dispares y fuerzas de tinte desiguales.
+              El educador y maestro de bellas artes <strong>Florent Farges</strong> sustituyó los diagramas circulares ideales por la <strong>física de pigmentos reales de caballete</strong>. 
+              Su <em>Three Wheel System</em> demuestra que los tubos no se mezclan en línea recta sino mediante <strong>curvas de arco hacia el gris neutro</strong>, con valores intrínsecos dispares y fuerzas de tinte asimétricas.
             </p>
           </div>
 
@@ -885,74 +891,270 @@
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Academic Flesh Tones & Facial Triad of Florent Farges -->
-          <div style="margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 0.82rem; font-weight: 700; color: #FFFFFF;">🏛️ Tríada Facial y Retrato Académico de Florent Farges:</span>
-              <span style="font-size: 0.7rem; color: var(--text-muted);">Las 3 zonas canónicas de la piel humana</span>
+        <!-- SECTION 2: PHYSICAL MIXING LAB & DUAL TUBE COMPARATOR -->
+        <div class="glass-panel">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 8px;">
+            <div class="panel-title">
+              <span>🧪</span> Laboratorio de Mezcla Física & Comparativa de Tubos
+            </div>
+            <span style="font-size: 0.72rem; color: var(--accent-emerald); font-weight: 600; background: rgba(16,185,129,0.12); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(16,185,129,0.25);">
+              Física Sustractiva Real & Curvas de Arco
+            </span>
+          </div>
+
+          <!-- Quick presets bar -->
+          <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600;">Casos de Estudio de Farges:</span>
+            <div id="florentLabPresetChips" style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button class="chip-select" data-p1="cad_yellow_med" data-p2="ivory_black" title="Cadmio + Negro vira a verde por absorción selectiva">❌ Amarillo + Negro (Olive Shift)</button>
+              <button class="chip-select" data-p1="cad_lemon" data-p2="ultramarine_blue" title="Ultramar tiene subtono rojo que desatura el verde">⚠️ Ultramar + Limón (Verde Apagado)</button>
+              <button class="chip-select" data-p1="burnt_sienna" data-p2="ultramarine_blue" title="Siena + Ultramar: el negro y gris cromático de atelier">🎨 Ultramar + Siena (Negro de Taller)</button>
+              <button class="chip-select" data-p1="cad_lemon" data-p2="phthalo_blue" title="Ftalo verde-azul produce verdes puros y brillantes">🌿 Limón + Ftalo (Verde Luminoso)</button>
+              <button class="chip-select" data-p1="yellow_ochre" data-p2="titanium_white" title="Ocre + Blanco para modelado de frente y sienes">✨ Ocre + Blanco (Halftone Carne)</button>
+            </div>
+          </div>
+
+          <!-- Tube Selectors & Live Proportion Slider -->
+          <div class="farges-section-card">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; align-items: center;">
+              
+              <!-- Tube 1 Selector -->
+              <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <span style="font-size: 0.72rem; font-weight: 700; color: #FFFFFF;">Tubo 1 (Pigmento Base):</span>
+                  <span id="florentLabT1StrengthBadge" style="font-size: 0.65rem; color: var(--accent-amber); font-weight: 600;">Fuerza: 8/10</span>
+                </div>
+                <select id="florentLabTube1Select" style="width: 100%; padding: 6px 8px; border-radius: 4px; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--border-accent); font-size: 0.76rem; outline: none;">
+                  <!-- Options injected dynamically -->
+                </select>
+                <div id="florentLabT1Details" style="margin-top: 6px; font-size: 0.68rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                  <!-- Inherent value & opacity -->
+                </div>
+              </div>
+
+              <!-- Tube 2 Selector -->
+              <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <span style="font-size: 0.72rem; font-weight: 700; color: #FFFFFF;">Tubo 2 (Pigmento Añadido):</span>
+                  <span id="florentLabT2StrengthBadge" style="font-size: 0.65rem; color: var(--accent-amber); font-weight: 600;">Fuerza: 6/10</span>
+                </div>
+                <select id="florentLabTube2Select" style="width: 100%; padding: 6px 8px; border-radius: 4px; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--border-accent); font-size: 0.76rem; outline: none;">
+                  <!-- Options injected dynamically -->
+                </select>
+                <div id="florentLabT2Details" style="margin-top: 6px; font-size: 0.68rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                  <!-- Inherent value & opacity -->
+                </div>
+              </div>
+
             </div>
 
-            <div id="florentFleshGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
-              <!-- Flesh zone cards -->
+            <!-- Proportion Slider -->
+            <div style="margin-top: 14px; background: rgba(0,0,0,0.4); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.74rem; font-weight: 600; color: #E2E8F0;">Proporción en Paleta (Volumen):</span>
+                <span id="florentLabRatioDisplay" style="font-family: var(--font-mono); font-size: 0.76rem; font-weight: 700; color: #38BDF8;">
+                  50% / 50%
+                </span>
+              </div>
+              <input type="range" id="florentLabRatioSlider" min="0" max="100" value="50" style="width: 100%; accent-color: var(--accent-primary); cursor: pointer;">
+              <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.68rem; color: var(--text-muted);">
+                <button class="chip-select" id="btnLabRatio20" style="padding: 2px 6px; font-size: 0.65rem;">80% T1 / 20% T2</button>
+                <button class="chip-select" id="btnLabRatio50" style="padding: 2px 6px; font-size: 0.65rem;">50% / 50% Equilibrado</button>
+                <button class="chip-select" id="btnLabRatio80" style="padding: 2px 6px; font-size: 0.65rem;">20% T1 / 80% T2</button>
+              </div>
+            </div>
+
+            <!-- Result Swatch & Controls -->
+            <div style="margin-top: 14px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; background: rgba(0,0,0,0.5); padding: 12px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+              <div id="florentLabResultPill" style="width: 58px; height: 58px; border-radius: 8px; border: 2px solid #FFFFFF; box-shadow: 0 4px 14px rgba(0,0,0,0.6); flex-shrink: 0;"></div>
+              
+              <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span id="florentLabResultName" style="font-size: 0.84rem; font-weight: 700; color: #FFFFFF;">Mezcla Resultante</span>
+                  <span id="florentLabResultHex" class="copyable-hex" style="font-family: var(--font-mono); font-size: 0.74rem; color: var(--accent-cyan);">#000000</span>
+                </div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; font-size: 0.68rem;">
+                  <span id="florentLabResultValue" style="background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: #E2E8F0;">Valor: 5.0</span>
+                  <span id="florentLabResultOpacity" style="background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: #CBD5E1;">Semi-opaco</span>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button id="btnFlorentLabSetFg" class="farges-action-btn" title="Cargar este color exacto en el caballete">
+                  <span>🎯</span> Usar en Caballete (FG)
+                </button>
+                <button id="btnFlorentLabAddToPalette" class="farges-action-btn farges-action-btn-emerald" title="Añadir a la paleta activa en Bibliotecas">
+                  <span>➕</span> Añadir a Paleta
+                </button>
+                <button id="btnFlorentLabJump4D" class="farges-action-btn farges-action-btn-amber" title="Proyectar ambos tubos y su curva de arco en el Hiperespacio 4D">
+                  <span>🔮</span> Ver en Hiperespacio 4D
+                </button>
+              </div>
+            </div>
+
+            <!-- 7-Step Physical Mixing Strip -->
+            <div style="margin-top: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.72rem; font-weight: 600; color: var(--text-secondary);">
+                  Tira de Degradado Físico Sustractivo (Haz clic en cualquier paso para seleccionarlo):
+                </span>
+                <span style="font-size: 0.65rem; color: var(--text-muted);">Curva de Arco Convexa</span>
+              </div>
+              <div id="florentLabStepStrip" class="farges-step-strip">
+                <!-- 7 steps injected dynamically -->
+              </div>
+            </div>
+
+            <!-- Mixing Physics & Statistics Grid -->
+            <div style="margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+              <div class="farges-stat-pill">
+                <span class="farges-stat-label">Fuerza de Tinte Relativa</span>
+                <span id="florentLabTintMeter" class="farges-stat-value" style="color: #38BDF8;">1.0x</span>
+              </div>
+              <div class="farges-stat-pill">
+                <span class="farges-stat-label">Diferencia de Valor (ΔV)</span>
+                <span id="florentLabDeltaVMeter" class="farges-stat-value" style="color: #FBBF24;">ΔV: 0.0</span>
+              </div>
+              <div class="farges-stat-pill">
+                <span class="farges-stat-label">Intervalo de Ángulo</span>
+                <span id="florentLabBowMeter" class="farges-stat-value" style="color: #34D399;">60°</span>
+              </div>
+            </div>
+
+            <!-- Pedagogical Note Box -->
+            <div id="florentLabPedagogicalBox" style="margin-top: 12px; background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25); border-radius: 6px; padding: 10px;">
+              <div style="font-size: 0.72rem; font-weight: 700; color: #A5B4FC; margin-bottom: 2px;">
+                💡 Diagnóstico de Caballete de Florent Farges:
+              </div>
+              <div id="florentLabPedagogicalNote" style="font-size: 0.72rem; color: #E2E8F0; line-height: 1.45;">
+                Selecciona dos tubos para simular su física sustractiva real.
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- SECTION 3: AUTOMATIC WORKSHOP PALETTE GENERATOR & CANONICAL LIBRARIES -->
+        <div class="glass-panel">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 8px;">
+            <div class="panel-title">
+              <span>📚</span> Generador Automático de Bibliotecas & Paletas Canónicas de Farges
+            </div>
+            <span style="font-size: 0.72rem; color: var(--accent-amber); font-weight: 600; background: rgba(245,158,11,0.12); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(245,158,11,0.25);">
+              Sincronizado con Bibliotecas de Muestras
+            </span>
+          </div>
+
+          <!-- Dynamic Tailored Workshop Palette for Active Color -->
+          <div class="farges-section-card" style="border-color: rgba(99,102,241,0.3); background: rgba(15,23,42,0.45);">
+            <div class="farges-section-header">
+              <div>
+                <div id="florentGenPalTitle" style="font-size: 0.84rem; font-weight: 700; color: #FFFFFF;">
+                  🎨 Paleta de Taller Formulada para el Color Activo
+                </div>
+                <div id="florentGenPalDesc" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">
+                  Calculada según la regla de primarios divididos, complementario de gris cromático y oscurecimiento limpio.
+                </div>
+              </div>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button id="btnFlorentSaveGenPal" class="farges-action-btn farges-action-btn-emerald">
+                  <span>💾</span> Guardar en Bibliotecas
+                </button>
+                <button id="btnFlorent4DGenPal" class="farges-action-btn">
+                  <span>🔮</span> Ver en Hiperespacio 4D
+                </button>
+              </div>
+            </div>
+
+            <!-- Swatches Ribbon -->
+            <div id="florentGenPalSwatches" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+              <!-- Dynamically injected palette swatches with roles -->
+            </div>
+          </div>
+
+          <!-- 5 Canonical Atelier Palettes of Florent Farges -->
+          <div>
+            <div style="font-size: 0.8rem; font-weight: 700; color: #FFFFFF; margin-bottom: 8px;">
+              🏛️ Las 5 Paletas Canónicas Magistrales de Florent Farges:
+            </div>
+            <div id="florentCanonicalPalettesList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+              <!-- Canonical cards injected dynamically -->
             </div>
           </div>
         </div>
 
-        <!-- PANEL 2: OLIVE SHIFT & FLORENT FARGES CANONICAL STUDIO PALETTE -->
+        <!-- SECTION 4: EL "POR QUÉ DE LAS COSAS" (FÍSICA & PEDAGOGÍA DE CABALLETE) -->
+        <div class="glass-panel">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 8px;">
+            <div class="panel-title">
+              <span>🔬</span> El "Por Qué de las Cosas" — Fisiología Óptica & Secretos de Taller
+            </div>
+            <span style="font-size: 0.72rem; color: var(--accent-cyan); font-weight: 600; background: rgba(6,182,212,0.12); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(6,182,212,0.25);">
+              Lección Magistral Interactiva
+            </span>
+          </div>
+
+          <!-- Why Selector Tabs -->
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;" id="florentWhyTabs">
+            <button class="farges-why-tab-btn active" data-why="olive_shift">
+              <span>🫒</span> 1. El Fenómeno Amarillo + Negro
+            </button>
+            <button class="farges-why-tab-btn" data-why="ultramarine_green">
+              <span>🌿</span> 2. Por qué Ultramar + Limón da Verde Apagado
+            </button>
+            <button class="farges-why-tab-btn" data-why="titanium_vs_zinc">
+              <span>⚪</span> 3. Blanco de Titanio vs Blanco de Zinc
+            </button>
+            <button class="farges-why-tab-btn" data-why="inherent_value">
+              <span>🪜</span> 4. La Escala de Valor Intrínseco
+            </button>
+          </div>
+
+          <!-- Why Display Box -->
+          <div id="florentWhyDisplayBox" class="farges-section-card" style="background: rgba(0,0,0,0.45); border-color: rgba(255,255,255,0.1);">
+            <!-- Interactive why explanation injected dynamically -->
+          </div>
+        </div>
+
+        <!-- SECTION 5: ACADEMIC FLESH TONES & FACIAL TRIAD -->
         <div class="glass-panel">
           <div class="panel-header">
             <div class="panel-title">
-              <span>🔬</span> El Fenómeno del "Amarillo + Negro" (Olive Shift) & Paleta Canónica
+              <span>🏛️</span> Tríada Facial y Retrato Académico de Florent Farges
             </div>
-            <span style="font-size: 0.72rem; color: var(--accent-amber); font-weight: 600; background: rgba(245,158,11,0.12); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(245,158,11,0.25);">Lección Magistral de Taller</span>
+            <span style="font-size: 0.7rem; color: var(--text-muted);">Las 3 zonas canónicas de temperatura de la piel humana</span>
           </div>
 
-          <!-- Yellow + Black Olive Shift Phenomenon -->
-          <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-accent); border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px;">
-            <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 10px;">
-              En casi todas las escuelas tradicionales enseñan que el negro "oscurece" cualquier color. Florent Farges demuestra empíricamente que 
-              <strong>Amarillo Cadmio + Negro Marfil produce Verde Oliva</strong> debido a la absorción selectiva de longitudes de onda del carbón vegetal. 
-              Para obtener la verdadera sombra dorada y natural del amarillo, Farges enseña a sustituir el negro por <strong>Tierra de Sombra Natural (Raw Umber)</strong> o <strong>Siena Tostada</strong>.
-            </p>
+          <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.45; margin-bottom: 10px;">
+            El retrato académico no utiliza un solo "color carne". La microcirculación, el tejido óseo y los folículos pilosos dividen el rostro en 3 bandas térmicas principales más sombras cálidas translúcidas.
+          </p>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.3); display: flex; flex-direction: column; gap: 6px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 0.74rem; font-weight: 600; color: #FCA5A5;">❌ Error Clásico: Amarillo + Negro</span>
-                  <span style="font-size: 0.68rem; color: var(--text-muted);">Vira a Verde</span>
-                </div>
-                <div style="height: 32px; border-radius: 4px; background: linear-gradient(to right, #FFD700 0%, #4D511A 100%); border: 1px solid rgba(255,255,255,0.1);"></div>
-                <span style="font-size: 0.7rem; color: var(--text-muted);">Cadmium Yellow (PY35) + Ivory Black (PBk9) = Verde Oliva deslucido</span>
-              </div>
+          <div id="florentFleshGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
+            <!-- Flesh zone cards -->
+          </div>
+        </div>
 
-              <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px; border: 1px solid rgba(16,185,129,0.3); display: flex; flex-direction: column; gap: 6px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 0.74rem; font-weight: 600; color: #6EE7B7;">✔️ Solución Farges: Amarillo + Tierras</span>
-                  <span style="font-size: 0.68rem; color: var(--accent-emerald);">Mantiene Calidez</span>
-                </div>
-                <div style="height: 32px; border-radius: 4px; background: linear-gradient(to right, #FFD700 0%, #8D541B 50%, #463A2B 100%); border: 1px solid rgba(255,255,255,0.1);"></div>
-                <span style="font-size: 0.7rem; color: var(--text-muted);">Cadmium Yellow (PY35) + Siena Tostada / Raw Umber = Oro profundo vivo</span>
-              </div>
+        <!-- SECTION 6: FLORENT FARGES CANONICAL STUDIO TUBES -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🎨</span> Inventario Canónico de Tubos Reales de Estudio (18 Pigmentos)
             </div>
+            <span style="font-size: 0.7rem; color: var(--text-muted);">Haz clic en cualquier tubo para seleccionarlo o arrástralo</span>
           </div>
 
-          <!-- Studio Palette of Florent Farges -->
-          <div>
-            <div style="font-size: 0.78rem; font-weight: 600; margin-bottom: 6px;">
-              🎨 Paleta de Estudio Recomendada de Florent Farges (Haz clic en un tubo para seleccionarlo):
-            </div>
-            <div id="florentStudioTubesList" style="display: flex; flex-wrap: wrap; gap: 6px;">
-              <!-- Tubes pills -->
-            </div>
+          <div id="florentStudioTubesList" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <!-- Tubes pills -->
           </div>
-
         </div>
 
       </div>
 
       <!-- TAB 6: MASTER PAINTERS GALLERY & MULTI-CATALOG STUDIO -->
       <div id="viewMasters" class="tab-view" style="display: none;">
+
         <div class="glass-panel">
           <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
             <div class="panel-title">
