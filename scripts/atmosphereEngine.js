@@ -284,6 +284,10 @@ export const AtmosphereEngine = {
     };
   },
 
+  calculateShadowPhysics(localRgb) {
+    return this.calculateLightingStages(localRgb);
+  },
+
   // Purkinje Shift: In dim light, human rod cells shift sensitivity toward green/blue (~505 nm)
   // while red sensitivity drops drastically.
   applyPurkinje(rgb) {

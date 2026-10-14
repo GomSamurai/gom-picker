@@ -241,6 +241,12 @@ export const ColorMath = {
     };
   },
 
+  // Compress RGB to nearest printable CMYK gamut
+  compressToCmykGamut(r, g, b) {
+    const check = ColorMath.checkCmykGamut(r, g, b);
+    return check.nearestGamutRgb;
+  },
+
   // Relative Luminance according to WCAG 2.1 (0 = Black, 1 = White)
   getLuminance(r, g, b) {
     const a = [r, g, b].map(v => {

@@ -54,15 +54,24 @@ export class ColorWheel {
     }
   }
 
+  resize() {
+    this._setupCanvas();
+    this.render();
+  }
+
   _setupCanvas() {
     const dpr = window.devicePixelRatio || 1;
     const rect = this.canvas.getBoundingClientRect();
-    this.size = Math.min(rect.width || 320, 340);
-    this.canvas.width = this.size * dpr;
-    this.canvas.height = this.size * dpr;
-    this.ctx.scale(dpr, dpr);
+    const parent = this.canvas.parentElement;
+    const parentWidth = parent ? parent.clientWidth : 320;
+    const baseWidth = rect.width > 20 ? rect.width : (parentWidth > 20 ? parentWidth : 320);
+    this.size = Math.max(160, Math.min(Math.floor(baseWidth), 360));
+    this.canvas.width = Math.round(this.size * dpr);
+    this.canvas.height = Math.round(this.size * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.center = this.size / 2;
-    this.radius = this.center - 14;
+    this.ringWidth = Math.max(16, Math.min(28, Math.round(this.size * 0.088)));
+    this.radius = this.center - Math.max(6, Math.round(this.size * 0.04));
     this.innerRadius = this.radius - this.ringWidth;
   }
 

@@ -154,6 +154,12 @@ export class SwatchManager {
     return pal;
   }
 
+  addColorToActivePalette(hex) {
+    const activePal = this.getActivePalette();
+    if (!activePal) return null;
+    return this.addColorToPalette(activePal.id, hex);
+  }
+
   reorderColorInPalette(paletteId, fromIndex, toIndex) {
     const pal = this.palettes.find(p => p.id === paletteId);
     if (!pal || !Array.isArray(pal.colors)) return null;

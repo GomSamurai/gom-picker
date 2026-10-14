@@ -90,9 +90,24 @@ class GomPickerApp {
     if (typeof BroadcastChannel !== 'undefined') {
       this.broadcastChannel = new BroadcastChannel('gom_picker_sync');
       this.broadcastChannel.onmessage = (event) => {
-        const { type, rgb, hsv } = event.data || {};
+        const { type, rgb, activeWell, hex, action, paletteColor } = event.data || {};
         if (type === 'POPUP_COLOR_UPDATE' && rgb) {
+          if (activeWell && activeWell !== this.activeWell) {
+            this.setActiveWell(activeWell);
+          }
           this.setColorDirectly(rgb, false);
+        } else if (type === 'POPUP_SWAP_WELLS') {
+          const btnSwap = document.getElementById('btnSwapWells');
+          if (btnSwap) btnSwap.click();
+        } else if (type === 'POPUP_REQUEST_SYNC') {
+          this.broadcastCurrentState();
+        } else if (type === 'POPUP_ADD_TO_PALETTE' && paletteColor) {
+          if (this.swatchManager) {
+            this.swatchManager.addColorToActivePalette(paletteColor);
+            if (typeof this.renderCustomPaletteStrip === 'function') this.renderCustomPaletteStrip();
+            this.showToast(`Color ${paletteColor} añadido a la paleta activa`);
+            this.broadcastCurrentState();
+          }
         }
       };
     }
@@ -252,7 +267,10 @@ class GomPickerApp {
         type: 'MAIN_COLOR_UPDATE',
         rgb,
         hex,
-        hsv
+        hsv,
+        activeWell: this.activeWell,
+        fgColor: this.fgColor,
+        bgColor: this.bgColor
       });
     }
 
@@ -589,9 +607,26 @@ class GomPickerApp {
     if (popupWindow) {
       popupWindow.focus();
       this.showToast('🪟 Ventana Flotante abierta y sincronizada en tiempo real');
+      setTimeout(() => this.broadcastCurrentState(), 500);
     } else {
       this.showToast('Por favor, permite ventanas emergentes en tu navegador para abrir el panel flotante', 'warning');
     }
+  }
+
+  broadcastCurrentState() {
+    if (!this.broadcastChannel) return;
+    const activePalette = this.swatchManager?.getActivePalette();
+    const history = this.swatchManager?.history || [];
+    this.broadcastChannel.postMessage({
+      type: 'MAIN_STATE_SYNC',
+      activeWell: this.activeWell,
+      fgColor: this.fgColor,
+      bgColor: this.bgColor,
+      activePalette,
+      history,
+      wheelMode: this.colorWheel?.mode || 'triangle',
+      harmonyRule: this.colorWheel?.harmonyRule || 'triadic'
+    });
   }
 
   // --- HEADER TOOLS & NAVIGATION ---

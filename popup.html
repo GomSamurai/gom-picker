@@ -2,115 +2,912 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GOM Color Picker — Panel Flotante Independiente</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GOM Color Picker — Panel Flotante Pro</title>
   <link rel="stylesheet" href="styles/main.css">
   <style>
+    /* ==========================================================================
+       GOM PICKER MINI / FLOATING PANEL RESPONSIVE STYLES
+       Optimized for digital painting, 3D, and illustration apps (Photoshop, Krita, Blender)
+       ========================================================================== */
+    :root {
+      --popup-bg: #090A0F;
+      --popup-card: rgba(18, 20, 28, 0.85);
+      --popup-border: rgba(255, 255, 255, 0.09);
+      --popup-accent: #6366F1;
+      --popup-accent-glow: rgba(99, 102, 241, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+
     body {
-      padding: 10px;
+      padding: 8px;
       margin: 0;
-      background: #090A0F;
+      background: var(--popup-bg);
+      background-image: 
+        radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 90%, rgba(6, 182, 212, 0.06) 0%, transparent 45%);
       min-height: 100vh;
+      color: #F3F4F6;
+      font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      overflow-y: auto;
+      gap: 8px;
+      overflow-x: hidden;
+      overflow-y: overlay;
     }
+
+    /* Grayscale Value Inspector Mode */
+    body.value-check-mode {
+      filter: grayscale(100%) contrast(110%);
+    }
+
+    /* Density views */
+    body[data-density="mini"] .view-studio-only,
+    body[data-density="mini"] .view-pro-only {
+      display: none !important;
+    }
+    body[data-density="studio"] .view-pro-only {
+      display: none !important;
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(99, 102, 241, 0.5);
+    }
+
+    /* Header Bar */
     .popup-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 6px 10px;
-      background: rgba(255,255,255,0.03);
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border-subtle);
+      padding: 6px 8px;
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: var(--radius-sm, 6px);
+      border: 1px solid var(--popup-border);
+      flex-wrap: wrap;
+      gap: 6px;
     }
-    .popup-title {
+
+    .popup-title-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       font-size: 0.78rem;
       font-weight: 700;
-      color: #fff;
+      color: #FFF;
+      letter-spacing: 0.02em;
+    }
+
+    .popup-badge {
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 2px 5px;
+      background: linear-gradient(135deg, #6366F1, #38BDF8);
+      color: #FFF;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    .popup-header-tools {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .popup-tool-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 7px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: #E2E8F0;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .popup-tool-btn:hover {
+      background: rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.5);
+      color: #FFF;
+    }
+    .popup-tool-btn.active {
+      background: var(--popup-accent);
+      border-color: var(--popup-accent);
+      color: #FFF;
+      box-shadow: 0 0 10px var(--popup-accent-glow);
+    }
+
+    /* Density Switcher */
+    .popup-density-group {
+      display: inline-flex;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--popup-border);
+      border-radius: 4px;
+      padding: 1px;
+    }
+    .density-btn {
+      padding: 2px 6px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: #94A3B8;
+      background: transparent;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .density-btn:hover {
+      color: #FFF;
+    }
+    .density-btn.active {
+      background: rgba(99, 102, 241, 0.35);
+      color: #FFF;
+      font-weight: 700;
+    }
+
+    /* Wheel Toolbar */
+    .popup-wheel-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .popup-select {
+      background: rgba(15, 17, 25, 0.9);
+      border: 1px solid var(--popup-border);
+      color: #E2E8F0;
+      font-size: 0.68rem;
+      padding: 3px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      outline: none;
+      flex: 1;
+      min-width: 90px;
+      transition: border-color 0.15s ease;
+    }
+    .popup-select:hover, .popup-select:focus {
+      border-color: var(--popup-accent);
+    }
+
+    /* Responsive Wheel Canvas */
+    .popup-wheel-container {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 4px 0;
+    }
+
+    #colorWheelCanvasMini {
+      width: 100%;
+      max-width: 320px;
+      aspect-ratio: 1 / 1;
+      display: block;
+      touch-action: none;
+      cursor: crosshair;
+      border-radius: 50%;
+      transition: transform 0.15s ease;
+    }
+
+    /* Wheel Harmony Beads Quick Row */
+    .popup-wheel-harmonies {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+    .harmony-node-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      font-size: 0.64rem;
+      font-family: var(--font-mono, monospace);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .harmony-node-chip:hover {
+      background: rgba(255, 255, 255, 0.12);
+      transform: translateY(-1px);
+    }
+    .harmony-chip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+
+    /* Hero Dual Well Area */
+    .hero-dual-well-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--popup-card);
+      padding: 8px 10px;
+      border-radius: var(--radius-sm, 6px);
+      border: 1px solid var(--popup-border);
+      position: relative;
+    }
+
+    .hero-dual-well-pair {
+      position: relative;
+      width: 58px;
+      height: 52px;
+      flex-shrink: 0;
+    }
+
+    .mini-well {
+      position: absolute;
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+      transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      padding: 2px 4px;
+    }
+    .mini-well.active-well {
+      z-index: 2;
+      border-color: #FFF;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.4), 0 4px 10px rgba(0, 0, 0, 0.6);
+      transform: scale(1.04);
+    }
+    .mini-well:not(.active-well) {
+      z-index: 1;
+      opacity: 0.82;
+    }
+    .mini-well:not(.active-well):hover {
+      opacity: 1;
+      transform: scale(1.02);
+    }
+    #fgWellMini {
+      top: 0;
+      left: 0;
+      background-color: #6366F1;
+    }
+    #bgWellMini {
+      bottom: 0;
+      right: 0;
+      background-color: #F43F5E;
+    }
+    .mini-well-tag {
+      font-size: 0.58rem;
+      font-weight: 800;
+      color: #FFF;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+      line-height: 1;
+    }
+
+    .hero-dual-well-details {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .hero-hex-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .hero-hex-value {
+      font-family: var(--font-mono, monospace);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #FFF;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.15s ease;
+    }
+    .hero-hex-value:hover {
+      color: #38BDF8;
+    }
+
+    .hero-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .hero-action-icon {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #FFF;
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .hero-action-icon:hover {
+      background: var(--popup-accent);
+      border-color: var(--popup-accent);
+      transform: scale(1.05);
+    }
+
+    .hero-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: var(--text-muted, #94A3B8);
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .hero-munsell-tag {
+      color: #FBBF24;
+      font-family: var(--font-mono, monospace);
+      font-weight: 700;
+    }
+
+    .hero-gamut-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 600;
+    }
+    .hero-gamut-badge.in-gamut {
+      color: #10B981;
+    }
+    .hero-gamut-badge.out-gamut {
+      color: #F43F5E;
+    }
+
+    .btn-fix-cmyk {
+      background: rgba(244, 63, 94, 0.2);
+      border: 1px solid rgba(244, 63, 94, 0.5);
+      color: #FECDD3;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: none;
+    }
+    .btn-fix-cmyk:hover {
+      background: #F43F5E;
+      color: #FFF;
+    }
+
+    /* Cards & Containers */
+    .popup-card {
+      background: var(--popup-card);
+      border: 1px solid var(--popup-border);
+      border-radius: var(--radius-sm, 6px);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .popup-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #94A3B8;
+      letter-spacing: 0.04em;
+    }
+
+    /* Physical Transition Mixing Strip (FG <-> BG) */
+    .popup-mix-strip {
+      display: flex;
+      gap: 3px;
+      height: 28px;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .mix-swatch {
+      flex: 1;
+      height: 100%;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 2px;
+    }
+    .mix-swatch:hover {
+      transform: scaleY(1.12);
+      z-index: 2;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+    }
+    .mix-swatch-txt {
+      font-size: clamp(0.48rem, 1.8vw, 0.58rem);
+      font-family: var(--font-mono, monospace);
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.9);
+      text-shadow: 0 1px 2px #000;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    /* Scientific Light & Shadow Grid (Sorolla / Gurney) */
+    .light-shadow-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+    .light-card-item {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--popup-border);
+      border-radius: 4px;
+      padding: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .light-card-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--popup-accent);
+      transform: translateY(-1px);
+    }
+    .light-swatch-sample {
+      width: 100%;
+      height: 20px;
+      border-radius: 3px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .light-item-label {
+      font-size: 0.58rem;
+      font-weight: 700;
+      color: #E2E8F0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
+    }
+    .light-item-hex {
+      font-size: 0.55rem;
+      font-family: var(--font-mono, monospace);
+      color: var(--text-muted, #94A3B8);
+      text-align: center;
+    }
+
+    /* Pigment Recipe Box (Florent Farges) */
+    .pigment-recipe-box {
+      font-size: 0.68rem;
+      line-height: 1.4;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--popup-border);
+      border-radius: 4px;
+      padding: 6px 8px;
+    }
+    .pigment-formula {
+      color: #38BDF8;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .pigment-notes {
+      color: #94A3B8;
+      font-size: 0.64rem;
+    }
+
+    /* Swatches & Palettes Strips */
+    .swatches-horizontal-strip {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      min-height: 24px;
+      align-items: center;
+    }
+    .swatch-chip {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .swatch-chip:hover {
+      transform: scale(1.18);
+      border-color: #FFF;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+      z-index: 3;
+    }
+
+    /* Companion Bands Strip */
+    .companion-bands-row {
+      display: flex;
+      gap: 3px;
+      height: 24px;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .companion-stripe {
+      flex: 1;
+      height: 100%;
+      cursor: pointer;
+      transition: transform 0.12s ease;
+    }
+    .companion-stripe:hover {
+      transform: scaleY(1.15);
+      z-index: 2;
+    }
+
+    /* Sliders & Numeric Controls */
+    .sliders-container {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .slider-row {
       display: flex;
       align-items: center;
       gap: 6px;
     }
-    .popup-wheel-container {
+    .slider-label {
+      width: 14px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      font-family: var(--font-mono, monospace);
+      color: #94A3B8;
+      text-align: center;
+    }
+    .color-slider {
+      flex: 1;
+      height: 5px;
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.12);
+      cursor: pointer;
+    }
+    .color-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #FFF;
+      border: 2px solid var(--popup-accent);
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+    }
+    .slider-input {
+      width: 44px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--popup-border);
+      color: #FFF;
+      font-family: var(--font-mono, monospace);
+      font-size: 0.68rem;
+      padding: 2px 4px;
+      border-radius: 3px;
+      text-align: right;
+    }
+
+    /* Footer Shortcuts Ribbon */
+    .popup-footer-bar {
+      margin-top: auto;
+      padding: 5px 8px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.6rem;
+      color: #64748B;
       display: flex;
-      justify-content: center;
-      padding: 8px 0;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .shortcut-tag {
+      color: #94A3B8;
+      font-family: var(--font-mono, monospace);
+      background: rgba(255, 255, 255, 0.06);
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    /* Toast notification */
+    .popup-toast {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--popup-accent);
+      color: #FFF;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+      z-index: 100;
+      pointer-events: none;
+      animation: toastFade 1.6s ease forwards;
+    }
+    @keyframes toastFade {
+      0% { opacity: 0; transform: translate(-50%, 8px); }
+      15% { opacity: 1; transform: translate(-50%, 0); }
+      100% { opacity: 0; transform: translate(-50%, -6px); }
+    }
+
+    @media (max-width: 290px) {
+      body {
+        padding: 4px;
+        gap: 6px;
+      }
+      .popup-header {
+        justify-content: center;
+      }
+      .popup-wheel-strip {
+        flex-direction: column;
+        gap: 4px;
+      }
+      .popup-select {
+        width: 100%;
+      }
+      .popup-density-group .density-btn {
+        padding: 2px 4px;
+        font-size: 0.6rem;
+      }
     }
   </style>
 </head>
-<body>
+<body data-density="studio">
 
-  <!-- Floating Window Header -->
+  <!-- 1. Header Toolbar -->
   <div class="popup-header">
-    <div class="popup-title">
-      <span>🎨</span> GOM PICKER MINI
+    <div class="popup-title-group">
+      <span>🎨</span>
+      <span>GOM MINI</span>
+      <span class="popup-badge">PRO</span>
     </div>
-    <div style="display: flex; align-items: center; gap: 6px;">
-      <select id="wheelModeSelectMini" class="chip-select" style="padding: 2px 6px; font-size: 0.7rem;">
-        <option value="triangle">Triángulo (Coolorus)</option>
-        <option value="square">Caja / Cuadrado</option>
-        <option value="florent">Rueda Farges</option>
-        <option value="ryb">Rueda Pintor (RYB)</option>
-        <option value="oklch">OKLCH</option>
+
+    <div class="popup-header-tools">
+      <!-- Native EyeDropper / Pipette -->
+      <button id="btnPipetteMini" class="popup-tool-btn" title="Cuentagotas de Pantalla Completa (Tecla I)">
+        <span>🧪</span> <span>Pipeta</span>
+      </button>
+
+      <!-- Grayscale Value Check Mode -->
+      <button id="btnValueCheckMini" class="popup-tool-btn" title="Modo Valor Tonal B/N (Tecla V)">
+        <span>👁️</span> <span>B/N</span>
+      </button>
+
+      <!-- View Density Selector -->
+      <div class="popup-density-group">
+        <button class="density-btn" data-density="mini" title="Modo Mini Ultracompacto (Tecla 1)">⚡ Mini</button>
+        <button class="density-btn active" data-density="studio" title="Modo Estudio Ilustración (Tecla 2)">🎨 Estudio</button>
+        <button class="density-btn" data-density="pro" title="Modo Pro Completo (Tecla 3)">🔬 Pro</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Wheel Mode & Options Toolbar -->
+  <div class="popup-wheel-strip">
+    <select id="wheelModeSelectMini" class="popup-select" title="Modo de Rueda Cromática">
+      <option value="triangle">Triángulo (Coolorus)</option>
+      <option value="square">Caja / Cuadrado</option>
+      <option value="florent">Rueda Farges</option>
+      <option value="ryb">Rueda Pintor (RYB)</option>
+      <option value="oklch">OKLCH Perceptivo</option>
+    </select>
+
+    <select id="harmonyRuleSelectMini" class="popup-select" title="Regla de Armonía Geométrica">
+      <option value="triadic">Tríada Armónica</option>
+      <option value="complementary">Complementario (180°)</option>
+      <option value="analogous">Análogos (+30°)</option>
+      <option value="split-complementary">Split-Complementario</option>
+      <option value="tetradic">Tétrada / Doble Comp.</option>
+      <option value="monochromatic">Monocromático</option>
+    </select>
+
+    <select id="gamutMaskSelectMini" class="popup-select view-pro-only" title="Máscara de Gamut de James Gurney">
+      <option value="none">Sin Máscara</option>
+      <option value="triad_warm">Triángulo Cálido</option>
+      <option value="triad_muted">Tríada Velada</option>
+      <option value="atmosphere_cool">Atmósfera Fría</option>
+      <option value="limited_range">Rango Limitado</option>
+    </select>
+  </div>
+
+  <!-- 3. Responsive Color Wheel Canvas -->
+  <div class="popup-wheel-container" id="wheelContainerMini">
+    <canvas id="colorWheelCanvasMini"></canvas>
+    
+    <!-- Harmony Beads row under the wheel -->
+    <div id="wheelHarmoniesMini" class="popup-wheel-harmonies">
+      <!-- Rendered dynamically -->
+    </div>
+  </div>
+
+  <!-- 4. Hero Dual Well Box (FG / BG) -->
+  <div class="hero-dual-well-box">
+    <div class="hero-dual-well-pair">
+      <div id="fgWellMini" class="mini-well active-well" title="Color Frontal (FG) - Click para activar">
+        <span class="mini-well-tag">FG</span>
+      </div>
+      <div id="bgWellMini" class="mini-well" title="Color de Fondo (BG) - Click para activar">
+        <span class="mini-well-tag">BG</span>
+      </div>
+    </div>
+
+    <div class="hero-dual-well-details">
+      <div class="hero-hex-row">
+        <span id="displayHexMini" class="hero-hex-value" title="Click para copiar código HEX">#6366F1</span>
+        
+        <div class="hero-actions-group">
+          <button id="btnSwapWellsMini" class="hero-action-icon" title="Intercambiar FG ⇄ BG (Tecla X)">⇄</button>
+          <button id="btnDefaultColorsMini" class="hero-action-icon" title="Restaurar Blanco y Negro por Defecto (Tecla D)">⚪</button>
+          <button id="btnCopyHexMini" class="hero-action-icon" title="Copiar código al portapapeles (Tecla C)">📋</button>
+        </div>
+      </div>
+
+      <div class="hero-meta-row">
+        <span id="displayMunsellMini" class="hero-munsell-tag" title="Notación del Sistema Munsell">5PB 4.2/10</span>
+        
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <span id="displayGamutMini" class="hero-gamut-badge in-gamut" title="Compatibilidad con Impresión CMYK">● CMYK OK</span>
+          <button id="btnFixGamutMini" class="btn-fix-cmyk" title="Ajustar automáticamente al gamut imprimible">Corregir</button>
+        </div>
+
+        <span id="displayWcagMini" style="font-family: var(--font-mono); font-size: 0.62rem; color: #94A3B8;" title="Ratio de Contraste WCAG 2.1">4.5:1</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Mini Mezclador Físico Sustractivo (FG <-> BG Transition) -->
+  <div class="popup-card view-studio-only">
+    <div class="popup-card-header">
+      <span>🎨 MEZCLA FÍSICA FG ⟷ BG:</span>
+      <select id="mixModeSelectMini" class="popup-select" style="max-width: 110px; padding: 1px 4px; font-size: 0.62rem;">
+        <option value="ryb">RYB Óleo / Pintura</option>
+        <option value="cmy">CMY Acuarela / Tinta</option>
+        <option value="oklch">OKLCH Digital</option>
+        <option value="smudge">Difuminado Óptico</option>
       </select>
     </div>
-  </div>
-
-  <!-- Color Wheel Canvas -->
-  <div class="popup-wheel-container">
-    <canvas id="colorWheelCanvasMini" width="280" height="280"></canvas>
-  </div>
-
-  <!-- Large Hero Color Swatch & Companion Bands -->
-  <div class="hero-well-container">
-    <div class="hero-dual-well">
-      <div id="fgWellMini" class="hero-well active-well" title="Color Frontal (FG) - Click para activar">
-        <span class="well-indicator">FG</span>
-      </div>
-      <div id="bgWellMini" class="hero-well" title="Color de Fondo (BG) - Click para activar">
-        <span class="well-indicator">BG</span>
-      </div>
-    </div>
-
-    <div class="hero-color-details">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span id="displayHexMini" class="hero-hex copyable-hex" title="Click para copiar HEX">#6366F1</span>
-        <button id="btnSwapWellsMini" class="action-icon-btn" title="Intercambiar FG/BG (Tecla X)">⇄</button>
-      </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.68rem; color: var(--text-muted);">
-        <span id="displayMunsellMini" style="color: #FBBF24; font-family: var(--font-mono); font-weight: 700;">5PB 4.2/10</span>
-        <span id="displayGamutMini" style="color: var(--accent-emerald);">● CMYK OK</span>
-      </div>
+    <div id="physicalMixStripMini" class="popup-mix-strip">
+      <!-- 7 dynamic mix swatches -->
     </div>
   </div>
 
-  <!-- Companion Bands -->
-  <div style="background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-      <span style="font-size: 0.68rem; font-weight: 600; color: var(--text-muted);">BANDAS COMPAÑERAS:</span>
-      <select id="companionAlgoSelectMini" class="chip-select" style="font-size: 0.65rem; padding: 1px 4px;">
+  <!-- 6. Generador de Luces & Sombras Pictóricas (Sorolla / Gurney) -->
+  <div class="popup-card view-studio-only">
+    <div class="popup-card-header">
+      <span>☀️ LUCES & SOMBRAS PICTÓRICAS:</span>
+      <span style="font-size: 0.6rem; color: var(--text-muted); font-weight: normal;">Click: Cargar | Alt: Cargar BG</span>
+    </div>
+    <div class="light-shadow-grid">
+      <div class="light-card-item" id="lightCardHighlight" title="Luz Especular / Foco Cenital">
+        <div class="light-swatch-sample" id="lightSwatchHighlight"></div>
+        <span class="light-item-label">Luz Foco</span>
+        <span class="light-item-hex" id="lightHexHighlight">#FFF</span>
+      </div>
+      <div class="light-card-item" id="lightCardLocal" title="Semitono / Color Local Fiel">
+        <div class="light-swatch-sample" id="lightSwatchLocal"></div>
+        <span class="light-item-label">Semitono</span>
+        <span class="light-item-hex" id="lightHexLocal">#888</span>
+      </div>
+      <div class="light-card-item" id="lightCardShadow" title="Sombra Oclusión Fría (Sorolla)">
+        <div class="light-swatch-sample" id="lightSwatchShadow"></div>
+        <span class="light-item-label">Sombra Fría</span>
+        <span class="light-item-hex" id="lightHexShadow">#333</span>
+      </div>
+      <div class="light-card-item" id="lightCardTerminator" title="Terminador SSS (Subsurface Scattering de Gurney)">
+        <div class="light-swatch-sample" id="lightSwatchTerminator"></div>
+        <span class="light-item-label">SSS Gurney</span>
+        <span class="light-item-hex" id="lightHexTerminator">#C44</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Receta Física de Pigmentos (Florent Farges) -->
+  <div class="popup-card view-pro-only">
+    <div class="popup-card-header">
+      <span>🧪 RECETA DE PIGMENTOS REALES (FARGES):</span>
+      <span id="pigmentInherentValBadge" style="font-family: var(--font-mono); font-size: 0.62rem; color: #FBBF24;">Val 5.0</span>
+    </div>
+    <div class="pigment-recipe-box">
+      <div id="pigmentFormulaText" class="pigment-formula">Azul Ultramar (PB29) + Blanco de Titanio (PW6)</div>
+      <div id="pigmentNotesText" class="pigment-notes">Excelente para atmósferas y cielos. No satures con médium graso.</div>
+    </div>
+  </div>
+
+  <!-- 8. Historial Reciente & Paleta Activa Sincronizada -->
+  <div class="popup-card view-studio-only">
+    <div class="popup-card-header">
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <span id="tabRecentSwatches" style="cursor: pointer; color: #FFF; font-weight: 700;">🕒 RECIENTES</span>
+        <span style="color: rgba(255,255,255,0.2);">|</span>
+        <span id="tabActivePalette" style="cursor: pointer; color: #94A3B8;" title="Paleta Activa de Bibliotecas">🎨 PALETA ACTIVA</span>
+      </div>
+      <div style="display: flex; gap: 4px;">
+        <button id="btnPinCurrentColor" class="popup-tool-btn" style="padding: 1px 5px; font-size: 0.62rem;" title="Guardar muestra en la paleta activa">+ Paleta</button>
+        <button id="btnClearHistoryMini" class="popup-tool-btn" style="padding: 1px 5px; font-size: 0.62rem;" title="Limpiar historial">✕</button>
+      </div>
+    </div>
+    
+    <!-- Strip for recents -->
+    <div id="recentsStripMini" class="swatches-horizontal-strip">
+      <!-- Dynamic swatches -->
+    </div>
+
+    <!-- Strip for active palette (toggled) -->
+    <div id="activePaletteStripMini" class="swatches-horizontal-strip" style="display: none;">
+      <!-- Dynamic palette swatches -->
+    </div>
+  </div>
+
+  <!-- 9. Bandas Compañeras -->
+  <div class="popup-card view-studio-only">
+    <div class="popup-card-header">
+      <span>BANDAS COMPAÑERAS:</span>
+      <select id="companionAlgoSelectMini" class="popup-select" style="max-width: 140px; padding: 1px 4px; font-size: 0.62rem;">
         <option value="shades_tints">Tonal (Luces & Sombras)</option>
-        <option value="analogous">Análogos Próximos</option>
         <option value="temperature">Temperatura Cálido/Frío</option>
-        <option value="complementary">Complementarios & Neutros</option>
         <option value="saturation">Rampa de Saturación</option>
+        <option value="analogous">Análogos Próximos</option>
+        <option value="complementary">Complementarios & Neutros</option>
+        <option value="triadic">Tríada Equilibrada</option>
       </select>
     </div>
-    <div id="companionBandsListMini" style="display: flex; gap: 4px; height: 26px; border-radius: 4px; overflow: hidden;">
+    <div id="companionBandsListMini" class="companion-bands-row">
       <!-- Companion swatches -->
     </div>
   </div>
 
-  <!-- Numerical RGB / CMYK Sliders -->
-  <div style="background: rgba(0,0,0,0.25); padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-      <span style="font-size: 0.68rem; font-weight: 600; color: var(--text-muted);">CONTROL NUMÉRICO:</span>
-      <div style="display: flex; gap: 4px;">
-        <button class="space-tab active-space" data-space="rgb" style="padding: 1px 6px; font-size: 0.65rem;">RGB</button>
-        <button class="space-tab" data-space="cmyk" style="padding: 1px 6px; font-size: 0.65rem;">CMYK</button>
-        <button class="space-tab" data-space="hsl" style="padding: 1px 6px; font-size: 0.65rem;">HSL</button>
+  <!-- 10. Control Numérico Multiespacio (RGB / CMYK / HSL / HSV / OKLCH) -->
+  <div class="popup-card view-pro-only">
+    <div class="popup-card-header">
+      <span>CONTROL NUMÉRICO:</span>
+      <div style="display: flex; gap: 2px;">
+        <button class="space-tab active-space" data-space="rgb" style="padding: 1px 5px; font-size: 0.62rem;">RGB</button>
+        <button class="space-tab" data-space="cmyk" style="padding: 1px 5px; font-size: 0.62rem;">CMYK</button>
+        <button class="space-tab" data-space="hsl" style="padding: 1px 5px; font-size: 0.62rem;">HSL</button>
+        <button class="space-tab" data-space="oklch" style="padding: 1px 5px; font-size: 0.62rem;">OKLCH</button>
       </div>
     </div>
     <div id="slidersContainerMini" class="sliders-container">
@@ -118,7 +915,21 @@
     </div>
   </div>
 
-  <!-- Scripts -->
+  <!-- 11. Footer Shortcuts Ribbon -->
+  <div class="popup-footer-bar">
+    <div>
+      <span class="shortcut-tag">X</span> Invertir
+      <span class="shortcut-tag">D</span> Default
+      <span class="shortcut-tag">I</span> Pipeta
+      <span class="shortcut-tag">V</span> B/N
+      <span class="shortcut-tag">C</span> Copiar
+    </div>
+    <div style="color: #64748B;">
+      Alt+Click: Cargar BG
+    </div>
+  </div>
+
+  <!-- Application Script -->
   <script type="module" src="scripts/popupApp.js"></script>
 </body>
 </html>
