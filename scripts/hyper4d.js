@@ -5,12 +5,18 @@
  * en 6 planos (XY, XZ, YZ, XW, YW, ZW), combinando el Sólido Munsell real asimétrico,
  * el Hipercubo Tesseract, el espacio perceptivo CIELAB y la teoría física de Florent Farges y James Gurney.
  * 
+ * Incluye 7 Modos de Despliegue Espacial (Armonías, Paletas, Rampas Tonales, Luz/Sombra Gurney,
+ * Curva Bow Farges, Multicomparador y Tesseract SO(4)), sombreado volumétrico 3D Phong con niebla
+ * de profundidad cósmica y motor anti-colisión de rótulos con cápsulas de cristal y líneas guía.
+ * 
  * 100% Offline, sin dependencias externas, con aceleración Canvas interactiva a 60fps.
  */
 
 import { ColorMath } from './colorMath.js';
 import { MunsellSystem } from './munsellSystem.js';
 import { FlorentFargesEngine } from './florentFarges.js';
+import { HarmonyEngine } from './harmonies.js';
+import { RampStudio } from './rampStudio.js';
 
 export class Hyper4DStudio {
   constructor(app) {
@@ -19,24 +25,31 @@ export class Hyper4DStudio {
     this.ctx = null;
     this.animId = null;
 
-    // Estado de la Cámara 3D
+    // Estado de la Cámara 3D y Navegación Suave (Lerp)
     this.camera = {
-      rotX: 0.35,     // Pitch (elevación)
-      rotY: -0.65,    // Yaw (azimut)
+      rotX: 0.35,          // Pitch actual (elevación)
+      rotY: -0.65,         // Yaw actual (azimut)
       zoom: 1.05,
       panX: 0,
       panY: 0,
+      targetRotX: 0.35,    // Destino para interpolación suave
+      targetRotY: -0.65,
+      targetZoom: 1.05,
+      targetPanX: 0,
+      targetPanY: 0,
       isDragging: false,
       isPanning: false,
       lastMouseX: 0,
       lastMouseY: 0,
       autoRotate: true,
       autoRotateSpeed: 0.003,
+      cinematicFly: false, // Modo Vuelo Cinemático
+      flyTime: 0,
       invertX: localStorage.getItem('gom_hyper4d_invert_x') === 'true',
       invertY: localStorage.getItem('gom_hyper4d_invert_y') === 'true'
     };
 
-    // Estado Hiperdimensional 4D
+    // Estado Hiperdimensional 4D (SO(4))
     this.dimension4D = {
       wValue: 0,            // -100 a +100
       wMode: 'thermal',     // 'thermal' (Kelvin) | 'subtractive' (Glaze/Tint) | 'tesseract' (Hiper-rotación) | 'diurnal' (Ciclo solar)
@@ -46,13 +59,24 @@ export class Hyper4DStudio {
       isAnimatingW: false,
       animSpeed: 0.015,
       animDirection: 1,
-      camDist4D: 320        // Distancia focal hiperdimensional para proyección estereográfica
+      camDist4D: 360        // Distancia focal hiperdimensional para proyección estereográfica
     };
 
-    // Modelo de Geometría Seleccionado
+    // Modelo de Geometría Base de Fondo
     this.activeModel = 'munsell'; // 'munsell' | 'tesseract' | 'cielab' | 'hsl_cone'
 
-    // Opciones de Visualización de Nodos y Vectores
+    // NUEVO SISTEMA REVOLUCIONARIO: Modo de Despliegue Espacial Activo
+    // 'all' | 'harmonies' | 'palette' | 'ramp' | 'gurney' | 'farges' | 'compare' | 'tesseract'
+    this.activeDeployment = 'all';
+
+    // Sub-opciones de Despliegue
+    this.activeHarmonyRule = 'triadic'; // 'triadic' | 'complementary' | 'split-complementary' | 'tetradic' | 'square' | 'analogous' | 'monochromatic'
+    this.activeRampType = 'active_studio'; // 'active_studio' | 'light_shadow' | 'thermal' | 'saturation'
+    this.activeFargesPair = 'cad_yellow_ivory_black'; // 'cad_yellow_ivory_black' | 'cad_red_viridian' | 'lemon_ultramarine' | 'burnt_umber_ultramarine'
+    this.showGamutHull = true;
+    this.showRgbVsOklchComparison = true;
+
+    // Opciones de Visualización de Nodos y Capas
     this.options = {
       showSolidCloud: true,
       showGridAxes: true,
@@ -63,6 +87,7 @@ export class Hyper4DStudio {
       showGoetheExtension: true,
       showPaletteConstellation: true,
       showLabels: true,
+      antiCollisionLabels: true,
       particleStars: true,
       isFullscreen: false,
       isSidebarHidden: false
@@ -78,7 +103,7 @@ export class Hyper4DStudio {
       { id: 'B', name: 'Muestra B (Comparada)', hex: '#F59E0B', rgb: { r: 245, g: 158, b: 11 }, active: true }
     ];
 
-    // Presets Didácticos de Maestros
+    // Presets Didácticos de Grandes Maestros
     this.masterPresets = {
       sorolla: {
         title: 'Joaquín Sorolla — Luminismo Mediterráneo',
@@ -147,21 +172,22 @@ export class Hyper4DStudio {
     this._resizeCanvas();
     this.syncWithActiveColor();
 
-    // Iniciar loop de animación
+    // Iniciar loop de animación a 60fps
     this._startRenderLoop();
   }
 
   _initParticles() {
     this.particles = [];
-    for (let i = 0; i < 90; i++) {
+    const colors = ['#818CF8', '#38BDF8', '#F472B6', '#34D399', '#FBBF24', '#A78BFA'];
+    for (let i = 0; i < 110; i++) {
       this.particles.push({
-        x: (Math.random() - 0.5) * 600,
-        y: (Math.random() - 0.5) * 600,
-        z: (Math.random() - 0.5) * 600,
-        w: (Math.random() - 0.5) * 100,
-        size: Math.random() * 1.5 + 0.5,
-        alpha: Math.random() * 0.4 + 0.1,
-        color: ['#818CF8', '#38BDF8', '#F472B6', '#34D399', '#FBBF24'][Math.floor(Math.random() * 5)]
+        x: (Math.random() - 0.5) * 750,
+        y: (Math.random() - 0.5) * 750,
+        z: (Math.random() - 0.5) * 750,
+        w: (Math.random() - 0.5) * 120,
+        size: Math.random() * 1.6 + 0.6,
+        alpha: Math.random() * 0.45 + 0.1,
+        color: colors[Math.floor(Math.random() * colors.length)]
       });
     }
   }
@@ -170,8 +196,8 @@ export class Hyper4DStudio {
     if (!this.canvas) return;
     const rect = this.canvas.parentElement.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    const w = Math.max(300, Math.floor(rect.width));
-    const h = Math.max(300, Math.floor(rect.height || 540));
+    const w = Math.max(320, Math.floor(rect.width));
+    const h = Math.max(340, Math.floor(rect.height || 540));
 
     this.canvas.width = w * dpr;
     this.canvas.height = h * dpr;
@@ -230,15 +256,14 @@ export class Hyper4DStudio {
    */
   project4DTo3D(pt4D) {
     const d4 = this.dimension4D.camDist4D;
-    // Evita singularidades en el polo hiperdimensional
-    const denom = Math.max(40, d4 - pt4D.w);
+    const denom = Math.max(40, d4 - (pt4D.w || 0));
     const scale = d4 / denom;
 
     return {
       x: pt4D.x * scale,
       y: pt4D.y * scale,
       z: pt4D.z * scale,
-      origW: pt4D.w,
+      origW: pt4D.w || 0,
       hyperScale: scale
     };
   }
@@ -265,12 +290,12 @@ export class Hyper4DStudio {
     let x2 = x1;
 
     // 3. Proyección en perspectiva 3D
-    const fov = 480 * this.camera.zoom;
-    const dist = 520 + z2;
+    const fov = 500 * this.camera.zoom;
+    const dist = 540 + z2;
     const factor = dist > 20 ? fov / dist : 0;
 
     const screenX = cx + x2 * factor;
-    const screenY = cy - y2 * factor; // Invertir Y para coordenadas de pantalla estándar
+    const screenY = cy - y2 * factor; // Invertir Y para pantalla estándar
 
     return {
       screenX,
@@ -279,6 +304,43 @@ export class Hyper4DStudio {
       scale: factor,
       visible: dist > 30
     };
+  }
+
+  // --- COORDENADAS 4D NORMALIZADAS Y ANTI-COLAPSO ---
+
+  /**
+   * Genera coordenadas espaciales equilibradas para cualquier color RGB.
+   * Evita que las muestras oscuras o de bajo croma queden aplastadas en una aglomeración microscópica.
+   */
+  _getColor4DCoords(rgb, { minVisualChroma = 0 } = {}) {
+    const hsv = ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b);
+    const munsell = MunsellSystem.rgbToMunsell(rgb.r, rgb.g, rgb.b);
+    const isWarm = (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320;
+    const rad = (hsv.h * Math.PI) / 180;
+
+    // Escala de Croma con mínimo visual para garantizar despliegue amplio y legible
+    const effectiveChroma = Math.max(minVisualChroma, munsell.chroma || (hsv.s * 14));
+    const chromaRadius = effectiveChroma * 15;
+    const x = chromaRadius * Math.cos(rad);
+    const z = chromaRadius * Math.sin(rad);
+
+    // Escala de Valor Y: de -160 (negro N0/) a +160 (blanco N10/)
+    const munsellVal = typeof munsell.value === 'number' ? munsell.value : (hsv.v * 9);
+    const y = (munsellVal - 5) * 34;
+
+    // 4ª Dimensión W
+    let w = 0;
+    if (this.dimension4D.wMode === 'thermal') {
+      w = (isWarm ? 32 : -32) * (hsv.s * 0.7 + 0.3) + (this.dimension4D.wValue * 0.65);
+    } else if (this.dimension4D.wMode === 'subtractive') {
+      w = this.dimension4D.wValue * 0.85;
+    } else if (this.dimension4D.wMode === 'diurnal') {
+      w = Math.sin(this.dimension4D.wValue * 0.05) * 55;
+    } else {
+      w = this.dimension4D.wValue * 0.8;
+    }
+
+    return { x, y, z, w, hsv, munsell, isWarm, chromaRadius };
   }
 
   // --- GENERACIÓN DE GEOMETRÍAS Y NUBES DE COLOR EN 4D ---
@@ -302,12 +364,12 @@ export class Hyper4DStudio {
         id: `munsell_neutral_${val}`,
         type: 'axis_neutral',
         x: 0,
-        y: (val - 5) * 32,
+        y: (val - 5) * 34,
         z: 0,
         w: 0,
         hex,
         rgb: { r: grayVal, g: grayVal, b: grayVal },
-        name: `N ${val}/ (Gris Neutral)`,
+        name: `N ${val}/ (Gris)`,
         munsell: `N ${val}/`,
         value: val,
         chroma: 0,
@@ -315,14 +377,12 @@ export class Hyper4DStudio {
       });
     }
 
-    // Gajos de color del Libro de Munsell
+    // Gajos de color del Sólido Munsell
     hues.forEach(hue => {
       const rad = (hue.angle * Math.PI) / 180;
       const isWarm = (hue.angle >= 10 && hue.angle <= 90) || hue.angle >= 330;
 
       for (let val = 2; val <= 9; val++) {
-        // En Munsell real, el croma máximo alcanzable depende de la física del pigmento:
-        // Amarillos (5Y, 10YR) alcanzan croma 14 en valores 8; Azules (5B, 5PB) en valores 3-4
         let maxChromaForHue = 10;
         if (hue.name.includes('Y')) {
           maxChromaForHue = val >= 7 ? 14 : 6;
@@ -333,15 +393,12 @@ export class Hyper4DStudio {
         }
 
         for (let chr = 2; chr <= maxChromaForHue; chr += 3) {
-          const radius = chr * 14;
+          const radius = chr * 15;
           const x = radius * Math.cos(rad);
           const z = radius * Math.sin(rad);
-          const y = (val - 5) * 32;
-
-          // La 4ª dimensión W refleja la temperatura cromática intrínseca
+          const y = (val - 5) * 34;
           const w = (isWarm ? 28 : -28) * (chr / 14);
 
-          // Genera el color exacto aproximado
           const sat = ColorMath.clamp((chr / 14) * (5 / Math.max(1, val)), 0, 1);
           const v = ColorMath.clamp(val / 10 + (sat * 0.1), 0, 1);
           const rgb = ColorMath.hsvToRgb(hue.angle, sat, v);
@@ -358,7 +415,7 @@ export class Hyper4DStudio {
             family: hue.label,
             value: val,
             chroma: chr,
-            size: 3.5
+            size: 3.8
           });
         }
       }
@@ -369,20 +426,18 @@ export class Hyper4DStudio {
   }
 
   /**
-   * Genera los 16 vértices y las 32 aristas del Hipercubo Tesseract 4D.
+   * Genera los 16 vértices y las 32 aristas del Hipercubo Tesseract 4D en SO(4).
    */
   getTesseractGeometry() {
     const nodes = [];
     const edges = [];
-    const size = 80;
+    const size = 95;
 
-    // 16 Vértices en 4D: (±1, ±1, ±1, ±1)
     let idx = 0;
     for (let x of [-1, 1]) {
       for (let y of [-1, 1]) {
         for (let z of [-1, 1]) {
           for (let w of [-1, 1]) {
-            // Mapea las coordenadas al cubo RGB (0 a 255)
             const r = Math.round((x + 1) * 127.5);
             const g = Math.round((y + 1) * 127.5);
             const b = Math.round((z + 1) * 127.5);
@@ -398,8 +453,8 @@ export class Hyper4DStudio {
               hex,
               rgb: { r, g, b },
               coords4D: `[${x > 0 ? '+1' : '-1'}, ${y > 0 ? '+1' : '-1'}, ${z > 0 ? '+1' : '-1'}, ${w > 0 ? '+1' : '-1'}]`,
-              name: `Vértice Hiperdimensional ${idx + 1}`,
-              size: 5
+              name: `Vértice Tesseract #${idx + 1}`,
+              size: 5.5
             });
             idx++;
           }
@@ -407,7 +462,6 @@ export class Hyper4DStudio {
       }
     }
 
-    // 32 Aristas: conectan vértices que difieren exactamente en 1 coordenada
     for (let i = 0; i < 16; i++) {
       for (let j = i + 1; j < 16; j++) {
         const p1 = nodes[i];
@@ -434,28 +488,27 @@ export class Hyper4DStudio {
     if (this._geometryCache['cielab']) return this._geometryCache['cielab'];
 
     const nodes = [];
-    const stepL = 15;
-    const stepA = 22;
+    const stepL = 16;
+    const stepA = 24;
 
-    for (let L = 15; L <= 90; L += stepL) {
+    for (let L = 16; L <= 92; L += stepL) {
       for (let a = -70; a <= 70; a += stepA) {
         for (let b = -70; b <= 70; b += stepA) {
           const rgb = this._labToRgb(L, a, b);
-          // Si el punto cae dentro del gamut RGB visible:
           if (rgb.inside) {
             const hex = ColorMath.rgbToHex(rgb.r, rgb.g, rgb.b);
-            const w = (a * 0.4) - (b * 0.2); // Eje térmico 4D
+            const w = (a * 0.45) - (b * 0.25);
             nodes.push({
               id: `lab_${L}_${a}_${b}`,
               type: 'cielab_node',
-              x: a * 1.8,
-              y: (L - 50) * 3.2,
-              z: b * 1.8,
+              x: a * 1.9,
+              y: (L - 50) * 3.4,
+              z: b * 1.9,
               w,
               hex,
               rgb,
               name: `L*${L} a*${a} b*${b}`,
-              size: 3
+              size: 3.5
             });
           }
         }
@@ -475,16 +528,16 @@ export class Hyper4DStudio {
     const nodes = [];
     for (let lStep = 1; lStep <= 9; lStep++) {
       const l = lStep / 10;
-      const radiusFactor = 1 - Math.abs(2 * l - 1); // Cero en polos blanco y negro, máximo en centro
+      const radiusFactor = 1 - Math.abs(2 * l - 1);
 
       for (let h = 0; h < 360; h += 24) {
         for (let sStep = 2; sStep <= 4; sStep++) {
           const s = sStep / 4;
-          const radius = radiusFactor * s * 140;
+          const radius = radiusFactor * s * 145;
           const rad = (h * Math.PI) / 180;
           const x = radius * Math.cos(rad);
           const z = radius * Math.sin(rad);
-          const y = (l - 0.5) * 260;
+          const y = (l - 0.5) * 270;
           const w = ((h >= 0 && h <= 90) || h >= 320 ? 30 : -30) * s;
 
           const rgb = ColorMath.hslToRgb(h, s, l);
@@ -497,7 +550,7 @@ export class Hyper4DStudio {
             hex,
             rgb,
             name: `H:${h}° S:${Math.round(s * 100)}% L:${Math.round(l * 100)}%`,
-            size: 3
+            size: 3.4
           });
         }
       }
@@ -507,262 +560,152 @@ export class Hyper4DStudio {
     return nodes;
   }
 
-  // --- DESGLOSE MULTIDIMENSIONAL DE LA MUESTRA ACTIVA EN 4D ---
+  // =========================================================================
+  // --- 7 MODOS DE DESPLIEGUE ESPACIAL 4D (REVOLUCIÓN VISUAL) ---
+  // =========================================================================
 
-  getActiveColorNodes(activeRgb) {
-    if (!activeRgb) return [];
-
+  /**
+   * MODO 1: Despliegue de Armonías y Poliedros Cuadridimensionales
+   * Despliega Tríadas, Complementarios, Split-Complementarios, Tétradas o Análogos
+   * con caras translúcidas de resonancia, ejes acromáticos y vértices volumétricos.
+   */
+  deployHarmonies(activeHsv, curRgb) {
     const nodes = [];
     const lines = [];
     const faces = [];
 
-    const hsv = ColorMath.rgbToHsv(activeRgb.r, activeRgb.g, activeRgb.b);
-    const hsl = ColorMath.rgbToHsl(activeRgb.r, activeRgb.g, activeRgb.b);
-    const munsell = MunsellSystem.rgbToMunsell(activeRgb.r, activeRgb.g, activeRgb.b);
-    const isWarm = (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320;
-    const activeHex = ColorMath.rgbToHex(activeRgb.r, activeRgb.g, activeRgb.b);
-
-    // Coordenadas base en el espacio
-    const rad = (hsv.h * Math.PI) / 180;
-    const chromaRadius = (munsell.chroma || (hsv.s * 14)) * 14;
-    const baseX = chromaRadius * Math.cos(rad);
-    const baseZ = chromaRadius * Math.sin(rad);
-    const baseY = ((munsell.value || (hsv.v * 9)) - 5) * 32;
-
-    // 4ª Dimensión W según el modo seleccionado
-    let baseW = 0;
-    if (this.dimension4D.wMode === 'thermal') {
-      // W influenciada por temperatura kelvin del slider (-100 a +100)
-      baseW = (isWarm ? 30 : -30) + (this.dimension4D.wValue * 0.6);
-    } else if (this.dimension4D.wMode === 'subtractive') {
-      baseW = this.dimension4D.wValue;
-    } else if (this.dimension4D.wMode === 'diurnal') {
-      baseW = Math.sin(this.dimension4D.wValue * 0.05) * 50;
-    } else {
-      baseW = this.dimension4D.wValue * 0.8;
+    const ruleId = this.activeHarmonyRule || 'triadic';
+    const harmonyRes = HarmonyEngine.getHarmony(activeHsv, ruleId);
+    const harmonyColors = harmonyRes?.colors || (Array.isArray(harmonyRes) ? harmonyRes : []);
+    if (!harmonyColors || harmonyColors.length === 0) {
+      return { nodes, lines, faces };
     }
 
-    // 1. NODO CENTRAL: La muestra activa principal
+    const baseCoords = this._getColor4DCoords(curRgb, { minVisualChroma: 6 });
     const centerNode = {
       id: 'active_sample_center',
       type: 'active_center',
-      x: baseX,
-      y: baseY,
-      z: baseZ,
-      w: baseW,
-      hex: activeHex,
-      rgb: activeRgb,
-      name: `MUESTRA ACTIVA (${activeHex})`,
-      munsell: munsell.notation,
-      hsv,
+      x: baseCoords.x,
+      y: baseCoords.y,
+      z: baseCoords.z,
+      w: baseCoords.w,
+      hex: ColorMath.rgbToHex(curRgb.r, curRgb.g, curRgb.b),
+      rgb: curRgb,
+      name: `MUESTRA ACTIVA (${ColorMath.rgbToHex(curRgb.r, curRgb.g, curRgb.b)})`,
+      munsell: baseCoords.munsell.notation,
+      role: 'Centro Armónico Base',
       isPrimary: true,
-      size: 11
+      size: 12
     };
     nodes.push(centerNode);
 
-    // 2. VECTOR DE LUZ SUPERIOR (James Gurney & Florent Farges: Light Plane)
-    // El tono en la luz asciende en valor, aumenta temperatura dorada con Blanco Titanio + Ocre
-    const lightHue = (hsv.h + (isWarm ? 5 : 15)) % 360;
-    const lightRgb = ColorMath.hsvToRgb(lightHue, Math.max(0.15, hsv.s * 0.6), Math.min(1, hsv.v * 1.25 + 0.15));
-    const lightHex = ColorMath.rgbToHex(lightRgb.r, lightRgb.g, lightRgb.b);
-    const lightNode = {
-      id: 'active_vector_light',
-      type: 'vector_light',
-      x: baseX * 0.75,
-      y: Math.min(140, baseY + 55),
-      z: baseZ * 0.75,
-      w: baseW + 25,
-      hex: lightHex,
-      rgb: lightRgb,
-      name: `Luz / Resalte Foco (${lightHex})`,
-      desc: 'Tintado luminoso hacia Blanco Titanio (PW6) con micro-calidez solar.',
-      size: 7
+    // Eje hacia el gris neutral para evidenciar el contraste simultáneo
+    const neutralNode = {
+      id: 'harmony_neutral_axis',
+      type: 'axis_neutral',
+      x: 0,
+      y: baseCoords.y,
+      z: 0,
+      w: 0,
+      hex: '#888888',
+      rgb: { r: 136, g: 136, b: 136 },
+      name: 'Pivote Acromático Neutral',
+      size: 5
     };
-    nodes.push(lightNode);
-    lines.push({ from: centerNode, to: lightNode, color: '#FBBF24', dash: [4, 2], label: 'Vector Luz' });
+    nodes.push(neutralNode);
+    lines.push({
+      from: centerNode,
+      to: neutralNode,
+      color: 'rgba(255, 255, 255, 0.35)',
+      width: 1.2,
+      dash: [3, 3]
+    });
 
-    // 3. VECTOR DE SOMBRA PROFUNDA (Sorolla Colored Shadow Vector)
-    // Desciende en valor, viraje térmico complementario (azul-violeta si es cálido, siena si es frío)
-    const shadowHue = isWarm ? (hsv.h + 200) % 360 : (hsv.h + 40) % 360;
-    const shadowRgb = ColorMath.hsvToRgb(shadowHue, 0.45, Math.max(0.15, hsv.v * 0.45));
-    const shadowHex = ColorMath.rgbToHex(shadowRgb.r, shadowRgb.g, shadowRgb.b);
-    const shadowNode = {
-      id: 'active_vector_shadow',
-      type: 'vector_shadow',
-      x: baseX * 0.6,
-      y: Math.max(-130, baseY - 55),
-      z: baseZ * 0.6,
-      w: baseW - 35,
-      hex: shadowHex,
-      rgb: shadowRgb,
-      name: `Sombra Atmosférica (${shadowHex})`,
-      desc: 'Sombra coloreada transparente. Evita negro puro para conservar profundidad.',
-      size: 7
-    };
-    nodes.push(shadowNode);
-    lines.push({ from: centerNode, to: shadowNode, color: '#818CF8', dash: [4, 2], label: 'Vector Sombra' });
+    // Desplegar cada vértice armónico en el espacio 4D
+    const polyNodes = [centerNode];
+    harmonyColors.forEach((hItem, idx) => {
+      if (idx === 0) return; // Omitir el primero si es el base ya creado
 
-    // 4. POLIEDRO DE ARMONÍAS (Complementario Directo & Tríadas)
-    if (this.options.showHarmonyPolyhedron) {
-      // Complementario
-      const compHue = (hsv.h + 180) % 360;
-      const compRad = (compHue * Math.PI) / 180;
-      const compRgb = ColorMath.hsvToRgb(compHue, hsv.s, hsv.v);
-      const compHex = ColorMath.rgbToHex(compRgb.r, compRgb.g, compRgb.b);
-      const compNode = {
-        id: 'active_harmony_comp',
+      const hCoords = this._getColor4DCoords(hItem.rgb, { minVisualChroma: 7 });
+      const hNode = {
+        id: `harmony_vert_${idx}`,
         type: 'harmony_node',
-        x: chromaRadius * Math.cos(compRad),
-        y: baseY * 0.9,
-        z: chromaRadius * Math.sin(compRad),
-        w: -baseW,
-        hex: compHex,
-        rgb: compRgb,
-        name: `Complementario Óptico (${compHex})`,
-        role: 'Contraste simultáneo máximo',
-        size: 7.5
+        x: hCoords.x,
+        y: hCoords.y,
+        z: hCoords.z,
+        w: hCoords.w,
+        hex: hItem.hex,
+        rgb: hItem.rgb,
+        name: `${hItem.role || ('Vértice ' + (idx + 1))} (${hItem.hex})`,
+        munsell: hCoords.munsell.notation,
+        role: hItem.role,
+        isPrimary: true,
+        size: 10
       };
-      nodes.push(compNode);
-      lines.push({ from: centerNode, to: compNode, color: '#F43F5E', width: 2, label: 'Eje Complementario' });
+      nodes.push(hNode);
+      polyNodes.push(hNode);
 
-      // Tríada 1 (+120°)
-      const tri1Hue = (hsv.h + 120) % 360;
-      const tri1Rad = (tri1Hue * Math.PI) / 180;
-      const tri1Rgb = ColorMath.hsvToRgb(tri1Hue, hsv.s * 0.9, hsv.v);
-      const tri1Hex = ColorMath.rgbToHex(tri1Rgb.r, tri1Rgb.g, tri1Rgb.b);
-      const tri1Node = {
-        id: 'active_harmony_tri1',
-        type: 'harmony_node',
-        x: chromaRadius * 0.9 * Math.cos(tri1Rad),
-        y: baseY,
-        z: chromaRadius * 0.9 * Math.sin(tri1Rad),
-        w: baseW * 0.5,
-        hex: tri1Hex,
-        rgb: tri1Rgb,
-        name: `Tríada A (+120°) (${tri1Hex})`,
-        size: 6.5
-      };
-      nodes.push(tri1Node);
-
-      // Tríada 2 (+240°)
-      const tri2Hue = (hsv.h + 240) % 360;
-      const tri2Rad = (tri2Hue * Math.PI) / 180;
-      const tri2Rgb = ColorMath.hsvToRgb(tri2Hue, hsv.s * 0.9, hsv.v);
-      const tri2Hex = ColorMath.rgbToHex(tri2Rgb.r, tri2Rgb.g, tri2Rgb.b);
-      const tri2Node = {
-        id: 'active_harmony_tri2',
-        type: 'harmony_node',
-        x: chromaRadius * 0.9 * Math.cos(tri2Rad),
-        y: baseY,
-        z: chromaRadius * 0.9 * Math.sin(tri2Rad),
-        w: -baseW * 0.5,
-        hex: tri2Hex,
-        rgb: tri2Rgb,
-        name: `Tríada B (+240°) (${tri2Hex})`,
-        size: 6.5
-      };
-      nodes.push(tri2Node);
-
-      // Conectar triángulo armónico
-      lines.push({ from: centerNode, to: tri1Node, color: 'rgba(255,255,255,0.4)', width: 1.5 });
-      lines.push({ from: tri1Node, to: tri2Node, color: 'rgba(255,255,255,0.4)', width: 1.5 });
-      lines.push({ from: tri2Node, to: centerNode, color: 'rgba(255,255,255,0.4)', width: 1.5 });
-
-      faces.push({
-        p1: centerNode,
-        p2: tri1Node,
-        p3: tri2Node,
-        fillColor: 'rgba(99, 102, 241, 0.12)'
+      // Rayo conector desde el centro
+      lines.push({
+        from: centerNode,
+        to: hNode,
+        color: '#818CF8',
+        width: 2.2,
+        dash: [4, 2],
+        label: hItem.role
       });
-    }
+    });
 
-    // 5. CURVA DE MEZCLA SUSTRACTIVA (Florent Farges Bow Curve)
-    if (this.options.showMixingBowCurve) {
-      const solver = FlorentFargesEngine.solveMixingForColor(activeRgb);
-      if (solver && solver.cand1 && solver.cand2) {
-        // Puntos intermedios de mezcla física
-        const curveSteps = 5;
-        const curveNodes = [];
-        for (let i = 0; i <= curveSteps; i++) {
-          const t = i / curveSteps;
-          const mixRgb = ColorMath.mixRyb(solver.cand1.rgb, solver.cand2.rgb, t);
-          const mixHsv = ColorMath.rgbToHsv(mixRgb.r, mixRgb.g, mixRgb.b);
-          const mRad = (mixHsv.h * Math.PI) / 180;
-          const mChr = (mixHsv.s * 14) * 14;
-          const mX = mChr * Math.cos(mRad);
-          const mZ = mChr * Math.sin(mRad);
-          const mY = (mixHsv.v * 9 - 5) * 32;
-
-          curveNodes.push({
-            id: `farges_curve_${i}`,
-            type: 'bow_curve_pt',
-            x: mX, y: mY, z: mZ, w: baseW * (1 - t * 0.3),
-            hex: ColorMath.rgbToHex(mixRgb.r, mixRgb.g, mixRgb.b),
-            rgb: mixRgb,
-            size: i === 0 || i === curveSteps ? 6 : 3,
-            name: i === 0 ? solver.cand1.name : (i === curveSteps ? solver.cand2.name : `Mezcla ${(t * 100).toFixed(0)}%`)
-          });
-        }
-
-        nodes.push(...curveNodes);
-        for (let i = 0; i < curveNodes.length - 1; i++) {
-          lines.push({
-            from: curveNodes[i],
-            to: curveNodes[i + 1],
-            color: '#10B981',
-            width: 2.2,
-            label: i === 2 ? 'Curva Bow Farges' : ''
-          });
-        }
+    // Conectar el polígono/poliedro armónico perimetral y caras translúcidas
+    if (polyNodes.length === 2) {
+      lines.push({
+        from: polyNodes[0],
+        to: polyNodes[1],
+        color: '#F43F5E',
+        width: 2.5,
+        label: 'Eje Complementario'
+      });
+    } else if (polyNodes.length >= 3) {
+      for (let i = 0; i < polyNodes.length; i++) {
+        const next = (i + 1) % polyNodes.length;
+        lines.push({
+          from: polyNodes[i],
+          to: polyNodes[next],
+          color: 'rgba(129, 140, 248, 0.85)',
+          width: 2.0
+        });
       }
-    }
 
-    // 6. VECTOR DE DISPERSIÓN SUBCUTÁNEA (Subsurface Scattering SSS - James Gurney)
-    if (this.options.showSSSVector) {
-      // El terminador se sitúa en la frontera entre luz y sombra, con un salto térmico hacia carmín/naranja saturado
-      const sssHue = (hsv.h >= 20 && hsv.h <= 180) ? (hsv.h - 25 + 360) % 360 : (hsv.h + 20) % 360;
-      const sssRgb = ColorMath.hsvToRgb(sssHue, Math.min(1, hsv.s * 1.35 + 0.25), Math.max(0.2, hsv.v * 0.75));
-      const sssHex = ColorMath.rgbToHex(sssRgb.r, sssRgb.g, sssRgb.b);
-      const sssNode = {
-        id: 'active_vector_sss',
-        type: 'vector_sss',
-        x: (baseX + (baseX * 0.6)) / 2 + 15,
-        y: (baseY + Math.max(-130, baseY - 55)) / 2,
-        z: (baseZ + (baseZ * 0.6)) / 2 + 15,
-        w: baseW + 15,
-        hex: sssHex,
-        rgb: sssRgb,
-        name: `Terminador SSS (${sssHex})`,
-        desc: 'Dispersión subsuperficial (luz filtrada en la carne/materia orgánica translúcida).',
-        size: 7.5
-      };
-      nodes.push(sssNode);
-      lines.push({ from: centerNode, to: sssNode, color: '#EC4899', width: 2, dash: [3, 2], label: 'SSS Terminador' });
-      lines.push({ from: sssNode, to: shadowNode, color: 'rgba(236, 72, 153, 0.45)', width: 1.5 });
-    }
-
-    // 7. DISCOS DE EXTENSIÓN ARMÓNICA DE SUPERFICIE (J.W. Goethe)
-    if (this.options.showGoetheExtension) {
-      const goetheInfo = this.getGoetheHarmonicProportion(activeRgb);
-      const discCount = 6;
-      const ringRadius = (goetheInfo.suggestedAreaPct / 100) * 150 + 20;
-      for (let i = 0; i < discCount; i++) {
-        const angle = (i * (360 / discCount) * Math.PI) / 180;
-        const gX = baseX + ringRadius * Math.cos(angle);
-        const gZ = baseZ + ringRadius * Math.sin(angle);
-        const gNode = {
-          id: `goethe_disc_${i}`,
-          type: 'goethe_node',
-          x: gX,
-          y: baseY,
-          z: gZ,
-          w: baseW,
-          hex: activeHex,
-          rgb: activeRgb,
-          name: `Extensión Goethe (${goetheInfo.suggestedAreaPct.toFixed(0)}% área)`,
-          size: 2.8
-        };
-        nodes.push(gNode);
+      // Caras translúcidas de resonancia armónica
+      if (polyNodes.length === 3) {
+        faces.push({
+          p1: polyNodes[0],
+          p2: polyNodes[1],
+          p3: polyNodes[2],
+          fillColor: 'rgba(99, 102, 241, 0.22)'
+        });
+      } else if (polyNodes.length === 4) {
+        faces.push({
+          p1: polyNodes[0],
+          p2: polyNodes[1],
+          p3: polyNodes[2],
+          fillColor: 'rgba(99, 102, 241, 0.18)'
+        });
+        faces.push({
+          p1: polyNodes[0],
+          p2: polyNodes[2],
+          p3: polyNodes[3],
+          fillColor: 'rgba(99, 102, 241, 0.18)'
+        });
+      } else {
+        for (let i = 1; i < polyNodes.length - 1; i++) {
+          faces.push({
+            p1: polyNodes[0],
+            p2: polyNodes[i],
+            p3: polyNodes[i + 1],
+            fillColor: 'rgba(99, 102, 241, 0.14)'
+          });
+        }
       }
     }
 
@@ -770,66 +713,533 @@ export class Hyper4DStudio {
   }
 
   /**
-   * Genera la constelación 4D de una paleta activa de Bibliotecas.
+   * MODO 2: Despliegue de Bibliotecas & Constelaciones de Paleta con Gamut Hull 4D
+   * Unfolds all swatches of active or chosen palette in 4D space, calculates interconnecting
+   * celestial edges, and generates the Gamut Hull wireframe and facets.
    */
-  getPaletteConstellationGeometry() {
-    if (!this.options.showPaletteConstellation) return { nodes: [], lines: [] };
+  deployPaletteConstellation() {
+    const nodes = [];
+    const lines = [];
+    const faces = [];
 
     let paletteColors = [];
+    let paletteName = 'Paleta Activa';
     if (this.app?.swatchManager) {
       const activePal = this.app.swatchManager.getActivePalette();
       if (activePal && Array.isArray(activePal.colors) && activePal.colors.length > 0) {
         paletteColors = activePal.colors;
+        paletteName = activePal.name || 'Paleta Activa';
       }
     }
 
-    // Fallback con muestra activa y secundarios
-    if (paletteColors.length === 0) return { nodes: [], lines: [] };
+    if (paletteColors.length === 0) {
+      paletteColors = ['#FFF8D6', '#F5D77F', '#E89758', '#C95A40', '#856B96', '#4D6B9C'];
+    }
 
-    const nodes = [];
-    const lines = [];
-
+    const swatchNodes = [];
     paletteColors.forEach((hex, idx) => {
       const rgb = ColorMath.hexToRgb(hex);
-      const hsv = ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b);
-      const rad = (hsv.h * Math.PI) / 180;
-      const chromaRadius = (hsv.s * 14) * 14;
-      const x = chromaRadius * Math.cos(rad);
-      const z = chromaRadius * Math.sin(rad);
-      const y = (hsv.v * 9 - 5) * 32;
-      const w = ((hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320 ? 30 : -30) * hsv.s;
-
+      const coords = this._getColor4DCoords(rgb, { minVisualChroma: 4 });
       const node = {
         id: `pal_swatch_${idx}`,
         type: 'palette_swatch',
-        x, y, z, w,
+        x: coords.x,
+        y: coords.y,
+        z: coords.z,
+        w: coords.w,
         hex,
         rgb,
-        name: `Paleta #${idx + 1} (${hex})`,
-        size: 7
+        name: `[${paletteName}] #${idx + 1} (${hex})`,
+        munsell: coords.munsell.notation,
+        role: `Muestra ${idx + 1} de la paleta`,
+        size: 9
       };
       nodes.push(node);
+      swatchNodes.push(node);
     });
 
-    // Conectar nodos de la paleta en red estelar / convex hull simplificado
-    for (let i = 0; i < nodes.length; i++) {
-      for (let j = i + 1; j < nodes.length; j++) {
-        const dx = nodes[i].x - nodes[j].x;
-        const dy = nodes[i].y - nodes[j].y;
-        const dz = nodes[i].z - nodes[j].z;
+    // Conectar nodos de la paleta en red estelar / Gamut Hull
+    for (let i = 0; i < swatchNodes.length; i++) {
+      for (let j = i + 1; j < swatchNodes.length; j++) {
+        const dx = swatchNodes[i].x - swatchNodes[j].x;
+        const dy = swatchNodes[i].y - swatchNodes[j].y;
+        const dz = swatchNodes[i].z - swatchNodes[j].z;
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (dist < 180) {
+        if (dist < 220) {
           lines.push({
-            from: nodes[i],
-            to: nodes[j],
-            color: 'rgba(56, 189, 248, 0.35)',
-            width: 1
+            from: swatchNodes[i],
+            to: swatchNodes[j],
+            color: 'rgba(56, 189, 248, 0.4)',
+            width: 1.4
           });
         }
       }
     }
 
-    return { nodes, lines };
+    // Caras translúcidas de Gamut Hull para tríos cercanos
+    if (this.showGamutHull && swatchNodes.length >= 3) {
+      for (let i = 0; i < Math.min(6, swatchNodes.length - 2); i++) {
+        faces.push({
+          p1: swatchNodes[i],
+          p2: swatchNodes[i + 1],
+          p3: swatchNodes[(i + 2) % swatchNodes.length],
+          fillColor: 'rgba(56, 189, 248, 0.08)'
+        });
+      }
+    }
+
+    return { nodes, lines, faces };
+  }
+
+  /**
+   * MODO 3: Despliegue de Degradados y Rampas Tonales (Spline 4D Continua)
+   * Genera una cinta o tubo 4D continuo que atraviesa el espacio hiperdimensional,
+   * permitiendo comparar la trayectoria OKLCH vs RGB vs Sustractiva y sus pasos intermedios.
+   */
+  deployRampTrajectory(curRgb) {
+    const nodes = [];
+    const lines = [];
+    const faces = [];
+
+    // Colores extremos según el tipo de rampa activa
+    let c1 = curRgb;
+    let c2 = this.app?.bgColor || { r: 245, g: 158, b: 11 };
+
+    if (this.activeRampType === 'light_shadow') {
+      const hsv = ColorMath.rgbToHsv(curRgb.r, curRgb.g, curRgb.b);
+      c1 = ColorMath.hsvToRgb((hsv.h + 15) % 360, Math.max(0.12, hsv.s * 0.45), Math.min(1, hsv.v * 1.25 + 0.2));
+      c2 = ColorMath.hsvToRgb((hsv.h + 200) % 360, 0.65, Math.max(0.1, hsv.v * 0.35));
+    } else if (this.activeRampType === 'thermal') {
+      c1 = { r: 165, g: 215, b: 255 }; // 9500K Azul Gélido
+      c2 = { r: 255, g: 140, b: 40 };  // 2500K Naranja Cálido
+    } else if (this.activeRampType === 'saturation') {
+      const hsv = ColorMath.rgbToHsv(curRgb.r, curRgb.g, curRgb.b);
+      c1 = ColorMath.hsvToRgb(hsv.h, 1.0, hsv.v);
+      const grayVal = Math.round(curRgb.r * 0.299 + curRgb.g * 0.587 + curRgb.b * 0.114);
+      c2 = { r: grayVal, g: grayVal, b: grayVal };
+    }
+
+    const steps = 9;
+
+    let oklchList = [];
+    let rgbList = [];
+    try {
+      oklchList = RampStudio.generateRamp(c1, c2, steps, 'oklch', 's_curve');
+      rgbList = RampStudio.generateRamp(c1, c2, steps, 'rgb', 'linear');
+    } catch (e) {
+      oklchList = [];
+    }
+
+    // Nodos de la rampa Perceptual OKLCH (Curva Luminous Spline)
+    const oklchNodes = [];
+    oklchList.forEach((item, idx) => {
+      const coords = this._getColor4DCoords(item.rgb, { minVisualChroma: 4 });
+      const node = {
+        id: `ramp_oklch_${idx}`,
+        type: 'ramp_node',
+        x: coords.x,
+        y: coords.y,
+        z: coords.z,
+        w: coords.w + 10,
+        hex: item.hex,
+        rgb: item.rgb,
+        name: `Rampa OKLCH Paso ${item.step}/${steps} (${item.hex})`,
+        munsell: coords.munsell.notation,
+        role: `Interpolación Perceptual ${item.ratio}%`,
+        isPrimary: idx === 0 || idx === steps - 1,
+        size: idx === 0 || idx === steps - 1 ? 11 : 7
+      };
+      nodes.push(node);
+      oklchNodes.push(node);
+    });
+
+    // Conectar spline continua OKLCH
+    for (let i = 0; i < oklchNodes.length - 1; i++) {
+      lines.push({
+        from: oklchNodes[i],
+        to: oklchNodes[i + 1],
+        color: '#10B981',
+        width: 3.2,
+        label: i === Math.floor(steps / 2) ? 'Spline Perceptual OKLCH' : ''
+      });
+    }
+
+    // Opcional: Proyectar la rampa RGB lineal para evidenciar la "zona muerta de gris sucio"
+    if (this.showRgbVsOklchComparison && rgbList.length > 0) {
+      const rgbLineNodes = [];
+      rgbList.forEach((item, idx) => {
+        if (idx === 0 || idx === steps - 1) return; // Los extremos son los mismos
+        const coords = this._getColor4DCoords(item.rgb);
+        const node = {
+          id: `ramp_rgb_line_${idx}`,
+          type: 'ramp_dead_zone',
+          x: coords.x,
+          y: coords.y,
+          z: coords.z,
+          w: coords.w - 15,
+          hex: item.hex,
+          rgb: item.rgb,
+          name: `Rampa RGB Lineal (Zona Muerta ${item.ratio}%)`,
+          munsell: coords.munsell.notation,
+          role: 'RGB estándar (Desaturación sucia)',
+          size: 5
+        };
+        nodes.push(node);
+        rgbLineNodes.push(node);
+      });
+
+      // Trazar línea punteada roja para la rampa RGB defectuosa
+      const allRgbPoints = [oklchNodes[0], ...rgbLineNodes, oklchNodes[oklchNodes.length - 1]];
+      for (let i = 0; i < allRgbPoints.length - 1; i++) {
+        lines.push({
+          from: allRgbPoints[i],
+          to: allRgbPoints[i + 1],
+          color: 'rgba(239, 68, 68, 0.65)',
+          width: 1.5,
+          dash: [4, 4],
+          label: i === 1 ? 'RGB Lineal (Pérdida Tonal)' : ''
+        });
+      }
+    }
+
+    return { nodes, lines, faces };
+  }
+
+  /**
+   * MODO 4: Despliegue Estudio de Luz & Sombra (James Gurney - Color and Light)
+   * Light Plane, Shadow Plane, Bounce Light y Terminador SSS (Subsurface Scattering).
+   */
+  deployGurneyLightShadow(activeRgb) {
+    const nodes = [];
+    const lines = [];
+    const faces = [];
+
+    const hsv = ColorMath.rgbToHsv(activeRgb.r, activeRgb.g, activeRgb.b);
+    const isWarm = (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320;
+    const baseCoords = this._getColor4DCoords(activeRgb, { minVisualChroma: 5 });
+
+    // 1. Centro: Tono Local (Halftone / Masa Principal)
+    const centerNode = {
+      id: 'active_sample_center',
+      type: 'active_center',
+      x: baseCoords.x,
+      y: baseCoords.y,
+      z: baseCoords.z,
+      w: baseCoords.w,
+      hex: ColorMath.rgbToHex(activeRgb.r, activeRgb.g, activeRgb.b),
+      rgb: activeRgb,
+      name: `Tono Local (${ColorMath.rgbToHex(activeRgb.r, activeRgb.g, activeRgb.b)})`,
+      munsell: baseCoords.munsell.notation,
+      role: 'Tono Local de Atelier',
+      isPrimary: true,
+      size: 11
+    };
+    nodes.push(centerNode);
+
+    // 2. Vector Luz Superior (Plano de Luz / Light Plane)
+    // Desplaza al menos 65px verticalmente y rota hacia calidez solar
+    const lightHue = (hsv.h + (isWarm ? 8 : 18)) % 360;
+    const lightRgb = ColorMath.hsvToRgb(lightHue, Math.max(0.12, hsv.s * 0.55), Math.min(1, hsv.v * 1.25 + 0.2));
+    const lightHex = ColorMath.rgbToHex(lightRgb.r, lightRgb.g, lightRgb.b);
+    const lightCoords = this._getColor4DCoords(lightRgb, { minVisualChroma: 4 });
+    const lightNode = {
+      id: 'active_vector_light',
+      type: 'vector_light',
+      x: baseCoords.x * 0.7 + 15,
+      y: Math.min(150, baseCoords.y + 68),
+      z: baseCoords.z * 0.7 + 15,
+      w: baseCoords.w + 35,
+      hex: lightHex,
+      rgb: lightRgb,
+      name: `Luz Solar Foco (${lightHex})`,
+      munsell: lightCoords.munsell.notation,
+      role: 'Plano de Luz (Blanco Titanio + Luz Solar)',
+      isPrimary: true,
+      size: 10
+    };
+    nodes.push(lightNode);
+    lines.push({ from: centerNode, to: lightNode, color: '#FBBF24', width: 2.2, dash: [4, 2], label: 'Vector Luz Solar' });
+
+    // 3. Vector Sombra Profunda (Sorolla Colored Shadow)
+    // Desplaza hacia abajo al menos 65px y hacia el complementario violeta/azul
+    const shadowHue = isWarm ? (hsv.h + 200) % 360 : (hsv.h + 45) % 360;
+    const shadowRgb = ColorMath.hsvToRgb(shadowHue, 0.5, Math.max(0.12, hsv.v * 0.42));
+    const shadowHex = ColorMath.rgbToHex(shadowRgb.r, shadowRgb.g, shadowRgb.b);
+    const shadowCoords = this._getColor4DCoords(shadowRgb, { minVisualChroma: 4 });
+    const shadowNode = {
+      id: 'active_vector_shadow',
+      type: 'vector_shadow',
+      x: baseCoords.x * 0.5 - 20,
+      y: Math.max(-145, baseCoords.y - 68),
+      z: baseCoords.z * 0.5 - 20,
+      w: baseCoords.w - 40,
+      hex: shadowHex,
+      rgb: shadowRgb,
+      name: `Sombra Sorolla (${shadowHex})`,
+      munsell: shadowCoords.munsell.notation,
+      role: 'Sombra Coloreada Luminista',
+      isPrimary: true,
+      size: 10
+    };
+    nodes.push(shadowNode);
+    lines.push({ from: centerNode, to: shadowNode, color: '#818CF8', width: 2.2, dash: [4, 2], label: 'Vector Sombra Fría' });
+
+    // 4. Terminador SSS (Subsurface Scattering - James Gurney)
+    // El punto de máxima saturación en el borde entre luz y sombra
+    const sssHue = (hsv.h >= 20 && hsv.h <= 180) ? (hsv.h - 22 + 360) % 360 : (hsv.h + 22) % 360;
+    const sssRgb = ColorMath.hsvToRgb(sssHue, Math.min(1, hsv.s * 1.4 + 0.3), Math.max(0.25, hsv.v * 0.8));
+    const sssHex = ColorMath.rgbToHex(sssRgb.r, sssRgb.g, sssRgb.b);
+    const sssNode = {
+      id: 'active_vector_sss',
+      type: 'vector_sss',
+      x: (centerNode.x + shadowNode.x) / 2 + 35,
+      y: (centerNode.y + shadowNode.y) / 2 + 5,
+      z: (centerNode.z + shadowNode.z) / 2 + 35,
+      w: baseCoords.w + 22,
+      hex: sssHex,
+      rgb: sssRgb,
+      name: `Terminador SSS (${sssHex})`,
+      role: 'Dispersión Subcutánea Translúcida',
+      isPrimary: true,
+      size: 10.5
+    };
+    nodes.push(sssNode);
+    lines.push({ from: centerNode, to: sssNode, color: '#EC4899', width: 2.4, dash: [3, 2], label: 'Banda SSS' });
+    lines.push({ from: sssNode, to: shadowNode, color: 'rgba(236, 72, 153, 0.45)', width: 1.6 });
+
+    // 5. Luz Rebotada Ambiental (Bounce Light)
+    const bounceHue = (shadowHue + 60) % 360;
+    const bounceRgb = ColorMath.hsvToRgb(bounceHue, 0.35, Math.max(0.18, hsv.v * 0.55));
+    const bounceHex = ColorMath.rgbToHex(bounceRgb.r, bounceRgb.g, bounceRgb.b);
+    const bounceNode = {
+      id: 'active_vector_bounce',
+      type: 'vector_bounce',
+      x: shadowNode.x + 25,
+      y: shadowNode.y + 28,
+      z: shadowNode.z - 25,
+      w: baseCoords.w - 15,
+      hex: bounceHex,
+      rgb: bounceRgb,
+      name: `Luz Rebotada (${bounceHex})`,
+      role: 'Reflejo Ambiental del Suelo',
+      isPrimary: true,
+      size: 8.5
+    };
+    nodes.push(bounceNode);
+    lines.push({ from: shadowNode, to: bounceNode, color: '#38BDF8', width: 1.6, dash: [2, 3], label: 'Luz Rebotada' });
+
+    // Caras translúcidas que separan el hemisferio de luz del de sombra
+    faces.push({
+      p1: lightNode,
+      p2: centerNode,
+      p3: sssNode,
+      fillColor: 'rgba(251, 191, 36, 0.22)'
+    });
+    faces.push({
+      p1: centerNode,
+      p2: sssNode,
+      p3: shadowNode,
+      fillColor: 'rgba(129, 140, 248, 0.22)'
+    });
+
+    return { nodes, lines, faces };
+  }
+
+  /**
+   * MODO 5: Despliegue Curva Bow de Florent Farges & Mezcla Sustractiva
+   * Traza la curva física no lineal al mezclar pigmentos complementarios o secundarios.
+   */
+  deployFargesBowCurve(activeRgb) {
+    const nodes = [];
+    const lines = [];
+    const faces = [];
+
+    const solver = FlorentFargesEngine.solveMixingForColor(activeRgb);
+    let p1 = solver?.cand1 || { name: 'Amarillo Cadmio (PY35)', hex: '#FFF200', rgb: { r: 255, g: 242, b: 0 } };
+    let p2 = solver?.cand2 || { name: 'Negro Marfil (PBk9)', hex: '#21201F', rgb: { r: 33, g: 32, b: 31 } };
+
+    const curveSteps = 7;
+    const curveNodes = [];
+    for (let i = 0; i <= curveSteps; i++) {
+      const t = i / curveSteps;
+      const mixRgb = ColorMath.mixRyb(p1.rgb, p2.rgb, t);
+      const coords = this._getColor4DCoords(mixRgb, { minVisualChroma: 3 });
+
+      const node = {
+        id: `farges_bow_${i}`,
+        type: 'bow_curve_pt',
+        x: coords.x,
+        y: coords.y,
+        z: coords.z,
+        w: coords.w * (1 - t * 0.3),
+        hex: ColorMath.rgbToHex(mixRgb.r, mixRgb.g, mixRgb.b),
+        rgb: mixRgb,
+        munsell: coords.munsell.notation,
+        name: i === 0 ? p1.name : (i === curveSteps ? p2.name : `Mezcla ${(t * 100).toFixed(0)}% (${ColorMath.rgbToHex(mixRgb.r, mixRgb.g, mixRgb.b)})`),
+        role: i === 0 || i === curveSteps ? 'Pigmento Extremo' : `Paso Físico ${(t * 100).toFixed(0)}%`,
+        isPrimary: i === 0 || i === curveSteps || i === Math.floor(curveSteps / 2),
+        size: i === 0 || i === curveSteps ? 10 : (i === Math.floor(curveSteps / 2) ? 8 : 5)
+      };
+      nodes.push(node);
+      curveNodes.push(node);
+    }
+
+    // Trazar la curva conectiva física (Verde)
+    for (let i = 0; i < curveNodes.length - 1; i++) {
+      lines.push({
+        from: curveNodes[i],
+        to: curveNodes[i + 1],
+        color: '#10B981',
+        width: 3,
+        label: i === 3 ? 'Curva Bow Farges' : ''
+      });
+    }
+
+    // Trazar la cuerda recta teórica (Gris punteado) para mostrar visualmente la curvatura física
+    lines.push({
+      from: curveNodes[0],
+      to: curveNodes[curveNodes.length - 1],
+      color: 'rgba(255, 255, 255, 0.3)',
+      width: 1.2,
+      dash: [4, 4],
+      label: 'Cuerda Recta Teórica'
+    });
+
+    return { nodes, lines, faces };
+  }
+
+  /**
+   * MODO 6: Desglose Multidimensional Estándar de la Muestra Activa
+   */
+  getActiveColorNodes(activeRgb) {
+    if (!activeRgb) return { nodes: [], lines: [], faces: [] };
+
+    // Si hay un modo de despliegue exclusivo activo, canalizarlo:
+    const hsv = ColorMath.rgbToHsv(activeRgb.r, activeRgb.g, activeRgb.b);
+    if (this.activeDeployment === 'harmonies') {
+      return this.deployHarmonies(hsv, activeRgb);
+    } else if (this.activeDeployment === 'ramp') {
+      return this.deployRampTrajectory(activeRgb);
+    } else if (this.activeDeployment === 'gurney') {
+      return this.deployGurneyLightShadow(activeRgb);
+    } else if (this.activeDeployment === 'farges') {
+      return this.deployFargesBowCurve(activeRgb);
+    } else if (this.activeDeployment === 'palette') {
+      return this.deployPaletteConstellation();
+    } else if (this.activeDeployment === 'compare' || this.activeDeployment === 'tesseract') {
+      return { nodes: [], lines: [], faces: [] };
+    }
+
+    // MODO 'all': Integra la muestra con sus vectores principales
+    const nodes = [];
+    const lines = [];
+    const faces = [];
+
+    const baseCoords = this._getColor4DCoords(activeRgb, { minVisualChroma: 5 });
+    const activeHex = ColorMath.rgbToHex(activeRgb.r, activeRgb.g, activeRgb.b);
+
+    // 1. NODO CENTRAL
+    const centerNode = {
+      id: 'active_sample_center',
+      type: 'active_center',
+      x: baseCoords.x,
+      y: baseCoords.y,
+      z: baseCoords.z,
+      w: baseCoords.w,
+      hex: activeHex,
+      rgb: activeRgb,
+      name: `MUESTRA ACTIVA (${activeHex})`,
+      munsell: baseCoords.munsell.notation,
+      hsv,
+      isPrimary: true,
+      size: 11
+    };
+    nodes.push(centerNode);
+
+    // 2. Vector Luz Superior
+    if (this.options.showLightShadowVector) {
+      const lightHue = (hsv.h + 12) % 360;
+      const lightRgb = ColorMath.hsvToRgb(lightHue, Math.max(0.15, hsv.s * 0.6), Math.min(1, hsv.v * 1.25 + 0.15));
+      const lightHex = ColorMath.rgbToHex(lightRgb.r, lightRgb.g, lightRgb.b);
+      const lightNode = {
+        id: 'active_vector_light',
+        type: 'vector_light',
+        x: baseCoords.x * 0.75,
+        y: Math.min(145, baseCoords.y + 60),
+        z: baseCoords.z * 0.75,
+        w: baseCoords.w + 25,
+        hex: lightHex,
+        rgb: lightRgb,
+        name: `Luz Solar (${lightHex})`,
+        size: 7
+      };
+      nodes.push(lightNode);
+      lines.push({ from: centerNode, to: lightNode, color: '#FBBF24', dash: [4, 2], label: 'Vector Luz' });
+
+      // Vector Sombra
+      const shadowHue = baseCoords.isWarm ? (hsv.h + 200) % 360 : (hsv.h + 40) % 360;
+      const shadowRgb = ColorMath.hsvToRgb(shadowHue, 0.45, Math.max(0.15, hsv.v * 0.45));
+      const shadowHex = ColorMath.rgbToHex(shadowRgb.r, shadowRgb.g, shadowRgb.b);
+      const shadowNode = {
+        id: 'active_vector_shadow',
+        type: 'vector_shadow',
+        x: baseCoords.x * 0.6,
+        y: Math.max(-135, baseCoords.y - 60),
+        z: baseCoords.z * 0.6,
+        w: baseCoords.w - 35,
+        hex: shadowHex,
+        rgb: shadowRgb,
+        name: `Sombra Atmosférica (${shadowHex})`,
+        size: 7
+      };
+      nodes.push(shadowNode);
+      lines.push({ from: centerNode, to: shadowNode, color: '#818CF8', dash: [4, 2], label: 'Vector Sombra' });
+    }
+
+    // 3. Eje Complementario
+    if (this.options.showHarmonyPolyhedron) {
+      const compHue = (hsv.h + 180) % 360;
+      const compRad = (compHue * Math.PI) / 180;
+      const compRgb = ColorMath.hsvToRgb(compHue, hsv.s, hsv.v);
+      const compHex = ColorMath.rgbToHex(compRgb.r, compRgb.g, compRgb.b);
+      const compNode = {
+        id: 'active_harmony_comp',
+        type: 'harmony_node',
+        x: baseCoords.chromaRadius * Math.cos(compRad),
+        y: baseCoords.y * 0.9,
+        z: baseCoords.chromaRadius * Math.sin(compRad),
+        w: -baseCoords.w,
+        hex: compHex,
+        rgb: compRgb,
+        name: `Complementario (${compHex})`,
+        size: 7.5
+      };
+      nodes.push(compNode);
+      lines.push({ from: centerNode, to: compNode, color: '#F43F5E', width: 2, label: 'Eje Complementario' });
+    }
+
+    // 4. SSS Terminador
+    if (this.options.showSSSVector) {
+      const sssHue = (hsv.h >= 20 && hsv.h <= 180) ? (hsv.h - 25 + 360) % 360 : (hsv.h + 20) % 360;
+      const sssRgb = ColorMath.hsvToRgb(sssHue, Math.min(1, hsv.s * 1.35 + 0.25), Math.max(0.2, hsv.v * 0.75));
+      const sssHex = ColorMath.rgbToHex(sssRgb.r, sssRgb.g, sssRgb.b);
+      const sssNode = {
+        id: 'active_vector_sss',
+        type: 'vector_sss',
+        x: (baseCoords.x * 0.8) + 20,
+        y: baseCoords.y - 25,
+        z: (baseCoords.z * 0.8) + 20,
+        w: baseCoords.w + 18,
+        hex: sssHex,
+        rgb: sssRgb,
+        name: `Terminador SSS (${sssHex})`,
+        size: 7.5
+      };
+      nodes.push(sssNode);
+      lines.push({ from: centerNode, to: sssNode, color: '#EC4899', width: 2, dash: [3, 2], label: 'SSS Terminador' });
+    }
+
+    return { nodes, lines, faces };
   }
 
   // --- RENDERIZADOR PRINCIPAL EN CANVAS ---
@@ -845,9 +1255,23 @@ export class Hyper4DStudio {
   _renderFrame() {
     if (!this.ctx || !this.canvas) return;
 
-    // Auto-rotación 3D orbital cinemática
-    if (this.camera.autoRotate && !this.camera.isDragging) {
-      this.camera.rotY += this.camera.autoRotateSpeed;
+    // 1. Interpolación suave de cámara (Lerp)
+    const lerpSpeed = 0.08;
+    this.camera.rotX += (this.camera.targetRotX - this.camera.rotX) * lerpSpeed;
+    this.camera.rotY += (this.camera.targetRotY - this.camera.rotY) * lerpSpeed;
+    this.camera.zoom += (this.camera.targetZoom - this.camera.zoom) * lerpSpeed;
+    this.camera.panX += (this.camera.targetPanX - this.camera.panX) * lerpSpeed;
+    this.camera.panY += (this.camera.targetPanY - this.camera.panY) * lerpSpeed;
+
+    // Auto-rotación o Vuelo Cinemático
+    if (this.camera.cinematicFly) {
+      this.camera.flyTime += 0.01;
+      this.camera.targetRotY += 0.004;
+      this.camera.targetRotX = 0.28 + Math.sin(this.camera.flyTime * 0.7) * 0.18;
+      this.camera.targetPanY = Math.sin(this.camera.flyTime * 0.5) * 20;
+    } else if (this.camera.autoRotate && !this.camera.isDragging) {
+      this.camera.targetRotY += this.camera.autoRotateSpeed;
+      this.camera.rotY = this.camera.targetRotY;
     }
 
     // Animación continua de la 4ª Dimensión W
@@ -874,74 +1298,80 @@ export class Hyper4DStudio {
     const w = this.displayWidth;
     const h = this.displayHeight;
 
-    // 1. Limpieza y Fondo Cósmico con Gradiente Espacial
+    // 2. Fondo Cósmico con Gradiente Espacial Profundo
     this.ctx.clearRect(0, 0, w, h);
-    const bgGrad = this.ctx.createRadialGradient(w / 2, h / 2, 20, w / 2, h / 2, Math.max(w, h) * 0.7);
-    bgGrad.addColorStop(0, '#0F121C');
-    bgGrad.addColorStop(0.5, '#0B0D14');
-    bgGrad.addColorStop(1, '#05060A');
+    const bgGrad = this.ctx.createRadialGradient(w / 2, h / 2, 20, w / 2, h / 2, Math.max(w, h) * 0.75);
+    bgGrad.addColorStop(0, '#0F1322');
+    bgGrad.addColorStop(0.5, '#090B12');
+    bgGrad.addColorStop(1, '#040508');
     this.ctx.fillStyle = bgGrad;
     this.ctx.fillRect(0, 0, w, h);
 
-    // 2. Partículas Cósmicas de Fondo
+    // 3. Partículas Cósmicas de Fondo
     if (this.options.particleStars) {
       this._renderBackgroundParticles();
     }
 
-    // 3. Ejes de Coordenadas y Anillos de Espacio
+    // 4. Ejes de Coordenadas y Anillos de Espacio
     if (this.options.showGridAxes) {
       this._renderSpatialAxes();
     }
 
-    // 4. Recopilar todos los elementos a dibujar (Nodos, Líneas, Polígonos)
+    // 5. Recopilar todos los elementos a dibujar (Nodos, Líneas, Polígonos)
     const elementsToDraw = [];
     const linesToDraw = [];
     const facesToDraw = [];
 
-    // Nube de Modelo Base
-    if (this.options.showSolidCloud) {
+    // Nube de Modelo Base (si no estamos en modo exclusivo de tesseract)
+    const isExclusiveMode = this.activeDeployment === 'tesseract';
+    if (this.options.showSolidCloud && !isExclusiveMode) {
       let baseNodes = [];
       if (this.activeModel === 'munsell') {
         baseNodes = this.getMunsellGeometry();
-      } else if (this.activeModel === 'tesseract') {
-        const tess = this.getTesseractGeometry();
-        baseNodes = tess.nodes;
-        tess.edges.forEach(e => {
-          const n1 = baseNodes.find(n => n.id === e.from);
-          const n2 = baseNodes.find(n => n.id === e.to);
-          if (n1 && n2) linesToDraw.push({ from: n1, to: n2, color: 'rgba(99, 102, 241, 0.4)', width: 1.5 });
-        });
       } else if (this.activeModel === 'cielab') {
         baseNodes = this.getCieLabGeometry();
       } else if (this.activeModel === 'hsl_cone') {
         baseNodes = this.getHslConeGeometry();
       }
+      if (this.activeDeployment !== 'all') {
+        // En modos específicos de despliegue, atenuar como polvo estelar de referencia galáctica
+        baseNodes.forEach(bn => { bn._ghost = true; });
+      }
       elementsToDraw.push(...baseNodes);
+    } else if (this.activeDeployment === 'tesseract' || (this.options.showSolidCloud && this.activeModel === 'tesseract')) {
+      const tess = this.getTesseractGeometry();
+      elementsToDraw.push(...tess.nodes);
+      tess.edges.forEach(e => {
+        const n1 = tess.nodes.find(n => n.id === e.from);
+        const n2 = tess.nodes.find(n => n.id === e.to);
+        if (n1 && n2) linesToDraw.push({ from: n1, to: n2, color: 'rgba(99, 102, 241, 0.45)', width: 1.8 });
+      });
     }
 
-    // Muestra Activa y sus Desgloses
+    // Muestra Activa y sus Desgloses según el Modo de Despliegue
     const curRgb = this.app?.fgColor || { r: 99, g: 102, b: 241 };
     const activeData = this.getActiveColorNodes(curRgb);
     elementsToDraw.push(...activeData.nodes);
     linesToDraw.push(...activeData.lines);
     facesToDraw.push(...activeData.faces);
 
-    // Constelación de Paleta
-    const palData = this.getPaletteConstellationGeometry();
-    elementsToDraw.push(...palData.nodes);
-    linesToDraw.push(...palData.lines);
+    // Constelación de Paleta (si está activada y no estamos en modo exclusivo)
+    if (this.options.showPaletteConstellation && this.activeDeployment === 'all') {
+      const palData = this.deployPaletteConstellation();
+      elementsToDraw.push(...palData.nodes);
+      linesToDraw.push(...palData.lines);
+    }
 
-    // Muestras en Modo Comparador
-    this._collectCompareNodes(elementsToDraw, linesToDraw);
+    // Muestras en Modo Comparador (solo si se selecciona el comparador)
+    if (this.activeDeployment === 'compare') {
+      this._collectCompareNodes(elementsToDraw, linesToDraw);
+    }
 
-    // 5. PROYECCIÓN 4D -> 3D -> 2D
+    // 6. PROYECCIÓN 4D -> 3D -> 2D
     const projectedNodes = [];
     elementsToDraw.forEach(node => {
-      // Rotación 4D
       const r4 = this.rotatePoint4D(node, this.dimension4D.angleXW, this.dimension4D.angleYW, this.dimension4D.angleZW);
-      // Proyección 4D -> 3D
       const p3 = this.project4DTo3D(r4);
-      // Proyección 3D -> 2D
       const p2 = this.project3DTo2D(p3);
 
       if (p2.visible) {
@@ -956,10 +1386,10 @@ export class Hyper4DStudio {
       }
     });
 
-    // Guardar para hit-testing de ratón
+    // Guardar para hit-testing
     this.renderedNodes = projectedNodes;
 
-    // 6. DIBUJAR CARAS TRANSLÚCIDAS (Depth sorted)
+    // 7. DIBUJAR CARAS TRANSLÚCIDAS (Z-Sorted)
     facesToDraw.forEach(face => {
       const p1 = projectedNodes.find(pn => pn.node.id === face.p1.id);
       const p2 = projectedNodes.find(pn => pn.node.id === face.p2.id);
@@ -970,95 +1400,291 @@ export class Hyper4DStudio {
         this.ctx.lineTo(p2.x, p2.y);
         this.ctx.lineTo(p3.x, p3.y);
         this.ctx.closePath();
-        this.ctx.fillStyle = face.fillColor;
+        this.ctx.fillStyle = face.fillColor || 'rgba(99, 102, 241, 0.15)';
         this.ctx.fill();
-        this.ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
         this.ctx.lineWidth = 1;
         this.ctx.stroke();
       }
     });
 
-    // 7. DIBUJAR LÍNEAS Y VECTORES CON RESPLANDOR
+    // 8. DIBUJAR LÍNEAS Y VECTORES CON RESPLANDOR
     linesToDraw.forEach(line => {
       const p1 = projectedNodes.find(pn => pn.node.id === line.from.id);
       const p2 = projectedNodes.find(pn => pn.node.id === line.to.id);
       if (p1 && p2) {
+        const lineDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+
         this.ctx.beginPath();
         this.ctx.moveTo(p1.x, p1.y);
         this.ctx.lineTo(p2.x, p2.y);
         this.ctx.strokeStyle = line.color || '#FFFFFF';
-        this.ctx.lineWidth = (line.width || 1.5) * Math.min(1.5, Math.max(0.5, p1.scale * 1.2));
+        this.ctx.lineWidth = (line.width || 1.6) * Math.min(1.6, Math.max(0.6, p1.scale * 1.2));
         if (line.dash) this.ctx.setLineDash(line.dash);
         this.ctx.stroke();
         this.ctx.setLineDash([]);
 
-        // Rótulo del vector en el punto medio
-        if (line.label && this.options.showLabels) {
+        // Rótulo del vector solo si la línea es suficientemente larga para no apiñarse
+        if (line.label && this.options.showLabels && lineDist > 75) {
           const midX = (p1.x + p2.x) / 2;
           const midY = (p1.y + p2.y) / 2;
-          this.ctx.fillStyle = line.color || '#E2E8F0';
-          this.ctx.font = 'bold 9px sans-serif';
-          this.ctx.textAlign = 'center';
-          this.ctx.fillText(line.label, midX, midY - 4);
+          this._drawVectorLineTag(line.label, midX, midY, line.color);
         }
       }
     });
 
-    // 8. DIBUJAR NODOS ORDENADOS POR PROFUNDIDAD (Z-Sorting)
+    // 9. DIBUJAR ESFERAS VOLUMÉTRICAS 3D (Z-Sorting estricto)
     projectedNodes.sort((a, b) => b.depth - a.depth);
 
+    const minDepth = -300;
+    const maxDepth = 300;
+    const badgesToRender = [];
+
     projectedNodes.forEach(item => {
-      const { node, x, y, scale } = item;
+      const { node, x, y, scale, depth } = item;
       const isHovered = this.hoveredNode && this.hoveredNode.node.id === node.id;
       const isPrimary = node.isPrimary;
+      const isGhost = !!node._ghost;
       const baseRadius = (node.size || 4) * scale;
-      const radius = Math.max(1.8, Math.min(30, isHovered ? baseRadius * 1.4 : baseRadius));
+      const radius = Math.max(2, Math.min(32, isHovered ? baseRadius * 1.35 : baseRadius));
 
-      // Halo resplandeciente para nodos primarios o hovered
-      if (isPrimary || isHovered || node.type === 'active_center') {
-        const glowRad = radius * 2.8;
-        const glowGrad = this.ctx.createRadialGradient(x, y, radius * 0.4, x, y, glowRad);
-        glowGrad.addColorStop(0, node.hex + '99');
-        glowGrad.addColorStop(0.6, node.hex + '33');
-        glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
-        this.ctx.fillStyle = glowGrad;
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, glowRad, 0, Math.PI * 2);
-        this.ctx.fill();
+      // Factor de niebla de profundidad (0 = más lejano, 1 = más cercano)
+      const depthFactor = Math.max(0, Math.min(1, (depth - minDepth) / (maxDepth - minDepth)));
 
-        // Anillo exterior pulsante
-        this.ctx.strokeStyle = '#FFFFFF';
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, radius + 3, 0, Math.PI * 2);
-        this.ctx.stroke();
-      }
+      // Renderizado de esfera 3D Phong (o polvo galáctico atenuado si es ghost)
+      this._drawSphere(x, y, radius, node.hex, depthFactor, isHovered, isPrimary, isGhost);
 
-      // Esfera del color
-      this.ctx.beginPath();
-      this.ctx.arc(x, y, radius, 0, Math.PI * 2);
-      this.ctx.fillStyle = node.hex;
-      this.ctx.fill();
+      // Recopilar rótulos para el motor anti-colisión
+      if (this.options.showLabels && !isGhost) {
+        const isMilestone = isPrimary || isHovered || node.type === 'compare_sample' ||
+          (this.activeDeployment !== 'all' && (
+            node.type === 'vector_light' ||
+            node.type === 'vector_shadow' ||
+            node.type === 'vector_sss' ||
+            node.type === 'vector_bounce' ||
+            node.type === 'harmony_node' ||
+            (node.type === 'bow_curve_pt' && node.isPrimary) ||
+            (node.type === 'ramp_node' && node.isPrimary) ||
+            (node.type === 'palette_swatch' && this.activeDeployment === 'palette')
+          ));
 
-      // Borde del nodo
-      this.ctx.strokeStyle = isHovered ? '#FFFFFF' : (isPrimary ? '#FBBF24' : 'rgba(0,0,0,0.5)');
-      this.ctx.lineWidth = isHovered ? 2 : 1;
-      this.ctx.stroke();
-
-      // Rótulos para nodos clave
-      if (this.options.showLabels && (isPrimary || isHovered || node.type === 'vector_light' || node.type === 'vector_shadow' || node.type === 'compare_sample')) {
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = isPrimary ? 'bold 11px sans-serif' : '9px sans-serif';
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'bottom';
-        this.ctx.fillText(node.name || node.hex, x, y - radius - 4);
+        if (isMilestone) {
+          badgesToRender.push({
+            node,
+            x,
+            y,
+            radius,
+            name: node.name || node.hex,
+            sub: node.munsell || node.role || node.hex,
+            isPrimary: isPrimary || node.type === 'active_center',
+            isHovered
+          });
+        }
       }
     });
 
-    // 9. DIBUJAR TOOLTIP FLOTANTE SI HAY HOVER
-    if (this.hoveredNode) {
-      this._drawTooltip(this.hoveredNode);
+    // 10. MOTOR ANTI-COLISIÓN DE RÓTULOS (CÁPSULAS DE CRISTAL FROSTED GLASS)
+    if (this.options.showLabels && badgesToRender.length > 0) {
+      this._renderAntiCollisionBadges(badgesToRender);
     }
+
+    // 11. TOOLTIP HOLOGRÁFICO FLOTANTE SI HAY HOVER
+    if (this.hoveredNode) {
+      this._drawHolographicHUD(this.hoveredNode);
+    }
+  }
+
+  /**
+   * Dibuja una esfera volumétrica 3D Phong con brillo especular,
+   * reflejo ambiental, oclusión en limbo y niebla atmosférica.
+   */
+  _drawSphere(x, y, radius, hex, depthFactor, isHovered, isPrimary, isGhost = false) {
+    const ctx = this.ctx;
+    const rad = Math.max(1.8, radius);
+
+    // Si es nodo fantasma de fondo, renderizado ultraligero y sutil como polvo estelar
+    if (isGhost) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0.06, Math.min(0.18, 0.09 + depthFactor * 0.08));
+      ctx.fillStyle = hex;
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(1.2, rad * 0.65), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+
+    // Niebla de profundidad (alpha atenuada y fusión cósmica)
+    const alpha = Math.max(0.25, Math.min(1.0, 0.4 + depthFactor * 0.6));
+
+    // Halo / Bloom cuántico para nodos primarios o hovered
+    if (isPrimary || isHovered) {
+      const glowRad = rad * 3.2;
+      const glowGrad = ctx.createRadialGradient(x, y, rad * 0.2, x, y, glowRad);
+      glowGrad.addColorStop(0, hex + '99');
+      glowGrad.addColorStop(0.5, hex + '33');
+      glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.arc(x, y, glowRad, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Anillo de energía hiperdimensional
+      ctx.save();
+      ctx.strokeStyle = isPrimary ? '#FBBF24' : '#38BDF8';
+      ctx.lineWidth = isHovered ? 2.2 : 1.6;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(x, y, rad + 4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Gradiente Phong 3D con luz especular desplazada al cuadrante superior izquierdo
+    const lightOffsetX = -rad * 0.32;
+    const lightOffsetY = -rad * 0.35;
+    const sphereGrad = ctx.createRadialGradient(
+      x + lightOffsetX, y + lightOffsetY, rad * 0.08,
+      x, y, rad
+    );
+
+    const rgb = ColorMath.hexToRgb(hex);
+    const specR = Math.min(255, rgb.r + 140);
+    const specG = Math.min(255, rgb.g + 140);
+    const specB = Math.min(255, rgb.b + 140);
+    const shadowR = Math.max(0, Math.round(rgb.r * 0.38));
+    const shadowG = Math.max(0, Math.round(rgb.g * 0.38));
+    const shadowB = Math.max(0, Math.round(rgb.b * 0.38));
+
+    sphereGrad.addColorStop(0, `rgba(${specR}, ${specG}, ${specB}, ${alpha})`);
+    sphereGrad.addColorStop(0.25, `rgba(${Math.min(255, rgb.r + 50)}, ${Math.min(255, rgb.g + 50)}, ${Math.min(255, rgb.b + 50)}, ${alpha})`);
+    sphereGrad.addColorStop(0.75, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`);
+    sphereGrad.addColorStop(0.95, `rgba(${shadowR}, ${shadowG}, ${shadowB}, ${alpha})`);
+    sphereGrad.addColorStop(1.0, `rgba(${Math.min(255, rgb.r + 25)}, ${Math.min(255, rgb.g + 25)}, ${Math.min(255, rgb.b + 25)}, ${alpha * 0.8})`);
+
+    ctx.beginPath();
+    ctx.arc(x, y, rad, 0, Math.PI * 2);
+    ctx.fillStyle = sphereGrad;
+    ctx.fill();
+
+    // Borde de definición
+    ctx.strokeStyle = isPrimary ? '#FBBF24' : (isHovered ? '#FFFFFF' : `rgba(255,255,255,${alpha * 0.28})`);
+    ctx.lineWidth = isHovered ? 2 : (isPrimary ? 1.5 : 0.8);
+    ctx.stroke();
+  }
+
+  /**
+   * Motor Anti-Colisión de Rótulos:
+   * Coloca cápsulas de cristal (Pills) con cálculo de proximidad. Si dos rótulos
+   * están cerca, desplaza el secundario y traza una línea guía (leader line).
+   */
+  _renderAntiCollisionBadges(badges) {
+    const ctx = this.ctx;
+    ctx.font = 'bold 10px sans-serif';
+
+    // Ordenar por prioridad: hovered primero, luego primario, luego el resto
+    badges.sort((a, b) => {
+      if (a.isHovered) return -1;
+      if (b.isHovered) return 1;
+      if (a.isPrimary) return -1;
+      if (b.isPrimary) return 1;
+      return a.y - b.y;
+    });
+
+    const occupiedBoxes = [];
+
+    badges.forEach((b) => {
+      const nameWidth = ctx.measureText(b.name).width;
+      const boxW = Math.max(60, nameWidth + 14);
+      const boxH = 18;
+
+      let targetX = b.x;
+      let targetY = b.y - b.radius - 12;
+
+      // Detectar colisión con cajas ya colocadas
+      let hasCollision = false;
+      for (const occ of occupiedBoxes) {
+        const dx = Math.abs(targetX - occ.x);
+        const dy = Math.abs(targetY - occ.y);
+        if (dx < (boxW + occ.w) / 2 + 6 && dy < 24) {
+          hasCollision = true;
+          break;
+        }
+      }
+
+      let drawLeaderLine = false;
+      if (hasCollision) {
+        // Desplazar a la derecha y arriba con línea guía
+        targetX = b.x + boxW / 2 + 18;
+        targetY = b.y - 18;
+        drawLeaderLine = true;
+      }
+
+      // Mantener dentro de los bordes del canvas
+      targetX = Math.max(boxW / 2 + 8, Math.min(this.displayWidth - boxW / 2 - 8, targetX));
+      targetY = Math.max(16, Math.min(this.displayHeight - 20, targetY));
+
+      const rectX = targetX - boxW / 2;
+      const rectY = targetY - boxH / 2;
+
+      // Trazar línea guía elegante si fue desplazado
+      if (drawLeaderLine) {
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(rectX, targetY);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fill();
+      }
+
+      // Fondo Cápsula Frosted Glass
+      ctx.fillStyle = b.isPrimary ? 'rgba(24, 20, 10, 0.92)' : 'rgba(10, 14, 24, 0.88)';
+      ctx.strokeStyle = b.isPrimary ? '#FBBF24' : (b.isHovered ? '#38BDF8' : 'rgba(255, 255, 255, 0.22)');
+      ctx.lineWidth = b.isPrimary || b.isHovered ? 1.5 : 1;
+      ctx.beginPath();
+      ctx.roundRect(rectX, rectY, boxW, boxH, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      // Texto de la cápsula
+      ctx.fillStyle = b.isPrimary ? '#FDE68A' : '#FFFFFF';
+      ctx.font = b.isPrimary ? 'bold 10px sans-serif' : '9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(b.name, targetX, targetY);
+
+      occupiedBoxes.push({ x: targetX, y: targetY, w: boxW, h: boxH });
+    });
+  }
+
+  /**
+   * Rótulo de línea de vector centrado en pastilla limpia
+   */
+  _drawVectorLineTag(text, x, y, color) {
+    const ctx = this.ctx;
+    ctx.font = 'bold 9px sans-serif';
+    const textW = ctx.measureText(text).width;
+    const pad = 6;
+    const boxW = textW + pad * 2;
+    const boxH = 15;
+
+    ctx.fillStyle = 'rgba(10, 14, 24, 0.88)';
+    ctx.strokeStyle = color || '#818CF8';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(x - boxW / 2, y - boxH / 2, boxW, boxH, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = color || '#E2E8F0';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y);
   }
 
   _renderBackgroundParticles() {
@@ -1077,30 +1703,29 @@ export class Hyper4DStudio {
   }
 
   _renderSpatialAxes() {
-    // Anillos de referencia cromática
     const center2D = this.project3DTo2D({ x: 0, y: 0, z: 0 });
     if (!center2D.visible) return;
 
     // Eje Vertical de Luminosidad / Valor (Luz a Sombra)
-    const top2D = this.project3DTo2D({ x: 0, y: 150, z: 0 });
-    const bottom2D = this.project3DTo2D({ x: 0, y: -150, z: 0 });
+    const top2D = this.project3DTo2D({ x: 0, y: 165, z: 0 });
+    const bottom2D = this.project3DTo2D({ x: 0, y: -165, z: 0 });
     if (top2D.visible && bottom2D.visible) {
       this.ctx.beginPath();
       this.ctx.moveTo(bottom2D.screenX, bottom2D.screenY);
       this.ctx.lineTo(top2D.screenX, top2D.screenY);
-      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      this.ctx.lineWidth = 1.2;
+      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      this.ctx.lineWidth = 1.4;
       this.ctx.stroke();
 
-      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
       this.ctx.font = '8px monospace';
       this.ctx.textAlign = 'center';
-      this.ctx.fillText('▲ Valor 10 (Luz)', top2D.screenX, top2D.screenY - 6);
-      this.ctx.fillText('▼ Valor 0 (Sombra)', bottom2D.screenX, bottom2D.screenY + 12);
+      this.ctx.fillText('▲ Valor 10 (Luz)', top2D.screenX, top2D.screenY - 8);
+      this.ctx.fillText('▼ Valor 0 (Sombra)', bottom2D.screenX, bottom2D.screenY + 14);
     }
 
-    // Anillo ecuatorial cromático (Croma / Saturación)
-    const ringRadius = 140;
+    // Anillo ecuatorial cromático (Croma / Saturación en Valor 5)
+    const ringRadius = 145;
     this.ctx.beginPath();
     for (let a = 0; a <= 360; a += 10) {
       const rad = (a * Math.PI) / 180;
@@ -1114,7 +1739,7 @@ export class Hyper4DStudio {
         else this.ctx.lineTo(pt.screenX, pt.screenY);
       }
     }
-    this.ctx.strokeStyle = 'rgba(99, 102, 241, 0.18)';
+    this.ctx.strokeStyle = 'rgba(99, 102, 241, 0.22)';
     this.ctx.lineWidth = 1;
     this.ctx.setLineDash([3, 4]);
     this.ctx.stroke();
@@ -1130,7 +1755,7 @@ export class Hyper4DStudio {
     let sumX = 0, sumY = 0, sumZ = 0, sumW = 0;
 
     activeSlots.forEach((slot) => {
-      const coords = this._getColor4DCoords(slot.rgb);
+      const coords = this._getColor4DCoords(slot.rgb, { minVisualChroma: 5 });
       const node = {
         id: `compare_slot_${slot.id}`,
         type: 'compare_sample',
@@ -1144,7 +1769,8 @@ export class Hyper4DStudio {
         name: `[${slot.id}] ${slot.name || ('Muestra ' + slot.id)}`,
         munsell: coords.munsell.notation,
         coords4D: `X:${coords.x.toFixed(0)} Y:${coords.y.toFixed(0)} Z:${coords.z.toFixed(0)} W:${coords.w.toFixed(0)}`,
-        size: 9.5
+        isPrimary: true,
+        size: 11
       };
       elements.push(node);
       slotNodes.push(node);
@@ -1161,7 +1787,7 @@ export class Hyper4DStudio {
       // Conectar polígono perimetral dinámico
       for (let i = 0; i < N; i++) {
         const nextIdx = (i + 1) % N;
-        if (N === 2 && i === 1) break; // Si solo son 2 muestras, un solo vector de ida
+        if (N === 2 && i === 1) break;
         lines.push({
           from: slotNodes[i],
           to: slotNodes[nextIdx],
@@ -1172,23 +1798,7 @@ export class Hyper4DStudio {
         });
       }
 
-      // Si hay de 4 a 6 muestras, trazar cuerdas diagonales sutiles para formar la red
-      if (N >= 4 && N <= 6) {
-        for (let i = 0; i < N; i++) {
-          for (let j = i + 2; j < N; j++) {
-            if (i === 0 && j === N - 1) continue;
-            lines.push({
-              from: slotNodes[i],
-              to: slotNodes[j],
-              color: 'rgba(245, 158, 11, 0.22)',
-              width: 1,
-              dash: [2, 4]
-            });
-          }
-        }
-      }
-
-      // Baricentro Colectivo Físico en 4D (Mezcla 1/N exacta)
+      // Baricentro Colectivo Físico en 4D
       const baryX = sumX / N;
       const baryY = sumY / N;
       const baryZ = sumZ / N;
@@ -1207,66 +1817,78 @@ export class Hyper4DStudio {
         rgb: mixRgb,
         name: `🪐 Baricentro 4D (${mixHex})`,
         coords4D: `Baricentro Colectivo 1/${N}`,
-        size: 7.5
+        isPrimary: true,
+        size: 9
       };
       elements.push(mixNode);
 
-      // Rayos de conexión punteados desde cada muestra hacia el baricentro
       slotNodes.forEach(sn => {
         lines.push({
           from: sn,
           to: mixNode,
-          color: 'rgba(56, 189, 248, 0.35)',
-          width: 1.2,
+          color: 'rgba(56, 189, 248, 0.4)',
+          width: 1.3,
           dash: [3, 3]
         });
       });
     }
   }
 
-  _drawTooltip(item) {
+  /**
+   * HUD Holográfico Flotante de Alta Definición
+   */
+  _drawHolographicHUD(item) {
     const { node, x, y } = item;
-    const padding = 8;
+    const padding = 10;
     const title = node.name || node.hex;
     const sub = node.munsell ? `Munsell: ${node.munsell}` : (node.coords4D ? `4D: ${node.coords4D}` : node.hex);
+    const roleText = node.role || (node.type === 'active_center' ? 'Muestra Activa en la Suite' : '');
 
     this.ctx.font = 'bold 11px sans-serif';
-    const titleWidth = this.ctx.measureText(title).width;
+    const titleW = this.ctx.measureText(title).width;
     this.ctx.font = '9px monospace';
-    const subWidth = this.ctx.measureText(sub).width;
-    const boxW = Math.max(titleWidth, subWidth) + padding * 2 + 20;
-    const boxH = 40;
+    const subW = this.ctx.measureText(sub).width;
+    const roleW = roleText ? this.ctx.measureText(roleText).width : 0;
+    const boxW = Math.max(titleW, subW, roleW) + padding * 2 + 32;
+    const boxH = roleText ? 52 : 42;
 
-    const boxX = Math.min(this.displayWidth - boxW - 10, Math.max(10, x - boxW / 2));
-    const boxY = Math.max(10, y - boxH - 14);
+    const boxX = Math.min(this.displayWidth - boxW - 12, Math.max(12, x - boxW / 2));
+    const boxY = Math.max(12, y - boxH - 18);
 
-    // Fondo tarjeta flotante
-    this.ctx.fillStyle = 'rgba(15, 18, 28, 0.92)';
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-    this.ctx.lineWidth = 1;
+    // Fondo tarjeta flotante de cristal
+    this.ctx.fillStyle = 'rgba(10, 14, 24, 0.94)';
+    this.ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+    this.ctx.lineWidth = 1.2;
     this.ctx.beginPath();
-    this.ctx.roundRect(boxX, boxY, boxW, boxH, 6);
+    this.ctx.roundRect(boxX, boxY, boxW, boxH, 8);
     this.ctx.fill();
     this.ctx.stroke();
 
-    // Muestra de color
+    // Muestra de color con bisel especular
     this.ctx.fillStyle = node.hex;
     this.ctx.beginPath();
-    this.ctx.roundRect(boxX + 8, boxY + 10, 18, 20, 3);
+    this.ctx.roundRect(boxX + 10, boxY + 11, 20, 20, 4);
     this.ctx.fill();
-    this.ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    this.ctx.strokeStyle = '#FFFFFF';
+    this.ctx.lineWidth = 1;
     this.ctx.stroke();
 
     // Textos
     this.ctx.fillStyle = '#FFFFFF';
-    this.ctx.font = 'bold 10px sans-serif';
+    this.ctx.font = 'bold 11px sans-serif';
     this.ctx.textAlign = 'left';
     this.ctx.textBaseline = 'top';
-    this.ctx.fillText(title, boxX + 32, boxY + 8);
+    this.ctx.fillText(title, boxX + 38, boxY + 9);
 
-    this.ctx.fillStyle = '#94A3B8';
+    this.ctx.fillStyle = '#38BDF8';
     this.ctx.font = '9px monospace';
-    this.ctx.fillText(sub, boxX + 32, boxY + 22);
+    this.ctx.fillText(sub, boxX + 38, boxY + 23);
+
+    if (roleText) {
+      this.ctx.fillStyle = '#FBBF24';
+      this.ctx.font = 'italic 9px sans-serif';
+      this.ctx.fillText(roleText, boxX + 38, boxY + 36);
+    }
   }
 
   // --- HIT-TESTING & EVENTOS DE RATÓN Y CÁMARA ---
@@ -1284,7 +1906,10 @@ export class Hyper4DStudio {
       }
       this.camera.lastMouseX = e.clientX;
       this.camera.lastMouseY = e.clientY;
-      this.camera.autoRotate = false; // Detener auto-rotación al interactuar
+      this.camera.autoRotate = false;
+      this.camera.cinematicFly = false;
+      const btnFly = document.getElementById('btnHyper4DCinematicFly');
+      if (btnFly) btnFly.classList.remove('active');
     });
 
     window.addEventListener('mousemove', (e) => {
@@ -1297,8 +1922,10 @@ export class Hyper4DStudio {
         const dy = e.clientY - this.camera.lastMouseY;
         const signX = this.camera.invertX ? -1 : 1;
         const signY = this.camera.invertY ? -1 : 1;
-        this.camera.rotY += dx * 0.007 * signX;
-        this.camera.rotX = Math.max(-1.4, Math.min(1.4, this.camera.rotX + dy * 0.007 * signY));
+        this.camera.targetRotY += dx * 0.007 * signX;
+        this.camera.targetRotX = Math.max(-1.45, Math.min(1.45, this.camera.targetRotX + dy * 0.007 * signY));
+        this.camera.rotY = this.camera.targetRotY;
+        this.camera.rotX = this.camera.targetRotX;
         this.camera.lastMouseX = e.clientX;
         this.camera.lastMouseY = e.clientY;
         return;
@@ -1307,8 +1934,10 @@ export class Hyper4DStudio {
       if (this.camera.isPanning) {
         const dx = e.clientX - this.camera.lastMouseX;
         const dy = e.clientY - this.camera.lastMouseY;
-        this.camera.panX += dx;
-        this.camera.panY += dy;
+        this.camera.targetPanX += dx;
+        this.camera.targetPanY += dy;
+        this.camera.panX = this.camera.targetPanX;
+        this.camera.panY = this.camera.targetPanY;
         this.camera.lastMouseX = e.clientX;
         this.camera.lastMouseY = e.clientY;
         return;
@@ -1320,7 +1949,7 @@ export class Hyper4DStudio {
         for (let i = this.renderedNodes.length - 1; i >= 0; i--) {
           const item = this.renderedNodes[i];
           const dist = Math.hypot(mouseX - item.x, mouseY - item.y);
-          if (dist <= Math.max(12, (item.node.size || 4) * item.scale + 6)) {
+          if (dist <= Math.max(14, (item.node.size || 4) * item.scale + 6)) {
             found = item;
             break;
           }
@@ -1337,14 +1966,13 @@ export class Hyper4DStudio {
       this.camera.isPanning = false;
     });
 
-    // Zoom con rueda del ratón
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
-      this.camera.zoom = Math.max(0.3, Math.min(3.8, this.camera.zoom * zoomFactor));
+      const zoomFactor = e.deltaY < 0 ? 1.09 : 0.91;
+      this.camera.targetZoom = Math.max(0.25, Math.min(4.2, this.camera.targetZoom * zoomFactor));
     }, { passive: false });
 
-    // Clic para seleccionar nodo y cargarlo en la rueda cromática
+    // Clic para seleccionar nodo y cargarlo en la suite
     this.canvas.addEventListener('click', (e) => {
       if (this.hoveredNode) {
         const hex = this.hoveredNode.node.hex;
@@ -1359,6 +1987,64 @@ export class Hyper4DStudio {
     });
 
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  // --- AUTO-ENCUADRE Y CÁMARA CINEMÁTICA ---
+
+  /**
+   * Auto-encuadra todos los nodos visibles calculando su centro y radio contenedor.
+   */
+  frameAll() {
+    this.camera.targetPanX = 0;
+    this.camera.targetPanY = 0;
+
+    // Si estamos en un modo específico, enfocar hacia ese despliegue
+    const activeNodes = this.renderedNodes.filter(rn => !rn.node._ghost);
+    const nodes = activeNodes.length > 0 ? activeNodes : this.renderedNodes;
+
+    if (!nodes.length) {
+      this.camera.targetRotX = 0.35;
+      this.camera.targetRotY = -0.65;
+      this.camera.targetZoom = 1.05;
+      return;
+    }
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    nodes.forEach(rn => {
+      minX = Math.min(minX, rn.node.x);
+      maxX = Math.max(maxX, rn.node.x);
+      minY = Math.min(minY, rn.node.y);
+      maxY = Math.max(maxY, rn.node.y);
+      minZ = Math.min(minZ, rn.node.z || 0);
+      maxZ = Math.max(maxZ, rn.node.z || 0);
+    });
+
+    const spanX = Math.max(30, maxX - minX);
+    const spanY = Math.max(30, maxY - minY);
+    const spanZ = Math.max(30, maxZ - minZ);
+    const maxSpan = Math.max(spanX, spanY, spanZ);
+
+    // Zoom adaptativo suave para encuadrar la estructura geométricamente
+    const targetZoom = Math.max(0.75, Math.min(2.2, 330 / maxSpan));
+    this.camera.targetZoom = targetZoom;
+    this.camera.targetRotX = 0.32;
+    this.camera.targetRotY = -0.58;
+
+    if (this.app?.showToast) {
+      this.app.showToast('Escena 4D auto-encuadrada en vista óptima', 'info');
+    }
+  }
+
+  toggleCinematicFly() {
+    this.camera.cinematicFly = !this.camera.cinematicFly;
+    this.camera.autoRotate = false;
+    const btnFly = document.getElementById('btnHyper4DCinematicFly');
+    if (btnFly) {
+      btnFly.classList.toggle('active', this.camera.cinematicFly);
+    }
+    if (this.app?.showToast) {
+      this.app.showToast(this.camera.cinematicFly ? 'Vuelo Cinemático 4D activado' : 'Vuelo Cinemático pausado', 'info');
+    }
   }
 
   // --- BINDING DE LA INTERFAZ HTML ---
@@ -1400,55 +2086,95 @@ export class Hyper4DStudio {
       });
     }
 
-    // 5. Controles de Cámara Rápida
+    // 5. Botones de Modo de Despliegue Espacial (Pills 4D)
+    document.querySelectorAll('.hyper4d-deploy-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const deployKey = pill.dataset.deploy;
+        this.setDeploymentMode(deployKey);
+      });
+    });
+
+    // 6. Sub-selectores de Armonías y Rampas
+    const harmonyRuleSelect = document.getElementById('hyper4dHarmonyRuleSelect');
+    if (harmonyRuleSelect) {
+      harmonyRuleSelect.addEventListener('change', (e) => {
+        this.activeHarmonyRule = e.target.value;
+        setTimeout(() => this.frameAll(), 80);
+      });
+    }
+
+    const rampTypeSelect = document.getElementById('hyper4dRampTypeSelect');
+    if (rampTypeSelect) {
+      rampTypeSelect.addEventListener('change', (e) => {
+        this.activeRampType = e.target.value;
+        setTimeout(() => this.frameAll(), 80);
+      });
+    }
+
+    // 7. Controles de Cámara Rápida
     const btnResetCam = document.getElementById('btnHyper4DResetCam');
     if (btnResetCam) {
       btnResetCam.addEventListener('click', () => {
-        this.camera.rotX = 0.35;
-        this.camera.rotY = -0.65;
-        this.camera.zoom = 1.05;
-        this.camera.panX = 0;
-        this.camera.panY = 0;
+        this.camera.targetRotX = 0.35;
+        this.camera.targetRotY = -0.65;
+        this.camera.targetZoom = 1.05;
+        this.camera.targetPanX = 0;
+        this.camera.targetPanY = 0;
+        this.camera.cinematicFly = false;
       });
+    }
+
+    const btnFrame = document.getElementById('btnHyper4DFrame');
+    if (btnFrame) {
+      btnFrame.addEventListener('click', () => this.frameAll());
     }
 
     const btnAutoRotate = document.getElementById('btnHyper4DAutoRotate');
     if (btnAutoRotate) {
       btnAutoRotate.addEventListener('click', () => {
         this.camera.autoRotate = !this.camera.autoRotate;
+        this.camera.cinematicFly = false;
         btnAutoRotate.classList.toggle('active', this.camera.autoRotate);
       });
     }
 
-    // 6. Vistas Ortogonales (Cenital, Frontal, Lateral, Isométrica)
+    const btnCinematicFly = document.getElementById('btnHyper4DCinematicFly');
+    if (btnCinematicFly) {
+      btnCinematicFly.addEventListener('click', () => this.toggleCinematicFly());
+    }
+
+    // 8. Vistas Ortogonales
     const btnViewTop = document.getElementById('btnHyper4DViewTop');
     if (btnViewTop) {
       btnViewTop.addEventListener('click', () => {
-        this.camera.rotX = Math.PI / 2;
-        this.camera.rotY = 0;
+        this.camera.targetRotX = Math.PI / 2;
+        this.camera.targetRotY = 0;
         this.camera.autoRotate = false;
+        this.camera.cinematicFly = false;
       });
     }
 
     const btnViewFront = document.getElementById('btnHyper4DViewFront');
     if (btnViewFront) {
       btnViewFront.addEventListener('click', () => {
-        this.camera.rotX = 0;
-        this.camera.rotY = 0;
+        this.camera.targetRotX = 0;
+        this.camera.targetRotY = 0;
         this.camera.autoRotate = false;
+        this.camera.cinematicFly = false;
       });
     }
 
     const btnViewSide = document.getElementById('btnHyper4DViewSide');
     if (btnViewSide) {
       btnViewSide.addEventListener('click', () => {
-        this.camera.rotX = 0;
-        this.camera.rotY = Math.PI / 2;
+        this.camera.targetRotX = 0;
+        this.camera.targetRotY = Math.PI / 2;
         this.camera.autoRotate = false;
+        this.camera.cinematicFly = false;
       });
     }
 
-    // 7. Toggles de Opciones de Visualización
+    // 9. Toggles de Opciones de Capas
     const bindToggle = (id, prop) => {
       const el = document.getElementById(id);
       if (el) {
@@ -1466,7 +2192,7 @@ export class Hyper4DStudio {
     bindToggle('chkHyper4DGoethe', 'showGoetheExtension');
     bindToggle('chkHyper4DPalette', 'showPaletteConstellation');
 
-    // Toggles de Inversión de Ejes del Ratón
+    // Inversión de ratón
     const chkInvX = document.getElementById('chkHyper4DInvertX');
     if (chkInvX) {
       chkInvX.checked = this.camera.invertX;
@@ -1474,7 +2200,7 @@ export class Hyper4DStudio {
         this.camera.invertX = e.target.checked;
         localStorage.setItem('gom_hyper4d_invert_x', this.camera.invertX);
         if (this.app?.showToast) {
-          this.app.showToast(this.camera.invertX ? 'Eje horizontal X del ratón invertido' : 'Eje horizontal X normal', 'info');
+          this.app.showToast(this.camera.invertX ? 'Eje horizontal X invertido' : 'Eje horizontal X normal', 'info');
         }
       });
     }
@@ -1486,12 +2212,12 @@ export class Hyper4DStudio {
         this.camera.invertY = e.target.checked;
         localStorage.setItem('gom_hyper4d_invert_y', this.camera.invertY);
         if (this.app?.showToast) {
-          this.app.showToast(this.camera.invertY ? 'Eje vertical Y del ratón invertido' : 'Eje vertical Y normal', 'info');
+          this.app.showToast(this.camera.invertY ? 'Eje vertical Y invertido' : 'Eje vertical Y normal', 'info');
         }
       });
     }
 
-    // 8. Control de Pantalla Completa Inmersiva
+    // 10. Pantalla Completa Inmersiva
     const btnFullscreen = document.getElementById('btnHyper4DFullscreen');
     if (btnFullscreen) {
       btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
@@ -1507,15 +2233,12 @@ export class Hyper4DStudio {
       btnToggleSidebar.addEventListener('click', () => this.toggleSidebar());
     }
 
-    // Atajos de Teclado (Tecla F para Pantalla Completa, Escape para salir)
+    // Atajos de teclado
     window.addEventListener('keydown', (e) => {
-      // Ignorar si el usuario está escribiendo en un input, textarea o chat
       const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
       if (activeTag === 'input' || activeTag === 'textarea' || document.activeElement?.isContentEditable) {
         return;
       }
-
-      // Solo si la pestaña 4D está visible
       const view4D = document.getElementById('viewHyper4D');
       if (!view4D || view4D.style.display === 'none') return;
 
@@ -1534,7 +2257,7 @@ export class Hyper4DStudio {
       }
     });
 
-    // 9. Pestañas del Panel Lateral (Inspector, Composición, Comparador, Constelación, Maestros)
+    // 11. Pestañas del Panel Lateral
     const subTabs = document.querySelectorAll('.hyper4d-subtab-btn');
     const subPanels = {
       inspect: document.getElementById('hyper4dPanelInspect'),
@@ -1554,7 +2277,7 @@ export class Hyper4DStudio {
       });
     });
 
-    // 10. Presets de Maestros
+    // 12. Presets de Maestros
     document.querySelectorAll('.hyper4d-master-chip').forEach(chip => {
       chip.addEventListener('click', () => {
         const key = chip.dataset.master;
@@ -1562,17 +2285,52 @@ export class Hyper4DStudio {
       });
     });
 
-    // 11. Botón de Exportar Captura HD
+    // 13. Captura HD & Inspiración
     const btnSnapshot = document.getElementById('btnHyper4DSnapshot');
     if (btnSnapshot) {
       btnSnapshot.addEventListener('click', () => this.exportSnapshot());
     }
 
-    // 12. Botón Inspirar Paleta
     const btnInspire = document.getElementById('btnHyper4DInspirePalette');
     if (btnInspire) {
       btnInspire.addEventListener('click', () => this.generateInspiredPalette());
     }
+  }
+
+  setDeploymentMode(modeKey) {
+    this.activeDeployment = modeKey;
+
+    document.querySelectorAll('.hyper4d-deploy-pill').forEach(p => {
+      p.classList.toggle('active', p.dataset.deploy === modeKey);
+    });
+
+    // Mostrar sub-controles contextuales
+    const harmonySubBar = document.getElementById('hyper4dHarmonySubBar');
+    if (harmonySubBar) {
+      harmonySubBar.style.display = modeKey === 'harmonies' ? 'flex' : 'none';
+    }
+
+    const rampSubBar = document.getElementById('hyper4dRampSubBar');
+    if (rampSubBar) {
+      rampSubBar.style.display = modeKey === 'ramp' ? 'flex' : 'none';
+    }
+
+    if (this.app?.showToast) {
+      const labels = {
+        all: 'Modo Sólido Integral 4D',
+        harmonies: 'Despliegue de Poliedros de Armonías 4D',
+        palette: 'Constelación y Gamut Hull de Paleta',
+        ramp: 'Spline 4D Continua de Rampas Tonales',
+        gurney: 'Estudio de Luz, Sombra y SSS de James Gurney',
+        farges: 'Curva Bow y Mezcla Sustractiva de Farges',
+        compare: 'Comparador Multimuestras y Baricentro 4D',
+        tesseract: 'Hipercubo Tesseract SO(4)'
+      };
+      this.app.showToast(labels[modeKey] || 'Modo de Despliegue 4D activado', 'info');
+    }
+
+    // Auto-encuadre dinámico para la nueva geometría desplegada
+    setTimeout(() => this.frameAll(), 80);
   }
 
   // --- CONTROL DEL MODO PANTALLA COMPLETA INMERSIVA ---
@@ -1602,7 +2360,7 @@ export class Hyper4DStudio {
       wrapper.requestFullscreen().catch(() => {});
     }
 
-    setTimeout(() => this._resizeCanvas(), 60);
+    setTimeout(() => this._resizeCanvas(), 70);
 
     if (this.app?.showToast) {
       this.app.showToast('Modo Pantalla Completa Inmersiva 4D activado (F / Esc)', 'info');
@@ -1627,7 +2385,7 @@ export class Hyper4DStudio {
       document.exitFullscreen().catch(() => {});
     }
 
-    setTimeout(() => this._resizeCanvas(), 60);
+    setTimeout(() => this._resizeCanvas(), 70);
   }
 
   toggleSidebar() {
@@ -1643,7 +2401,7 @@ export class Hyper4DStudio {
       if (txtSpan) txtSpan.textContent = this.options.isSidebarHidden ? 'Mostrar Panel' : 'Ocultar Panel';
     }
 
-    setTimeout(() => this._resizeCanvas(), 60);
+    setTimeout(() => this._resizeCanvas(), 70);
   }
 
   // --- MÉTODOS DE ANÁLISIS DE TEORÍA DEL COLOR (FARGES, GOETHE, ITTEN, GURNEY) ---
@@ -1909,7 +2667,6 @@ export class Hyper4DStudio {
     const hsv = ColorMath.rgbToHsv(curRgb.r, curRgb.g, curRgb.b);
     const isWarm = (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320;
 
-    // Actualizar Muestra seleccionada del Comparador si autoSyncWheel está activo
     if (this.autoSyncWheel && this.compareSlots && this.compareSlots.length > 0) {
       const targetSlot = this.compareSlots.find(s => s.id === this.activeTargetSlotId) || this.compareSlots[0];
       if (targetSlot) {
@@ -1919,7 +2676,6 @@ export class Hyper4DStudio {
       }
     }
 
-    // Actualizar Tarjeta de Inspección HTML
     const swatchEl = document.getElementById('hyper4dActiveSwatch');
     if (swatchEl) swatchEl.style.backgroundColor = hex;
 
@@ -2097,37 +2853,12 @@ export class Hyper4DStudio {
     }
   }
 
-  // --- MOTOR DE COMPARACIÓN MULTIMUESTRAS DINÁMICO (4D MULTI-SAMPLE COMPARATOR) ---
-
-  _getColor4DCoords(rgb) {
-    const hsv = ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b);
-    const munsell = MunsellSystem.rgbToMunsell(rgb.r, rgb.g, rgb.b);
-    const isWarm = (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320;
-    const rad = (hsv.h * Math.PI) / 180;
-    const chromaRadius = (munsell.chroma || (hsv.s * 14)) * 14;
-    const x = chromaRadius * Math.cos(rad);
-    const z = chromaRadius * Math.sin(rad);
-    const y = ((munsell.value || (hsv.v * 9)) - 5) * 32;
-
-    let w = 0;
-    if (this.dimension4D.wMode === 'thermal') {
-      w = (isWarm ? 30 : -30) + (this.dimension4D.wValue * 0.6);
-    } else if (this.dimension4D.wMode === 'subtractive') {
-      w = this.dimension4D.wValue;
-    } else if (this.dimension4D.wMode === 'diurnal') {
-      w = Math.sin(this.dimension4D.wValue * 0.05) * 50;
-    } else {
-      w = this.dimension4D.wValue * 0.8;
-    }
-
-    return { x, y, z, w, hsv, munsell, isWarm };
-  }
+  // --- MOTOR DE COMPARACIÓN MULTIMUESTRAS DINÁMICO ---
 
   _calculateMultiPhysicalMix(rgbList) {
     if (!rgbList || rgbList.length === 0) return { r: 128, g: 128, b: 128 };
     if (rgbList.length === 1) return { ...rgbList[0] };
 
-    // Mezcla sustractiva física 1/N iterativa en espacio RYB
     let accum = { ...rgbList[0] };
     for (let i = 1; i < rgbList.length; i++) {
       const weight = 1 / (i + 1);
@@ -2137,25 +2868,21 @@ export class Hyper4DStudio {
   }
 
   _bindCompareControls() {
-    // 1. Botón Añadir Muestra
     const btnAdd = document.getElementById('btnHyper4DAddCompareSlot');
     if (btnAdd) {
       btnAdd.addEventListener('click', () => this.addCompareSlot());
     }
 
-    // 2. Botón Cargar Paleta Activa
     const btnPal = document.getElementById('btnHyper4DLoadActivePalette');
     if (btnPal) {
       btnPal.addEventListener('click', () => this.loadActivePaletteIntoSlots());
     }
 
-    // 3. Botón Cargar FG & BG
     const btnFgBg = document.getElementById('btnHyper4DLoadFgBg');
     if (btnFgBg) {
       btnFgBg.addEventListener('click', () => this.loadFgBgIntoSlots());
     }
 
-    // 4. Checkbox Auto-sync Rueda con la Muestra Objetivo
     const chkSync = document.getElementById('chkHyper4DAutoSyncSlotA');
     if (chkSync) {
       chkSync.checked = this.autoSyncWheel;
@@ -2167,7 +2894,6 @@ export class Hyper4DStudio {
       });
     }
 
-    // 5. Selector de Muestra Objetivo para la Rueda
     const selTarget = document.getElementById('hyper4dWheelTargetSelect');
     if (selTarget) {
       selTarget.addEventListener('change', (e) => {
@@ -2175,7 +2901,6 @@ export class Hyper4DStudio {
       });
     }
 
-    // 6. Pestañas de Sub-vistas (Métricas, Composición, Mezcla 4D)
     const viewButtons = document.querySelectorAll('.hyper4d-comp-view-btn');
     const subViews = {
       metrics: document.getElementById('hyper4dCompViewMetrics'),
@@ -2207,7 +2932,6 @@ export class Hyper4DStudio {
 
     this.activeTargetSlotId = slotId;
 
-    // Actualizar estilo de selección activa en tarjetas
     document.querySelectorAll('.hyper4d-compare-slot-card').forEach(card => {
       const isTarget = card.dataset.slotId === slotId;
       card.classList.toggle('slot-is-target', isTarget);
@@ -2217,13 +2941,11 @@ export class Hyper4DStudio {
       }
     });
 
-    // Actualizar select de la barra
     const select = document.getElementById('hyper4dWheelTargetSelect');
     if (select && select.value !== slotId) {
       select.value = slotId;
     }
 
-    // Actualizar botones de asignación rápida
     document.querySelectorAll('.hyper4d-assign-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.slot === slotId);
     });
@@ -2302,7 +3024,6 @@ export class Hyper4DStudio {
       }
     }
 
-    // Actualizar indicador en barra de asignación rápida
     const assignBtnDot = document.querySelector(`.hyper4d-assign-btn[data-slot="${slotId}"] span`);
     if (assignBtnDot) {
       assignBtnDot.style.background = slot.hex;
@@ -2480,10 +3201,8 @@ export class Hyper4DStudio {
       `;
     }).join('');
 
-    // Actualizar barra de asignación rápida
     this.renderQuickAssignBar();
 
-    // Event bindings para las tarjetas
     container.querySelectorAll('.hyper4d-compare-slot-card').forEach(card => {
       card.addEventListener('click', (e) => {
         if (e.target.closest('button, input')) return;
@@ -2551,10 +3270,9 @@ export class Hyper4DStudio {
     const activeSlots = this.compareSlots.filter(s => s.active !== false);
     if (activeSlots.length < 2) return;
 
-    // 1. Datos cromáticos y 4D para cada muestra
     const slotData = activeSlots.map(slot => {
       const lab = this._rgbToLab(slot.rgb);
-      const coords = this._getColor4DCoords(slot.rgb);
+      const coords = this._getColor4DCoords(slot.rgb, { minVisualChroma: 5 });
       return {
         slot,
         lab,
@@ -2567,7 +3285,6 @@ export class Hyper4DStudio {
 
     const N = slotData.length;
 
-    // 2. Matriz Cruzada Pairwise (CIE76 ΔE y Contraste WCAG)
     let sumDeltaE = 0;
     let pairCount = 0;
     let maxDeltaE = -1;
@@ -2601,8 +3318,6 @@ export class Hyper4DStudio {
     }
 
     const avgDeltaE = pairCount > 0 ? (sumDeltaE / pairCount) : 0;
-
-    // 3. Rango de Luminosidad y Balance Térmico
     const luminances = slotData.map(d => d.lab.L);
     const minL = Math.min(...luminances);
     const maxL = Math.max(...luminances);
@@ -2613,7 +3328,6 @@ export class Hyper4DStudio {
     const warmPct = Math.round((warmCount / N) * 100);
     const coolPct = 100 - warmPct;
 
-    // --- VISTA 1: ESTADÍSTICAS GLOBALES ---
     const statsBox = document.getElementById('hyper4dComparisonStats');
     if (statsBox) {
       let deltaInterpretation = 'Diferencia tonal sutil y armónica';
@@ -2651,7 +3365,6 @@ export class Hyper4DStudio {
       `;
     }
 
-    // --- VISTA 1: MATRIZ PAIRWISE ---
     const matrixBox = document.getElementById('hyper4dPairwiseMatrixBox');
     if (matrixBox) {
       let tableHtml = `<table class="hyper4d-table-styled"><thead><tr><th>ΔE / Ratio</th>`;
@@ -2691,7 +3404,6 @@ export class Hyper4DStudio {
       matrixBox.innerHTML = tableHtml;
     }
 
-    // --- VISTA 1: TABLA DE COORDENADAS 4D ---
     const coordsBox = document.getElementById('hyper4dCoordsTableBox');
     if (coordsBox) {
       let coordsHtml = `
@@ -2733,7 +3445,6 @@ export class Hyper4DStudio {
       coordsBox.innerHTML = coordsHtml;
     }
 
-    // --- VISTA 2: RELACIÓN ARMÓNICA Y GOETHE ---
     const harmonyBox = document.getElementById('hyper4dCompHarmonyBox');
     if (harmonyBox) {
       let patternDesc = '';
@@ -2761,18 +3472,17 @@ export class Hyper4DStudio {
       `;
     }
 
-    // Proporciones de Goethe
     const goetheBox = document.getElementById('hyper4dCompGoetheHierarchyBox');
     if (goetheBox) {
       const goetheWeights = slotData.map(d => {
         const h = d.hsv.h;
         let w = 6;
-        if (h >= 45 && h < 75) w = 9;       // Amarillo = 9
-        else if (h >= 25 && h < 45) w = 8;  // Naranja = 8
-        else if (h >= 340 || h < 25) w = 6; // Rojo = 6
-        else if (h >= 270 && h < 340) w = 3;// Violeta = 3
-        else if (h >= 200 && h < 270) w = 4;// Azul = 4
-        else if (h >= 75 && h < 200) w = 6; // Verde = 6
+        if (h >= 45 && h < 75) w = 9;
+        else if (h >= 25 && h < 45) w = 8;
+        else if (h >= 340 || h < 25) w = 6;
+        else if (h >= 270 && h < 340) w = 3;
+        else if (h >= 200 && h < 270) w = 4;
+        else if (h >= 75 && h < 200) w = 6;
 
         const invWeight = 1 / w;
         return { slot: d.slot, weight: w, invWeight };
@@ -2806,7 +3516,6 @@ export class Hyper4DStudio {
       `;
     }
 
-    // Roles Compositivos
     const rolesBox = document.getElementById('hyper4dCompRolesBox');
     if (rolesBox) {
       const sortedByVal = [...slotData].sort((a, b) => b.hsv.v - a.hsv.v);
@@ -2834,7 +3543,6 @@ export class Hyper4DStudio {
       `;
     }
 
-    // --- VISTA 3: BARICENTRO Y MEZCLA FÍSICA COLECTIVA ---
     const mixBox = document.getElementById('hyper4dCompareMixActionBox');
     if (mixBox) {
       const rgbList = slotData.map(d => d.slot.rgb);
@@ -2887,7 +3595,6 @@ export class Hyper4DStudio {
     const preset = this.masterPresets[key];
     if (!preset) return;
 
-    // Actualizar clase active en chips
     document.querySelectorAll('.hyper4d-master-chip').forEach(c => {
       c.classList.toggle('active', c.dataset.master === key);
     });
@@ -2907,7 +3614,6 @@ export class Hyper4DStudio {
         </div>
       `;
 
-      // Bind chips
       descEl.querySelectorAll('.chat-color-chip').forEach(btn => {
         btn.addEventListener('click', () => {
           const hex = btn.dataset.hex;
@@ -2918,22 +3624,18 @@ export class Hyper4DStudio {
       });
     }
 
-    // Cargar el primer color en la rueda
     if (preset.colors.length > 0 && this.app) {
       this.app.setColorDirectly(ColorMath.hexToRgb(preset.colors[0]));
-      if (this.app.showToast) {
+      if (this.app?.showToast) {
         this.app.showToast(`Constelación 4D de ${preset.author} cargada`, 'info');
       }
     }
   }
 
-
-
   generateInspiredPalette() {
     const curRgb = this.app?.fgColor || { r: 99, g: 102, b: 241 };
     const hsv = ColorMath.rgbToHsv(curRgb.r, curRgb.g, curRgb.b);
 
-    // Crea un esquema armónico pentacromático en el espacio 4D
     const colors = [
       ColorMath.rgbToHex(curRgb.r, curRgb.g, curRgb.b),
       ColorMath.rgbToHex(...Object.values(ColorMath.hsvToRgb((hsv.h + 35) % 360, hsv.s * 0.85, Math.min(1, hsv.v * 1.1)))),
@@ -2983,7 +3685,6 @@ export class Hyper4DStudio {
     y = (y3 > 0.008856 ? y3 : (y - 16 / 116) / 7.787) * 100.000;
     z = (z3 > 0.008856 ? z3 : (z - 16 / 116) / 7.787) * 108.883;
 
-    // XYZ a sRGB
     let r = x * 0.032406 + y * -0.015372 + z * -0.004986;
     let g = x * -0.009689 + y * 0.018758 + z * 0.000415;
     let bl = x * 0.000557 + y * -0.002040 + z * 0.010570;

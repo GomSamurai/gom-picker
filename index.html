@@ -1755,7 +1755,7 @@
                   <span class="hyper4d-version-tag">SO(4) Real</span>
                 </div>
                 <div class="hyper4d-subtitle">
-                  Visualizador, comparador y desglose cuadridimensional interactivo de muestras y teoría del color
+                  Visualizador, comparador y despliegue cuadridimensional interactivo de muestras y teoría del color
                 </div>
               </div>
             </div>
@@ -1785,14 +1785,60 @@
               <!-- Quick Action Buttons -->
               <div class="hyper4d-btn-group">
                 <button id="btnHyper4DResetCam" class="hyper4d-icon-btn" title="Restaurar cámara orbital a vista por defecto">🎯 Centrar</button>
-                <button id="btnHyper4DAutoRotate" class="hyper4d-icon-btn active" title="Alternar órbita cinemática automática">🔄 Giro</button>
+                <button id="btnHyper4DFrame" class="hyper4d-icon-btn" title="Auto-encuadrar todos los nodos con proporción óptima">🔍 Auto-Encuadre</button>
+                <button id="btnHyper4DAutoRotate" class="hyper4d-icon-btn active" title="Alternar órbita cinemática automática">🔄 Órbita</button>
+                <button id="btnHyper4DCinematicFly" class="hyper4d-icon-btn" title="Vuelo cinemático espacial continuo">🚀 Vuelo 4D</button>
                 <button id="btnHyper4DViewTop" class="hyper4d-icon-btn" title="Vista Cenital (Rueda Cromática)">📐 Cenital</button>
                 <button id="btnHyper4DViewFront" class="hyper4d-icon-btn" title="Vista Frontal (Valor / Matiz)">📐 Frontal</button>
                 <button id="btnHyper4DViewSide" class="hyper4d-icon-btn" title="Vista Lateral (Croma / Valor)">📐 Lateral</button>
                 <button id="btnHyper4DSnapshot" class="hyper4d-icon-btn hyper4d-btn-accent" title="Descargar captura PNG de alta definición">📸 Captura HD</button>
-                <button id="btnHyper4DFullscreen" class="hyper4d-icon-btn hyper4d-btn-fullscreen" title="Modo Pantalla Completa Inmersiva con todas las opciones (Tecla F)">⛶ Pantalla Completa</button>
+                <button id="btnHyper4DFullscreen" class="hyper4d-icon-btn hyper4d-btn-fullscreen" title="Modo Pantalla Completa Inmersiva (Tecla F)">⛶ Pantalla Completa</button>
               </div>
             </div>
+          </div>
+
+          <!-- Barra de Modos de Despliegue Espacial 4D -->
+          <div class="hyper4d-deploy-strip">
+            <div class="hyper4d-deploy-label">
+              <span class="hyper4d-deploy-icon">🚀</span>
+              <span>Modos de Despliegue Espacial 4D:</span>
+            </div>
+            <div class="hyper4d-deploy-pills" id="hyper4dDeployPills">
+              <button class="hyper4d-deploy-pill active" data-deploy="all" title="Ver todo el sólido con muestra activa y sus relaciones">🌐 Todo el Sólido</button>
+              <button class="hyper4d-deploy-pill" data-deploy="harmonies" title="Desplegar poliedros de armonías en 4D (tríadas, análogos, complementarios)">✨ Armonías 4D</button>
+              <button class="hyper4d-deploy-pill" data-deploy="palette" title="Desplegar constelación y Gamut Hull de la paleta activa">📚 Paleta & Gamut</button>
+              <button class="hyper4d-deploy-pill" data-deploy="ramp" title="Desplegar spline 4D continua de degradados y rampas tonales">🌈 Rampa Tonal 4D</button>
+              <button class="hyper4d-deploy-pill" data-deploy="gurney" title="Estudio de Luz, Sombra y Terminador SSS de James Gurney">💡 Estudio Luz / SSS</button>
+              <button class="hyper4d-deploy-pill" data-deploy="farges" title="Curva Bow no lineal y mezcla sustractiva de Florent Farges">🧪 Curva Bow Farges</button>
+              <button class="hyper4d-deploy-pill" data-deploy="compare" title="Polígono comparativo multimuestras y baricentro 4D">⚖️ Comparador 4D</button>
+              <button class="hyper4d-deploy-pill" data-deploy="tesseract" title="Hipercubo Tesseract SO(4) en rotación continua">🧊 Tesseract SO(4)</button>
+            </div>
+          </div>
+
+          <!-- Sub-barras Contextuales de Despliegue -->
+          <div id="hyper4dHarmonySubBar" class="hyper4d-context-subbar" style="display: none;">
+            <span style="font-size: 0.72rem; color: #C7D2FE; font-weight: 700;">📐 Regla Armónica en 4D:</span>
+            <select id="hyper4dHarmonyRuleSelect" class="hyper4d-select-mini">
+              <option value="triadic">Tríada Equilibrada (120°, 240°)</option>
+              <option value="complementary">Eje Complementario Puro (180°)</option>
+              <option value="split-complementary">Complementario Dividido (150°, 210°)</option>
+              <option value="tetradic">Tétrada Rectangular (60°, 180°, 240°)</option>
+              <option value="square">Cuadrado Cromático (90°, 180°, 270°)</option>
+              <option value="analogous">Análogos Adyacentes (±30°)</option>
+              <option value="monochromatic">Escala Tonal Monocromática (4 pasos)</option>
+            </select>
+            <span style="font-size: 0.68rem; color: var(--text-muted);">Proyecta el poliedro geométrico tridimensional con caras de resonancia translúcidas.</span>
+          </div>
+
+          <div id="hyper4dRampSubBar" class="hyper4d-context-subbar" style="display: none;">
+            <span style="font-size: 0.72rem; color: #34D399; font-weight: 700;">🌈 Tipo de Rampa Proyectada:</span>
+            <select id="hyper4dRampTypeSelect" class="hyper4d-select-mini">
+              <option value="active_studio">Rampa Activa del Ramp Studio (OKLCH Perceptual)</option>
+              <option value="light_shadow">Luz Dorada a Sombra Violeta de Sorolla</option>
+              <option value="thermal">Balanza Térmica (Azul Gélido a Naranja Solar)</option>
+              <option value="saturation">Saturación Plena a Gris Acromático</option>
+            </select>
+            <span style="font-size: 0.68rem; color: var(--text-muted);">Compara la spline continua OKLCH frente a la caída desaturada de RGB lineal.</span>
           </div>
 
           <!-- Stage Grid: Canvas a la izquierda + Panel de Control/Comparador a la derecha -->
