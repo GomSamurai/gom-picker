@@ -3716,8 +3716,11 @@ class GomPickerApp {
       btnAddStop.addEventListener('click', () => {
         FlorentFargesEngine.addTransitionStop();
         this.renderFlorentTransitionComparator();
-        if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
-          this.hyper4dStudio.syncWithActiveColor();
+        if (this.hyper4dStudio) {
+          this.hyper4dStudio.syncFargesWithCompare();
+          if (this.hyper4dStudio.activeDeployment === 'farges') {
+            this.hyper4dStudio.syncWithActiveColor();
+          }
         }
         this.showToast('➕ Nueva muestra añadida a la transición de Farges');
       });
@@ -3727,6 +3730,10 @@ class GomPickerApp {
       stepsSelect.value = FlorentFargesEngine.transitionStepsCount || 9;
       stepsSelect.addEventListener('change', (e) => {
         FlorentFargesEngine.transitionStepsCount = parseInt(e.target.value, 10);
+        if (this.hyper4dStudio) {
+          this.hyper4dStudio.fargesStepsResolution = FlorentFargesEngine.transitionStepsCount;
+          this.hyper4dStudio._updateFargesSubBar();
+        }
         this.renderFlorentTransitionComparator();
         if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
           this.hyper4dStudio.syncWithActiveColor();
@@ -3781,8 +3788,11 @@ class GomPickerApp {
         }
 
         this.renderFlorentTransitionComparator();
-        if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
-          this.hyper4dStudio.syncWithActiveColor();
+        if (this.hyper4dStudio) {
+          this.hyper4dStudio.syncFargesWithCompare();
+          if (this.hyper4dStudio.activeDeployment === 'farges') {
+            this.hyper4dStudio.syncWithActiveColor();
+          }
         }
         this.showToast(`Preset Farges aplicado: ${chip.textContent.trim()}`);
       });
@@ -3844,8 +3854,11 @@ class GomPickerApp {
         picker.addEventListener('input', (e) => {
           FlorentFargesEngine.updateTransitionStop(idx, e.target.value);
           this.renderFlorentTransitionComparator();
-          if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
-            this.hyper4dStudio.syncWithActiveColor();
+          if (this.hyper4dStudio) {
+            this.hyper4dStudio.syncFargesWithCompare();
+            if (this.hyper4dStudio.activeDeployment === 'farges') {
+              this.hyper4dStudio.syncWithActiveColor();
+            }
           }
         });
       }
@@ -3857,8 +3870,11 @@ class GomPickerApp {
           if (/^#[0-9A-F]{6}$/i.test(val)) {
             FlorentFargesEngine.updateTransitionStop(idx, val);
             this.renderFlorentTransitionComparator();
-            if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
-              this.hyper4dStudio.syncWithActiveColor();
+            if (this.hyper4dStudio) {
+              this.hyper4dStudio.syncFargesWithCompare();
+              if (this.hyper4dStudio.activeDeployment === 'farges') {
+                this.hyper4dStudio.syncWithActiveColor();
+              }
             }
           }
         });
@@ -3867,6 +3883,9 @@ class GomPickerApp {
       if (nameInput) {
         nameInput.addEventListener('change', (e) => {
           FlorentFargesEngine.updateTransitionStop(idx, null, e.target.value.trim());
+          if (this.hyper4dStudio) {
+            this.hyper4dStudio.syncFargesWithCompare();
+          }
         });
       }
 
@@ -3874,8 +3893,11 @@ class GomPickerApp {
         btnFg.addEventListener('click', () => {
           FlorentFargesEngine.updateTransitionStop(idx, this.fgColor.hex, `FG (${this.fgColor.hex})`);
           this.renderFlorentTransitionComparator();
-          if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
-            this.hyper4dStudio.syncWithActiveColor();
+          if (this.hyper4dStudio) {
+            this.hyper4dStudio.syncFargesWithCompare();
+            if (this.hyper4dStudio.activeDeployment === 'farges') {
+              this.hyper4dStudio.syncWithActiveColor();
+            }
           }
           this.showToast(`Muestra ${letter} actualizada con Color Frontal (FG)`);
         });
@@ -3885,8 +3907,11 @@ class GomPickerApp {
         btnBg.addEventListener('click', () => {
           FlorentFargesEngine.updateTransitionStop(idx, this.bgColor.hex, `BG (${this.bgColor.hex})`);
           this.renderFlorentTransitionComparator();
-          if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
-            this.hyper4dStudio.syncWithActiveColor();
+          if (this.hyper4dStudio) {
+            this.hyper4dStudio.syncFargesWithCompare();
+            if (this.hyper4dStudio.activeDeployment === 'farges') {
+              this.hyper4dStudio.syncWithActiveColor();
+            }
           }
           this.showToast(`Muestra ${letter} actualizada con Color Fondo (BG)`);
         });
@@ -3896,8 +3921,11 @@ class GomPickerApp {
         btnDel.addEventListener('click', () => {
           FlorentFargesEngine.removeTransitionStop(idx);
           this.renderFlorentTransitionComparator();
-          if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
-            this.hyper4dStudio.syncWithActiveColor();
+          if (this.hyper4dStudio) {
+            this.hyper4dStudio.syncFargesWithCompare();
+            if (this.hyper4dStudio.activeDeployment === 'farges') {
+              this.hyper4dStudio.syncWithActiveColor();
+            }
           }
           this.showToast(`Muestra eliminada de la transición`);
         });

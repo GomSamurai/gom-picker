@@ -934,6 +934,8 @@ export const FlorentFargesEngine = {
           isOliveShift: mix.isOliveShift,
           isStop,
           stopName,
+          stopId: isStopA ? (stopA.slotId || stopA.id) : (isStopB ? (stopB.slotId || stopB.id) : null),
+          stopRef: isStopA ? stopA : (isStopB ? stopB : null),
           pedagogicalNote: mix.pedagogicalNote
         });
       }

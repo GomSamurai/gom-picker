@@ -98,6 +98,7 @@ export class Hyper4DStudio {
     this.autoSyncWheel = true;
     this.activeTargetSlotId = 'A'; // Muestra que se ajusta en vivo al interactuar con la Rueda Cromática
     this.activeCompareSubView = 'metrics'; // 'metrics' | 'composition' | 'mix'
+    this.fargesStepsResolution = 9; // Resolución de pasos en curva Bow Farges
     this.compareSlots = [
       { id: 'A', name: 'Muestra A (Principal)', hex: '#6366F1', rgb: { r: 99, g: 102, b: 241 }, active: true },
       { id: 'B', name: 'Muestra B (Comparada)', hex: '#F59E0B', rgb: { r: 245, g: 158, b: 11 }, active: true }
@@ -175,6 +176,8 @@ export class Hyper4DStudio {
     this._bindCompareControls();
     this._bindResizeControls();
     this.renderCompareSlots();
+    this.syncCompareWithFarges();
+    this._updateFargesSubBar();
     this._resizeCanvas();
     this.syncWithActiveColor();
 
@@ -1080,50 +1083,105 @@ export class Hyper4DStudio {
   }
 
   /**
+   * Obtiene las paradas multi-muestra activas para la Curva Bow de Farges.
+   * Prioridad viva: Muestras configuradas en el Comparador Pro (this.compareSlots).
+   * Si no hay muestras activas suficientes, recurre a FlorentFargesEngine o a FG vs BG.
+   */
+  getFargesStops(activeRgb = null) {
+    // 1. Muestras activas en el Comparador Pro (fuente viva dinámica)
+    const activeSlots = (this.compareSlots || []).filter(s => s.active !== false);
+    if (activeSlots.length >= 2) {
+      return activeSlots.map(s => {
+        const hex = (s.hex || '#6366F1').toUpperCase();
+        const rgb = s.rgb || ColorMath.hexToRgb(hex);
+        return {
+          id: s.id,
+          slotId: s.id,
+          hex,
+          rgb,
+          name: `Muestra [${s.id}]`,
+          cleanName: `Muestra [${s.id}]`
+        };
+      });
+    }
+
+    // 2. Paradas en FlorentFargesEngine (si el usuario configuró la transición en la pestaña Florent)
+    const fStops = FlorentFargesEngine.transitionStops;
+    if (fStops && fStops.length >= 2) {
+      const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+      return fStops.map((s, idx) => {
+        const hex = (s.hex || '#6366F1').toUpperCase();
+        const rgb = s.rgb || ColorMath.hexToRgb(hex);
+        const letter = s.slotId || letters[idx] || `S${idx + 1}`;
+        return {
+          id: s.id || `stop_${letter}`,
+          slotId: letter,
+          hex,
+          rgb,
+          name: `Muestra [${letter}]`,
+          cleanName: `Muestra [${letter}]`
+        };
+      });
+    }
+
+    // 3. Fallback: Frontal (FG) vs Fondo (BG)
+    const fg = activeRgb || this.app?.fgColor || { r: 99, g: 102, b: 241 };
+    const bg = this.app?.bgColor || { r: 245, g: 158, b: 11 };
+    const fgHex = ColorMath.rgbToHex(fg.r, fg.g, fg.b).toUpperCase();
+    const bgHex = ColorMath.rgbToHex(bg.r, bg.g, bg.b).toUpperCase();
+    return [
+      { id: 'A', slotId: 'A', hex: fgHex, rgb: fg, name: 'Muestra [A] (Frontal)', cleanName: 'Muestra [A] (Frontal)' },
+      { id: 'B', slotId: 'B', hex: bgHex, rgb: bg, name: 'Muestra [B] (Fondo)', cleanName: 'Muestra [B] (Fondo)' }
+    ];
+  }
+
+  /**
    * MODO 5: Despliegue Curva Bow de Florent Farges & Mezcla Sustractiva Multi-Muestra
    * Traza la curva física no lineal entre 2 o más muestras reales o arbitrarias,
    * calculando su flexión respecto a la cuerda recta teórica y destacando fenómenos
    * de taller (Olive Shift, absorción selectiva y valor intrínseco).
    */
-  deployFargesBowCurve(activeRgb) {
+  deployFargesBowCurve(activeRgb = null) {
     const nodes = [];
     const lines = [];
     const faces = [];
 
-    // Obtener paradas multi-muestra configuradas en el motor de Farges
-    let stops = FlorentFargesEngine.transitionStops;
-    if (!stops || stops.length < 2) {
-      const fg = activeRgb || this.app?.fgColor || { r: 99, g: 102, b: 241 };
-      const bg = this.app?.bgColor || { r: 245, g: 158, b: 11 };
-      stops = [
-        { id: 'farges_stop_1', hex: ColorMath.rgbToHex(fg.r, fg.g, fg.b), rgb: fg, name: 'Muestra A (Frontal)' },
-        { id: 'farges_stop_2', hex: ColorMath.rgbToHex(bg.r, bg.g, bg.b), rgb: bg, name: 'Muestra B (Fondo)' }
-      ];
-    }
+    // Obtener paradas multi-muestra vivas (prioridad: compareSlots activos del Comparador Pro)
+    const stops = this.getFargesStops(activeRgb);
+    if (!stops || stops.length < 2) return { nodes, lines, faces };
 
-    // Generar la transición multi-muestra física
-    const totalDesiredSteps = Math.max(9, (stops.length - 1) * 5);
+    // Resolución de pasos elegida por el usuario
+    const userSteps = this.fargesStepsResolution || FlorentFargesEngine.transitionStepsCount || 9;
+    const totalDesiredSteps = Math.max((stops.length - 1) * 3, userSteps);
     const transitionSteps = FlorentFargesEngine.generateMultiSampleTransition(stops, totalDesiredSteps);
 
     const stepNodes = [];
     transitionSteps.forEach((step, idx) => {
       const coords = this._getColor4DCoords(step.rgb, { minVisualChroma: 3 });
+      const cleanStopName = step.stopName ? step.stopName.replace(/\s*\([#0-9A-Fa-f]+\)/g, '').trim() : '';
+      const nodeName = step.isStop
+        ? `${cleanStopName} (${step.hex.toUpperCase()})`
+        : `Paso ${(step.localRatio * 100).toFixed(0)}% (${step.hex.toUpperCase()})`;
+
       const node = {
         id: `farges_step_${idx}`,
-        type: step.isStop ? 'farges_stop' : 'bow_curve_pt',
+        type: step.isStop ? 'compare_sample' : 'bow_curve_pt',
+        slotId: step.stopId || null,
         x: coords.x,
         y: coords.y,
         z: coords.z,
         w: coords.w,
-        hex: step.hex,
+        hex: step.hex.toUpperCase(),
         rgb: step.rgb,
         munsell: step.munsell,
-        name: `${step.stopName} (${step.hex})`,
-        role: step.isStop ? `Parada ${step.stopName}` : `Paso Físico ${(step.localRatio * 100).toFixed(0)}%`,
+        name: nodeName,
+        role: step.isStop
+          ? `Hito ${cleanStopName}`
+          : (step.isOliveShift ? '⚠️ Olive Shift (Viraje a Verde Oliva)' : `Paso Físico ${(step.localRatio * 100).toFixed(0)}%`),
         inherentValue: step.inherentValue,
         isOliveShift: step.isOliveShift,
         isPrimary: step.isStop,
-        size: step.isStop ? 11 : 6
+        size: step.isStop ? 12 : (step.isOliveShift ? 7 : 5.5)
       };
       nodes.push(node);
       stepNodes.push(node);
@@ -1131,18 +1189,17 @@ export class Hyper4DStudio {
 
     // 1. Trazar la curva conectiva física sustractiva (Verde esmeralda o Amarillo si hay Olive Shift)
     for (let i = 0; i < stepNodes.length - 1; i++) {
-      const isMiddle = i === Math.floor(stepNodes.length / 2);
+      const isOlive = stepNodes[i].isOliveShift || stepNodes[i + 1].isOliveShift;
       lines.push({
         from: stepNodes[i],
         to: stepNodes[i + 1],
-        color: stepNodes[i].isOliveShift || stepNodes[i + 1].isOliveShift ? '#EAB308' : '#10B981',
+        color: isOlive ? '#EAB308' : '#10B981',
         width: 3.2,
-        label: isMiddle ? 'Curva Física Farges' : ''
+        label: i === Math.floor(stepNodes.length / 2) ? 'Curva Física Farges' : ''
       });
     }
 
-    // 2. Trazar las cuerdas rectas teóricas (Gris punteado) entre cada par consecutivo de paradas
-    // Esto permite al artista contrastar visualmente la no-linealidad de la mezcla física frente a la línea recta
+    // 2. Trazar las cuerdas rectas teóricas entre cada par consecutivo de paradas
     const stopIndices = [];
     transitionSteps.forEach((s, idx) => {
       if (s.isStop) stopIndices.push(idx);
@@ -1171,7 +1228,7 @@ export class Hyper4DStudio {
             p1: nodeA,
             p2: nodeMid,
             p3: nodeB,
-            fillColor: 'rgba(16, 185, 129, 0.08)'
+            fillColor: nodeMid.isOliveShift ? 'rgba(234, 179, 8, 0.08)' : 'rgba(16, 185, 129, 0.08)'
           });
         }
       }
@@ -1451,6 +1508,14 @@ export class Hyper4DStudio {
     linesToDraw.push(...activeData.lines);
     facesToDraw.push(...activeData.faces);
 
+    // Si estamos en modo 'all' y showMixingBowCurve está activado, proyectar también la curva de Farges
+    if (this.activeDeployment === 'all' && this.options.showMixingBowCurve) {
+      const fargesData = this.deployFargesBowCurve(curRgb);
+      elementsToDraw.push(...fargesData.nodes);
+      linesToDraw.push(...fargesData.lines);
+      facesToDraw.push(...fargesData.faces);
+    }
+
     // Constelación de Paleta (si está activada y no estamos en modo exclusivo)
     if (this.options.showPaletteConstellation && this.activeDeployment === 'all') {
       const palData = this.deployPaletteConstellation();
@@ -1460,7 +1525,7 @@ export class Hyper4DStudio {
 
     // Muestras en Modo Comparador (solo si se selecciona el comparador)
     if (this.activeDeployment === 'compare') {
-      this._collectCompareNodes(elementsToDraw, linesToDraw);
+      this._collectCompareNodes(elementsToDraw, linesToDraw, facesToDraw);
     }
 
     // 6. PROYECCIÓN 4D -> 3D -> 2D
@@ -1850,7 +1915,7 @@ export class Hyper4DStudio {
     this.ctx.setLineDash([]);
   }
 
-  _collectCompareNodes(elements, lines) {
+  _collectCompareNodes(elements, lines, faces = null) {
     const activeSlots = this.compareSlots.filter(s => s.active !== false);
     if (activeSlots.length < 2) return;
 
@@ -1868,13 +1933,13 @@ export class Hyper4DStudio {
         y: coords.y,
         z: coords.z,
         w: coords.w,
-        hex: slot.hex,
+        hex: slot.hex.toUpperCase(),
         rgb: slot.rgb,
         name: `[${slot.id}] ${slot.name || ('Muestra ' + slot.id)}`,
         munsell: coords.munsell.notation,
         coords4D: `X:${coords.x.toFixed(0)} Y:${coords.y.toFixed(0)} Z:${coords.z.toFixed(0)} W:${coords.w.toFixed(0)}`,
         isPrimary: true,
-        size: 11
+        size: 12
       };
       elements.push(node);
       slotNodes.push(node);
@@ -1935,6 +2000,18 @@ export class Hyper4DStudio {
           dash: [3, 3]
         });
       });
+
+      // Si la capa Curva Farges está activada en el comparador, trazar también la curva física bow
+      if (this.options.showMixingBowCurve) {
+        const fargesData = this.deployFargesBowCurve();
+        // Solo agregar puntos intermedios para no duplicar los badges de las muestras principales
+        const curvePtsOnly = fargesData.nodes.filter(n => n.type === 'bow_curve_pt');
+        elements.push(...curvePtsOnly);
+        lines.push(...fargesData.lines);
+        if (faces && Array.isArray(fargesData.faces)) {
+          faces.push(...fargesData.faces);
+        }
+      }
     }
   }
 
@@ -2082,6 +2159,10 @@ export class Hyper4DStudio {
         const hex = this.hoveredNode.node.hex;
         if (hex && this.app) {
           const rgb = ColorMath.hexToRgb(hex);
+          // Si el nodo clickeado es una muestra de comparativa [A], [B], etc., seleccionarla como target
+          if (this.hoveredNode.node.slotId) {
+            this.setActiveTargetSlot(this.hoveredNode.node.slotId);
+          }
           this.app.setColorDirectly(rgb);
           if (this.app.showToast) {
             this.app.showToast(`Color ${hex} cargado en la Rueda Cromática`, 'success');
@@ -2212,6 +2293,34 @@ export class Hyper4DStudio {
       rampTypeSelect.addEventListener('change', (e) => {
         this.activeRampType = e.target.value;
         setTimeout(() => this.frameAll(), 80);
+      });
+    }
+
+    // Sub-controles de Curva Farges & Mezcla Física
+    const fargesStepsSelect = document.getElementById('hyper4dFargesStepsSelect');
+    if (fargesStepsSelect) {
+      fargesStepsSelect.value = String(this.fargesStepsResolution || 9);
+      fargesStepsSelect.addEventListener('change', (e) => {
+        this.fargesStepsResolution = parseInt(e.target.value, 10);
+        FlorentFargesEngine.transitionStepsCount = this.fargesStepsResolution;
+        if (this.app?.renderFlorentTransitionComparator) {
+          this.app.renderFlorentTransitionComparator();
+        }
+      });
+    }
+
+    const btnQuickAddSlot = document.getElementById('btnHyper4DQuickAddSlot');
+    if (btnQuickAddSlot) {
+      btnQuickAddSlot.addEventListener('click', () => {
+        this.addCompareSlot();
+      });
+    }
+
+    const btnOpenCompTab = document.getElementById('btnHyper4DOpenCompareTab');
+    if (btnOpenCompTab) {
+      btnOpenCompTab.addEventListener('click', () => {
+        const compTabBtn = document.querySelector('.hyper4d-subtab-btn[data-subtab="compare"]');
+        if (compTabBtn) compTabBtn.click();
       });
     }
 
@@ -2417,6 +2526,14 @@ export class Hyper4DStudio {
     const rampSubBar = document.getElementById('hyper4dRampSubBar');
     if (rampSubBar) {
       rampSubBar.style.display = modeKey === 'ramp' ? 'flex' : 'none';
+    }
+
+    const fargesSubBar = document.getElementById('hyper4dFargesSubBar');
+    if (fargesSubBar) {
+      fargesSubBar.style.display = modeKey === 'farges' ? 'flex' : 'none';
+      if (modeKey === 'farges') {
+        this._updateFargesSubBar();
+      }
     }
 
     if (this.app?.showToast) {
@@ -2936,6 +3053,15 @@ export class Hyper4DStudio {
         targetSlot.rgb = curRgb;
         this._updateSlotCardDOM(targetSlot.id);
         this._updateComparisonPanel();
+
+        // Mantener sincronizado FlorentFargesEngine en tiempo real
+        if (typeof FlorentFargesEngine !== 'undefined' && Array.isArray(FlorentFargesEngine.transitionStops)) {
+          const fStop = FlorentFargesEngine.transitionStops.find(s => s.id === `slot_${targetSlot.id}` || s.id === targetSlot.id || s.slotId === targetSlot.id);
+          if (fStop) {
+            fStop.hex = hex;
+            fStop.rgb = curRgb;
+          }
+        }
       }
     }
 
@@ -3116,7 +3242,61 @@ export class Hyper4DStudio {
     }
   }
 
-  // --- MOTOR DE COMPARACIÓN MULTIMUESTRAS DINÁMICO ---
+  // --- MOTOR DE COMPARACIÓN MULTIMUESTRAS DINÁMICO & CURVA FARGES ---
+
+  _updateFargesSubBar() {
+    const badge = document.getElementById('hyper4dFargesStopsBadge');
+    if (badge) {
+      const activeCount = (this.compareSlots || []).filter(s => s.active !== false).length;
+      badge.textContent = `${activeCount} Muestras`;
+    }
+    const sel = document.getElementById('hyper4dFargesStepsSelect');
+    if (sel && this.fargesStepsResolution) {
+      sel.value = String(this.fargesStepsResolution);
+    }
+  }
+
+  syncCompareWithFarges() {
+    const activeSlots = (this.compareSlots || []).filter(s => s.active !== false);
+    if (activeSlots.length >= 2 && typeof FlorentFargesEngine !== 'undefined') {
+      FlorentFargesEngine.setTransitionStops(activeSlots.map(s => ({
+        id: `slot_${s.id}`,
+        slotId: s.id,
+        hex: s.hex.toUpperCase(),
+        rgb: s.rgb,
+        name: `Muestra [${s.id}]`
+      })));
+      if (this.app?.renderFlorentTransitionComparator) {
+        this.app.renderFlorentTransitionComparator();
+      }
+    }
+  }
+
+  syncFargesWithCompare() {
+    if (typeof FlorentFargesEngine === 'undefined') return;
+    const fStops = FlorentFargesEngine.transitionStops;
+    if (fStops && fStops.length >= 2) {
+      const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+      this.compareSlots = fStops.map((s, idx) => {
+        const hex = (s.hex || '#6366F1').toUpperCase();
+        const rgb = s.rgb || ColorMath.hexToRgb(hex);
+        const letter = s.slotId || (s.id && s.id.startsWith('slot_') ? s.id.replace('slot_', '') : letters[idx]) || `S${idx + 1}`;
+        return {
+          id: letter,
+          name: s.name || `Muestra ${letter}`,
+          hex: hex,
+          rgb: rgb,
+          active: true
+        };
+      });
+      if (!this.compareSlots.some(s => s.id === this.activeTargetSlotId)) {
+        this.activeTargetSlotId = this.compareSlots[0].id;
+      }
+      this.renderCompareSlots();
+      this._updateComparisonPanel();
+      this._updateFargesSubBar();
+    }
+  }
 
   _calculateMultiPhysicalMix(rgbList) {
     if (!rgbList || rgbList.length === 0) return { r: 128, g: 128, b: 128 };
@@ -3325,6 +3505,8 @@ export class Hyper4DStudio {
     this.activeTargetSlotId = nextLetter;
     this.renderCompareSlots();
     this._updateComparisonPanel();
+    this.syncCompareWithFarges();
+    this._updateFargesSubBar();
 
     if (this.app?.showToast) {
       this.app.showToast(`Muestra [${nextLetter}] añadida a la comparativa 4D`, 'success');
@@ -3345,6 +3527,8 @@ export class Hyper4DStudio {
       }
       this.renderCompareSlots();
       this._updateComparisonPanel();
+      this.syncCompareWithFarges();
+      this._updateFargesSubBar();
       if (this.app?.showToast) {
         this.app.showToast(`Muestra [${removed.id}] eliminada`, 'info');
       }
@@ -3367,6 +3551,8 @@ export class Hyper4DStudio {
       this.renderQuickAssignBar();
     }
     this._updateComparisonPanel();
+    this.syncCompareWithFarges();
+    this._updateFargesSubBar();
   }
 
   loadActivePaletteIntoSlots() {
@@ -3402,6 +3588,8 @@ export class Hyper4DStudio {
     this.activeTargetSlotId = this.compareSlots[0].id;
     this.renderCompareSlots();
     this._updateComparisonPanel();
+    this.syncCompareWithFarges();
+    this._updateFargesSubBar();
 
     if (this.app?.showToast) {
       this.app.showToast(`${this.compareSlots.length} muestras de la paleta cargadas en el Comparador`, 'success');
@@ -3422,6 +3610,8 @@ export class Hyper4DStudio {
     this.activeTargetSlotId = 'A';
     this.renderCompareSlots();
     this._updateComparisonPanel();
+    this.syncCompareWithFarges();
+    this._updateFargesSubBar();
 
     if (this.app?.showToast) {
       this.app.showToast('Comparando Color Frontal (FG) vs Fondo (BG)', 'info');

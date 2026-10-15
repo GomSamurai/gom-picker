@@ -1943,6 +1943,23 @@
             <span style="font-size: 0.68rem; color: var(--text-muted);">Compara la spline continua OKLCH frente a la caída desaturada de RGB lineal.</span>
           </div>
 
+          <div id="hyper4dFargesSubBar" class="hyper4d-context-subbar" style="display: none;">
+            <span style="font-size: 0.72rem; color: #10B981; font-weight: 700;">🧪 Curva Bow Farges & Mezcla Física:</span>
+            <span id="hyper4dFargesStopsBadge" style="font-size: 0.7rem; color: #FFF; background: rgba(16, 185, 129, 0.25); border: 1px solid rgba(16, 185, 129, 0.5); padding: 2px 8px; border-radius: 12px;">2 Muestras</span>
+            <label for="hyper4dFargesStepsSelect" style="font-size: 0.7rem; color: var(--text-muted); margin-left: 6px;">Resolución:</label>
+            <select id="hyper4dFargesStepsSelect" class="hyper4d-select-mini">
+              <option value="5">5 Pasos</option>
+              <option value="7">7 Pasos</option>
+              <option value="9" selected>9 Pasos (Estándar)</option>
+              <option value="13">13 Pasos (Fino)</option>
+              <option value="17">17 Pasos (Ultra)</option>
+              <option value="21">21 Pasos (Hiper-Detalle)</option>
+            </select>
+            <button type="button" id="btnHyper4DQuickAddSlot" class="tool-action-btn" style="margin-left: 6px; padding: 2px 8px; font-size: 0.69rem; background: rgba(99,102,241,0.25); border: 1px solid rgba(99,102,241,0.5); color: #C7D2FE; border-radius: 4px; cursor: pointer;" title="Añadir otra muestra dinámica a la comparativa y curva 4D">➕ Muestra</button>
+            <button type="button" id="btnHyper4DOpenCompareTab" class="tool-action-btn" style="padding: 2px 8px; font-size: 0.69rem; background: rgba(245,158,11,0.2); border: 1px solid rgba(245,158,11,0.4); color: #FCD34D; border-radius: 4px; cursor: pointer;" title="Abrir pestaña del Comparador Pro para afinar muestras">⚖️ Comparador Pro</button>
+            <span style="font-size: 0.68rem; color: var(--text-muted); margin-left: auto;">Traza la no-linealidad sustractiva, Olive Shift y valor intrínseco en tiempo real.</span>
+          </div>
+
           <!-- Stage Grid: Canvas a la izquierda + Panel de Control/Comparador a la derecha -->
           <div id="hyper4dStageLayout" class="hyper4d-stage-layout">
             
