@@ -1565,9 +1565,9 @@
           </div>
 
           <!-- Extractor Controls Bar -->
-          <div class="extract-controls-bar">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <label style="font-size: 0.75rem; color: var(--text-secondary);">Cantidad:</label>
+          <div class="extract-controls-bar" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-top: 10px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Cantidad:</label>
               <select id="extractCountSelect" class="chip-select">
                 <option value="4">4 colores</option>
                 <option value="6" selected>6 colores</option>
@@ -1577,41 +1577,189 @@
               </select>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <label style="font-size: 0.75rem; color: var(--text-secondary);">Filtro Analítico:</label>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Filtro Analítico:</label>
               <select id="extractFilterSelect" class="chip-select">
                 <option value="dominant">Dominantes (Frecuencia)</option>
                 <option value="vibrant">Vibrantes / Saturados</option>
                 <option value="pastel">Pasteles / Claros</option>
                 <option value="dark">Sombras / Profundos</option>
                 <option value="contrast">Alto Contraste Tonal</option>
+                <option value="flesh">👤 Tonos de Piel (Carnaciones / Retrato)</option>
+                <option value="warm">☀️ Cálidos / Solares</option>
+                <option value="cool">❄️ Fríos / Sombras Celestes</option>
               </select>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <label style="font-size: 0.75rem; color: var(--text-secondary);">Orden:</label>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Orden:</label>
               <select id="extractSortSelect" class="chip-select">
                 <option value="dominance">Por Dominancia %</option>
+                <option value="luminance">Por Luminosidad (Ascendente)</option>
+                <option value="luminance_desc">Por Luminosidad (Descendente)</option>
                 <option value="hue">Por Matiz (Hue 0-360°)</option>
-                <option value="luminance">Por Luminosidad</option>
+                <option value="saturation">Por Saturación / Croma</option>
+                <option value="warmth">Por Temperatura (Cálido ➔ Frío)</option>
+                <option value="harmonic">Secuencia Armónica Óptima</option>
               </select>
             </div>
 
-            <button id="btnExtractAction" class="tool-action-btn active-toggle">
+            <button id="btnExtractAction" class="tool-action-btn active-toggle" style="margin-left: auto;">
               <span>⚡</span> Extraer Paleta
             </button>
           </div>
 
-          <!-- Extracted Palette Results -->
-          <div style="margin-top: 12px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 0.8rem; font-weight: 600;">Paleta Resultante de la Imagen Activa (Click en muestra para seleccionar • Arrastra para guardar):</span>
-              <button id="btnSaveExtracted" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem;">
-                <span>💾</span> Guardar en Biblioteca
-              </button>
+          <!-- Extracted Palette Results & Deep Suite Integrations -->
+          <div style="margin-top: 14px; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border: 1px solid var(--border-subtle);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+              <span style="font-size: 0.8rem; font-weight: 700; color: #FFFFFF;">
+                Paleta Resultante de la Imagen Activa <span style="font-size: 0.7rem; font-weight: 400; color: var(--text-muted);">(Click: FG • Shift+Click: BG • Arrastra para guardar):</span>
+              </span>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button id="btnSaveExtracted" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem;" title="Guardar paleta completa en Bibliotecas">
+                  <span>💾</span> Guardar en Biblioteca
+                </button>
+                <button id="btnExtractorToHyper4D" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem; border-color: rgba(99,102,241,0.5); color: #C7D2FE;" title="Proyectar colores extraídos en el Hiperespacio 4D">
+                  <span>🔮</span> Proyectar en 4D
+                </button>
+                <button id="btnExtractorToFlorent" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem; border-color: rgba(245,158,11,0.5); color: #FDE68A;" title="Enviar a la Curva de Transición y Mezcla de Florent Farges">
+                  <span>👨‍🎨</span> Curva Farges
+                </button>
+                <button id="btnExtractorToRamps" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem; border-color: rgba(6,182,212,0.5); color: #A5F3FC;" title="Crear rampa tonal perceptual OKLCH con los extremos de la paleta">
+                  <span>📐</span> Ramp Studio
+                </button>
+                <button id="btnExtractorToWetMixer" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.72rem; border-color: rgba(236,72,153,0.5); color: #FBCFE8;" title="Depositar manchas en el Lienzo de Mezcla Física y Espátula">
+                  <span>🖌️</span> Lienzo de Mezcla
+                </button>
+              </div>
             </div>
-            <div id="extractedSwatchesGrid" style="display: flex; gap: 6px; height: 50px; border-radius: 8px; overflow: hidden;">
+            
+            <div id="extractedSwatchesGrid" style="display: flex; gap: 6px; height: 52px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
               <!-- Extracted items -->
+            </div>
+          </div>
+
+          <!-- SMART PALETTE HARMONIZER & ACADEMIC QUALITY SCORING HUD -->
+          <div id="paletteOptimizerSection" style="margin-top: 14px; background: rgba(18, 20, 29, 0.75); border: 1px solid var(--border-accent); border-radius: 10px; padding: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.35);">
+            <!-- Panel Header with Score & Tier Badge -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.1rem;">✨</span>
+                <div>
+                  <div style="font-size: 0.85rem; font-weight: 700; color: #FFFFFF;">Mejorador Inteligente & Validador de Calidad de la Paleta</div>
+                  <div id="optimizerSubTitle" style="font-size: 0.7rem; color: var(--text-muted);">Auditoría cromática según Florent Farges, Munsell, Goethe y leyes de contraste</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div id="optimizerScoreBadge" class="optimizer-tier-badge grade-s" style="display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-weight: 800; font-size: 0.82rem; letter-spacing: 0.04em;">
+                  <span id="optimizerGradeText">S+</span>
+                  <span id="optimizerScorePoints" style="font-family: var(--font-mono); font-size: 0.74rem; opacity: 0.9;">96/100 Pts</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 5 Dimension Multi-Gauges -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 12px;">
+              <div class="optimizer-metric-card" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 4px;">
+                  <span>📊 Rango Dinámico</span>
+                  <strong id="metricContrastVal" style="color: #60A5FA;">88%</strong>
+                </div>
+                <div style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+                  <div id="metricContrastBar" style="height: 100%; width: 88%; background: #60A5FA;"></div>
+                </div>
+              </div>
+
+              <div class="optimizer-metric-card" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 4px;">
+                  <span>🎯 Cohesión Armónica</span>
+                  <strong id="metricHarmonyVal" style="color: #A78BFA;">94%</strong>
+                </div>
+                <div style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+                  <div id="metricHarmonyBar" style="height: 100%; width: 94%; background: #A78BFA;"></div>
+                </div>
+              </div>
+
+              <div class="optimizer-metric-card" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 4px;">
+                  <span>☀️ Equilibrio Térmico</span>
+                  <strong id="metricThermalVal" style="color: #FBBF24;">82%</strong>
+                </div>
+                <div style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+                  <div id="metricThermalBar" style="height: 100%; width: 82%; background: #FBBF24;"></div>
+                </div>
+              </div>
+
+              <div class="optimizer-metric-card" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 4px;">
+                  <span>🔍 Distinguibilidad ΔE</span>
+                  <strong id="metricDistinctVal" style="color: #34D399;">90%</strong>
+                </div>
+                <div style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+                  <div id="metricDistinctBar" style="height: 100%; width: 90%; background: #34D399;"></div>
+                </div>
+              </div>
+
+              <div class="optimizer-metric-card" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border: 1px solid var(--border-subtle);">
+                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 4px;">
+                  <span>🖨️ Viabilidad Pigmentos</span>
+                  <strong id="metricPigmentsVal" style="color: #F472B6;">95%</strong>
+                </div>
+                <div style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+                  <div id="metricPigmentsBar" style="height: 100%; width: 95%; background: #F472B6;"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Diagnostics Critique Chips -->
+            <div id="optimizerDiagnosticsList" style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; font-size: 0.72rem; line-height: 1.45;">
+              <!-- Dynamic diagnostic chips -->
+            </div>
+
+            <!-- Harmonizer Algorithmic Controls -->
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+              <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 200px;">
+                  <label style="font-size: 0.73rem; color: var(--text-secondary); font-weight: 600; display: block; margin-bottom: 4px;">Algoritmo de Optimización:</label>
+                  <select id="optimizerModeSelect" class="studio-select" style="width: 100%; padding: 5px 8px; font-size: 0.74rem; background: rgba(18, 20, 29, 0.95); border: 1px solid rgba(255, 255, 255, 0.15); color: #FFFFFF; border-radius: 5px; outline: none; cursor: pointer;">
+                    <option value="auto_master" selected>✨ Auto-Magistral S+ (Armonía + Rango + Pigmentos)</option>
+                    <option value="harmonic">🎯 Armonización Geométrica Áurea (Tríada / Análoga)</option>
+                    <option value="farges_ladder">🪜 Escalonamiento de Valor (Luminance Laddering Farges)</option>
+                    <option value="farges_physics">🧪 Coherencia Física de Pigmentos (Croma Óleo)</option>
+                    <option value="cmyk_gamut">🖨️ Corrección Gamut CMYK / Imprimible</option>
+                    <option value="goethe_weights">⚖️ Proporciones Ópticas de Goethe</option>
+                  </select>
+                </div>
+
+                <div style="width: 180px;">
+                  <div style="display: flex; justify-content: space-between; font-size: 0.73rem; color: var(--text-secondary); margin-bottom: 4px;">
+                    <span style="font-weight: 600;">Intensidad de Ajuste:</span>
+                    <span id="optimizerIntensityVal" style="font-family: var(--font-mono); color: var(--accent-cyan); font-weight: 700;">100%</span>
+                  </div>
+                  <input type="range" id="optimizerIntensitySlider" min="10" max="100" value="100" step="5" class="range-slider" style="width: 100%;">
+                </div>
+
+                <div style="display: flex; gap: 6px; align-items: flex-end; margin-top: 14px;">
+                  <button id="btnRunAutoOptimize" class="tool-action-btn active-toggle" style="padding: 5px 12px; font-size: 0.75rem; background: linear-gradient(135deg, #6366F1, #8B5CF6); border-color: rgba(255,255,255,0.3); font-weight: 700;">
+                    <span>✨</span> Auto-Mejorar a S+
+                  </button>
+                  <button id="btnApplyOptimizedPalette" class="tool-action-btn" style="padding: 5px 12px; font-size: 0.75rem;" title="Reemplazar la paleta activa con la versión optimizada">
+                    <span>✓</span> Aplicar Paleta
+                  </button>
+                </div>
+              </div>
+
+              <!-- Before / After Comparison Strip -->
+              <div style="margin-top: 10px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 4px;">
+                  <span>Original vs Optimizada (Comparativa en vivo):</span>
+                  <span id="optimizerImprovementBadge" style="color: #34D399; font-weight: 600;">+0 Pts Mejora</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 3px;">
+                  <div id="optimizerBeforeStrip" style="display: flex; height: 18px; border-radius: 4px; overflow: hidden; opacity: 0.75;" title="Paleta Original"></div>
+                  <div id="optimizerAfterStrip" style="display: flex; height: 26px; border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 2px 8px rgba(0,0,0,0.3);" title="Paleta Optimizada"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

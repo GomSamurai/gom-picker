@@ -33,6 +33,7 @@ import { SwatchSheetExporter } from './swatchSheetExporter.js';
 import { ProfileBackup } from './profileBackup.js';
 import { Hyper4DStudio } from './hyper4d.js?v=3.2';
 import { PaletteImporterEngine } from './paletteImporter.js';
+import { PaletteOptimizer } from './paletteOptimizer.js';
 
 class GomPickerApp {
   constructor() {
@@ -54,6 +55,9 @@ class GomPickerApp {
     this.hyper4dStudio = null;
     this.tooltipEngine = null;
     this.currentAiPalette = null;
+    this.currentExtractedColors = [];
+    this.currentOptimizedColors = [];
+    this.currentPaletteScore = null;
     this.aiChat = null;
     this.activeCatalogFilter = 'all';
     this.broadcastChannel = null;
@@ -5188,19 +5192,180 @@ class GomPickerApp {
       });
     }
 
+    const countSelect = document.getElementById('extractCountSelect');
+    const filterSelect = document.getElementById('extractFilterSelect');
+    const sortSelect = document.getElementById('extractSortSelect');
+
+    if (countSelect) {
+      countSelect.addEventListener('change', () => this.runImageExtraction());
+    }
+
+    if (filterSelect) {
+      filterSelect.addEventListener('change', () => {
+        this.runImageExtraction();
+        const filterNames = {
+          dominant: 'Dominantes (Frecuencia)',
+          vibrant: 'Vibrantes / Saturados',
+          pastel: 'Pasteles / Claros',
+          dark: 'Sombras / Profundos',
+          contrast: 'Alto Contraste Tonal',
+          flesh: 'Tonos de Piel (Carnaciones / Retrato)',
+          warm: 'Cálidos / Solares',
+          cool: 'Fríos / Sombras Celestes'
+        };
+        this.showToast(`Filtro K-Means: ${filterNames[filterSelect.value] || filterSelect.value}`, 'info');
+      });
+    }
+
+    if (sortSelect) {
+      sortSelect.addEventListener('change', () => {
+        const sortBy = sortSelect.value;
+        if (this.imageExtractor && this.imageExtractor.extractedColors.length > 0) {
+          const sorted = this.imageExtractor.sortExtracted(this.imageExtractor.extractedColors, sortBy);
+          this.renderExtractedPalette(sorted);
+          this.showToast(`Ordenado por: ${sortSelect.options[sortSelect.selectedIndex]?.text || sortBy}`, 'info');
+        } else {
+          this.runImageExtraction();
+        }
+      });
+    }
+
     if (btnExtract) {
       btnExtract.addEventListener('click', () => this.runImageExtraction());
     }
 
     if (btnSaveExtracted) {
       btnSaveExtracted.addEventListener('click', () => {
-        if (this.imageExtractor.extractedColors.length > 0) {
+        if (this.imageExtractor && this.imageExtractor.extractedColors.length > 0) {
           const hexes = this.imageExtractor.extractedColors.map(c => c.hex);
-          this.swatchManager.addPalette('Paleta K-Means Extraída', hexes);
+          const filterVal = filterSelect ? filterSelect.options[filterSelect.selectedIndex]?.text.split('(')[0].trim() : 'K-Means';
+          const palName = `Paleta ${filterVal} (${hexes.length} colores)`;
+          this.swatchManager.addPalette(palName, hexes);
           this.renderSwatchesCollection();
-          this.showToast('Paleta K-Means guardada en Bibliotecas');
+          this.showToast(`Paleta guardada en Bibliotecas como "${palName}"`, 'success');
+        } else {
+          this.showToast('Primero extrae una paleta de la imagen', 'warn');
         }
       });
+    }
+
+    // Suite Integrations from Extractor
+    const btnTo4D = document.getElementById('btnExtractorToHyper4D');
+    if (btnTo4D) {
+      btnTo4D.addEventListener('click', () => {
+        if (!this.imageExtractor || this.imageExtractor.extractedColors.length === 0) {
+          this.showToast('Primero extrae una paleta de la imagen activa', 'warn');
+          return;
+        }
+        const hexes = this.imageExtractor.extractedColors.map(c => c.hex);
+        if (this.hyper4dStudio) {
+          this.hyper4dStudio.compareSlots = hexes.slice(0, 8).map((hex, i) => ({
+            id: String.fromCharCode(65 + i),
+            name: `Muestra ${String.fromCharCode(65 + i)}`,
+            hex: hex.toUpperCase(),
+            rgb: ColorMath.hexToRgb(hex),
+            active: true
+          }));
+          this.hyper4dStudio.renderCompareSlots();
+          this.switchTab('hyper4d');
+          this.hyper4dStudio.setDeploymentMode('compare');
+          this.hyper4dStudio.frameAll();
+          this.showToast('🔮 Paleta extraída proyectada en Hiperespacio 4D (Comparador y Constelación)', 'success');
+        }
+      });
+    }
+
+    const btnToFlorent = document.getElementById('btnExtractorToFlorent');
+    if (btnToFlorent) {
+      btnToFlorent.addEventListener('click', () => {
+        if (!this.imageExtractor || this.imageExtractor.extractedColors.length === 0) {
+          this.showToast('Primero extrae una paleta de la imagen activa', 'warn');
+          return;
+        }
+        const colors = this.imageExtractor.extractedColors.slice(0, 7);
+        if (typeof FlorentFargesEngine !== 'undefined') {
+          FlorentFargesEngine.setTransitionStops(colors.map((c, i) => ({
+            id: `extract_${i}`,
+            name: `Color ${i + 1}`,
+            hex: c.hex.toUpperCase(),
+            rgb: c.rgb
+          })));
+          this.switchTab('florent');
+          if (this.renderFlorentTransitionComparator) {
+            this.renderFlorentTransitionComparator();
+          }
+          this.showToast('👨‍🎨 Muestras enviadas a la Curva de Transición Florent Farges', 'success');
+        }
+      });
+    }
+
+    const btnToRamps = document.getElementById('btnExtractorToRamps');
+    if (btnToRamps) {
+      btnToRamps.addEventListener('click', () => {
+        if (!this.imageExtractor || this.imageExtractor.extractedColors.length === 0) {
+          this.showToast('Primero extrae una paleta de la imagen activa', 'warn');
+          return;
+        }
+        const colors = this.imageExtractor.extractedColors;
+        if (colors.length >= 2) {
+          const sortedByLum = [...colors].sort((a, b) => a.luminance - b.luminance);
+          const c1 = sortedByLum[0];
+          const c2 = sortedByLum[sortedByLum.length - 1];
+          this.fgColor = { ...c1.rgb, hex: c1.hex };
+          this.bgColor = { ...c2.rgb, hex: c2.hex };
+          this.syncDisplay();
+          this.switchTab('ramps');
+          this.renderRampStudio();
+          this.showToast('📐 Rampa tonal OKLCH creada con los extremos de la paleta', 'success');
+        }
+      });
+    }
+
+    const btnToMixer = document.getElementById('btnExtractorToWetMixer');
+    if (btnToMixer) {
+      btnToMixer.addEventListener('click', () => {
+        if (!this.imageExtractor || this.imageExtractor.extractedColors.length === 0) {
+          this.showToast('Primero extrae una paleta de la imagen activa', 'warn');
+          return;
+        }
+        if (!this.wetMixer) this._initWetMixer();
+        const colors = this.imageExtractor.extractedColors;
+        const count = colors.length;
+        const step = this.wetMixer.width / (count + 1);
+        colors.forEach((c, idx) => {
+          const x = step * (idx + 1);
+          const y = this.wetMixer.height * 0.58;
+          this.wetMixer.depositDab(x, y, c.rgb, 36);
+        });
+        this.switchTab('wetmixer');
+        this.showToast(`🖌️ ${count} manchas depositadas en el Lienzo de Mezcla`, 'success');
+      });
+    }
+
+    // Smart Palette Harmonizer & Quality Scoring controls
+    const optModeSelect = document.getElementById('optimizerModeSelect');
+    const optSlider = document.getElementById('optimizerIntensitySlider');
+    const optVal = document.getElementById('optimizerIntensityVal');
+    const btnAutoOpt = document.getElementById('btnRunAutoOptimize');
+    const btnApplyOpt = document.getElementById('btnApplyOptimizedPalette');
+
+    if (optModeSelect) {
+      optModeSelect.addEventListener('change', () => this.updateOptimizerPreview());
+    }
+
+    if (optSlider) {
+      optSlider.addEventListener('input', (e) => {
+        if (optVal) optVal.textContent = `${e.target.value}%`;
+        this.updateOptimizerPreview();
+      });
+    }
+
+    if (btnAutoOpt) {
+      btnAutoOpt.addEventListener('click', () => this.runAutoMasterOptimization());
+    }
+
+    if (btnApplyOpt) {
+      btnApplyOpt.addEventListener('click', () => this.applyOptimizedPalette());
     }
 
     // Batch Management Buttons
@@ -5478,7 +5643,7 @@ class GomPickerApp {
     this.imageExtractor.options.filterMode = filter;
     this.imageExtractor.options.sortBy = sort;
 
-    const results = this.imageExtractor.extractPalette(count, filter);
+    const results = this.imageExtractor.extractPalette(count, filter, sort);
     this.renderExtractedPalette(results);
   }
 
@@ -5486,9 +5651,11 @@ class GomPickerApp {
     const container = document.getElementById('extractedSwatchesGrid');
     if (!container) return;
     container.innerHTML = '';
+    this.currentExtractedColors = results;
 
-    results.forEach(res => {
+    results.forEach((res, idx) => {
       const sw = document.createElement('div');
+      sw.className = 'extracted-swatch-item';
       sw.style.flex = '1';
       sw.style.backgroundColor = res.hex;
       sw.style.display = 'flex';
@@ -5499,18 +5666,215 @@ class GomPickerApp {
       sw.style.cursor = 'pointer';
       sw.draggable = true;
       sw.dataset.swatchHex = res.hex;
-      sw.dataset.swatchLabel = `Dominancia ${res.dominancePercent || 10}%`;
+      sw.dataset.swatchLabel = `Color ${idx + 1} (${res.dominancePercent || 10}%)`;
+      sw.title = `${res.hex} • Lum: ${Math.round(res.luminance * 100)}% • Dominancia: ${res.dominancePercent || 10}%\n(Click: Color Frontal | Shift+Click: Color de Fondo | Arrastra para guardar)`;
 
       const tag = document.createElement('span');
-      tag.style.fontSize = '0.65rem';
-      tag.style.fontWeight = 'bold';
-      tag.style.color = res.luminance > 0.5 ? '#000' : '#fff';
+      tag.style.fontSize = '0.66rem';
+      tag.style.fontWeight = '700';
+      tag.style.fontFamily = 'var(--font-mono, monospace)';
+      tag.style.color = res.luminance > 0.45 ? '#0f172a' : '#f8fafc';
+      tag.style.textShadow = res.luminance > 0.45 ? '0 1px 2px rgba(255,255,255,0.4)' : '0 1px 3px rgba(0,0,0,0.8)';
       tag.textContent = `${res.dominancePercent || ''}%`;
 
       sw.appendChild(tag);
-      sw.addEventListener('click', () => this.setColorDirectly(res.rgb));
+
+      // Left-click sets as FG, Shift-click or contextmenu sets as BG
+      sw.addEventListener('click', (e) => {
+        if (e.shiftKey) {
+          this.bgColor = { ...res.rgb, hex: res.hex };
+          this.syncDisplay();
+          this.showToast(`Color ${res.hex} asignado a Color de Fondo (BG)`, 'info');
+        } else {
+          this.setColorDirectly(res.rgb);
+          this.showToast(`Color ${res.hex} asignado a Color Frontal (FG)`, 'success');
+        }
+      });
+
+      sw.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        this.bgColor = { ...res.rgb, hex: res.hex };
+        this.syncDisplay();
+        this.showToast(`Color ${res.hex} asignado a Color de Fondo (BG)`, 'info');
+      });
+
+      // Drag and drop support
+      sw.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('application/gom-swatch', JSON.stringify({ hex: res.hex, name: `Color ${idx + 1}` }));
+        e.dataTransfer.setData('text/plain', res.hex);
+      });
+
       container.appendChild(sw);
     });
+
+    // Update Quality & Harmonizer HUD
+    if (results.length > 0) {
+      this.updateOptimizerHUD(results.map(r => r.hex));
+    }
+  }
+
+  updateOptimizerHUD(hexList) {
+    if (!hexList || hexList.length === 0) return;
+    const scoreData = PaletteOptimizer.calculateScore(hexList);
+    this.currentPaletteScore = scoreData;
+
+    // Update Tier Badge
+    const badge = document.getElementById('optimizerScoreBadge');
+    const gradeTxt = document.getElementById('optimizerGradeText');
+    const scorePoints = document.getElementById('optimizerScorePoints');
+    const subTitle = document.getElementById('optimizerSubTitle');
+
+    if (badge) {
+      badge.className = `optimizer-tier-badge ${scoreData.gradeBadgeClass}`;
+    }
+    if (gradeTxt) gradeTxt.textContent = scoreData.grade;
+    if (scorePoints) scorePoints.textContent = `${scoreData.totalScore}/100 Pts`;
+    if (subTitle) {
+      subTitle.textContent = `${scoreData.gradeTitle} • ${scoreData.harmonicType} • ${scoreData.thermalDesc}`;
+    }
+
+    // Update 5 Metric Mini-Gauges
+    const updateGauge = (idVal, idBar, val) => {
+      const elVal = document.getElementById(idVal);
+      const elBar = document.getElementById(idBar);
+      if (elVal) elVal.textContent = `${val}%`;
+      if (elBar) elBar.style.width = `${Math.max(4, Math.min(100, val))}%`;
+    };
+
+    updateGauge('metricContrastVal', 'metricContrastBar', scoreData.metrics.contrast);
+    updateGauge('metricHarmonyVal', 'metricHarmonyBar', scoreData.metrics.harmony);
+    updateGauge('metricThermalVal', 'metricThermalBar', scoreData.metrics.thermal);
+    updateGauge('metricDistinctVal', 'metricDistinctBar', scoreData.metrics.distinctness);
+    updateGauge('metricPigmentsVal', 'metricPigmentsBar', scoreData.metrics.pigments);
+
+    // Update Diagnostic Chips
+    const diagList = document.getElementById('optimizerDiagnosticsList');
+    if (diagList) {
+      diagList.innerHTML = '';
+      scoreData.diagnostics.forEach(diag => {
+        const chip = document.createElement('div');
+        chip.className = `optimizer-diag-chip ${diag.type}`;
+        chip.innerHTML = `<span>${diag.icon}</span> <span>${diag.text}</span>`;
+        diagList.appendChild(chip);
+      });
+      scoreData.recommendations.forEach(rec => {
+        const chip = document.createElement('div');
+        chip.className = 'optimizer-diag-chip info';
+        chip.innerHTML = `<span>💡</span> <strong>Sugerencia:</strong> <span>${rec}</span>`;
+        diagList.appendChild(chip);
+      });
+    }
+
+    this.updateOptimizerPreview(hexList);
+  }
+
+  updateOptimizerPreview(sourceHexList = null) {
+    const hexes = sourceHexList || (this.imageExtractor?.extractedColors || []).map(c => c.hex);
+    if (!hexes || hexes.length === 0) return;
+
+    const mode = document.getElementById('optimizerModeSelect')?.value || 'auto_master';
+    const intensity = parseInt(document.getElementById('optimizerIntensitySlider')?.value || '100', 10) / 100;
+
+    const optResult = PaletteOptimizer.optimize(hexes, mode, intensity);
+    this.currentOptimizedColors = optResult.optimizedColors;
+
+    // Render Before Strip
+    const beforeStrip = document.getElementById('optimizerBeforeStrip');
+    if (beforeStrip) {
+      beforeStrip.innerHTML = '';
+      hexes.forEach(h => {
+        const seg = document.createElement('div');
+        seg.style.flex = '1';
+        seg.style.backgroundColor = h;
+        beforeStrip.appendChild(seg);
+      });
+    }
+
+    // Render After Strip
+    const afterStrip = document.getElementById('optimizerAfterStrip');
+    if (afterStrip) {
+      afterStrip.innerHTML = '';
+      optResult.optimizedColors.forEach(h => {
+        const seg = document.createElement('div');
+        seg.style.flex = '1';
+        seg.style.backgroundColor = h;
+        seg.style.cursor = 'pointer';
+        seg.title = `Color optimizado: ${h} (Click para cargar)`;
+        seg.addEventListener('click', () => {
+          this.setColorDirectly(ColorMath.hexToRgb(h));
+          this.showToast(`Color optimizado ${h} cargado en Color Frontal`);
+        });
+        afterStrip.appendChild(seg);
+      });
+    }
+
+    // Update Improvement Badge
+    const badge = document.getElementById('optimizerImprovementBadge');
+    if (badge) {
+      const imp = optResult.improvement;
+      badge.textContent = imp >= 0 ? `+${imp} Pts Mejora (${optResult.scoreAfter.totalScore} Pts • Grado ${optResult.scoreAfter.grade})` : `${imp} Pts (${optResult.scoreAfter.totalScore} Pts)`;
+      badge.style.color = imp >= 0 ? '#34D399' : '#F59E0B';
+    }
+  }
+
+  runAutoMasterOptimization() {
+    const hexes = (this.imageExtractor?.extractedColors || []).map(c => c.hex);
+    if (!hexes || hexes.length === 0) {
+      this.showToast('Primero extrae una paleta de la imagen activa', 'warn');
+      return;
+    }
+
+    const modeSelect = document.getElementById('optimizerModeSelect');
+    const slider = document.getElementById('optimizerIntensitySlider');
+    const sliderVal = document.getElementById('optimizerIntensityVal');
+    if (modeSelect) modeSelect.value = 'auto_master';
+    if (slider) slider.value = '100';
+    if (sliderVal) sliderVal.textContent = '100%';
+
+    const optResult = PaletteOptimizer.optimize(hexes, 'auto_master', 1.0);
+    this.currentOptimizedColors = optResult.optimizedColors;
+
+    // Apply to current extracted colors
+    const newItems = optResult.optimizedColors.map((hex, idx) => {
+      const rgb = ColorMath.hexToRgb(hex);
+      const prev = this.imageExtractor.extractedColors[idx] || {};
+      return {
+        rgb,
+        hex,
+        hsv: ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b),
+        luminance: ColorMath.getLuminance(rgb.r, rgb.g, rgb.b),
+        dominancePercent: prev.dominancePercent || 15,
+        score: prev.score || 80
+      };
+    });
+
+    this.imageExtractor.extractedColors = newItems;
+    this.renderExtractedPalette(newItems);
+    this.showToast(`✨ ¡Paleta optimizada con éxito a Grado ${optResult.scoreAfter.grade} (${optResult.scoreAfter.totalScore} Pts)!`, 'success');
+  }
+
+  applyOptimizedPalette() {
+    if (!this.currentOptimizedColors || this.currentOptimizedColors.length === 0) {
+      this.showToast('No hay paleta optimizada calculada', 'warn');
+      return;
+    }
+
+    const newItems = this.currentOptimizedColors.map((hex, idx) => {
+      const rgb = ColorMath.hexToRgb(hex);
+      const prev = this.imageExtractor.extractedColors[idx] || {};
+      return {
+        rgb,
+        hex,
+        hsv: ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b),
+        luminance: ColorMath.getLuminance(rgb.r, rgb.g, rgb.b),
+        dominancePercent: prev.dominancePercent || 15,
+        score: prev.score || 80
+      };
+    });
+
+    this.imageExtractor.extractedColors = newItems;
+    this.renderExtractedPalette(newItems);
+    this.showToast('✓ Paleta armonizada aplicada. ¡Puedes guardarla en Bibliotecas o proyectarla en 4D!', 'success');
   }
 
   // --- AI ADVISOR & 6 COMPOSITION SCENES ---
@@ -6738,6 +7102,26 @@ class GomPickerApp {
         }
       });
       toolbar.appendChild(btnDup);
+
+      // 4.5 Smart Harmonizer & Quality Optimizer
+      const btnHarmonize = document.createElement('button');
+      btnHarmonize.className = 'palette-tool-btn btn-active-highlight';
+      btnHarmonize.innerHTML = '<span>✨</span> Armonizar';
+      btnHarmonize.title = 'Mejorar y armonizar inteligentemente esta biblioteca (Algoritmo Florent Farges / Munsell)';
+      btnHarmonize.addEventListener('click', () => {
+        if (!pal.colors || pal.colors.length < 2) {
+          this.showToast('La paleta necesita al menos 2 colores para armonizarse', 'warn');
+          return;
+        }
+        const hexes = pal.colors.map(c => typeof c === 'string' ? c : c.hex);
+        const optResult = PaletteOptimizer.optimize(hexes, 'auto_master', 0.85);
+        pal.colors = optResult.optimizedColors;
+        this.swatchManager.saveToStorage();
+        this.renderSwatchesCollection();
+        this.renderQuickPalette();
+        this.showToast(`✨ '${pal.name}' optimizada a Grado ${optResult.scoreAfter.grade} (${optResult.scoreAfter.totalScore} Pts, +${optResult.improvement})`, 'success');
+      });
+      toolbar.appendChild(btnHarmonize);
 
       // 5. Invert colors
       const btnInvert = document.createElement('button');

@@ -86,17 +86,65 @@ export class ImageExtractor {
     };
   }
 
-  // Extract palette using K-Means and filtering
-  extractPalette(count = this.options.colorCount, filterMode = this.options.filterMode) {
+  // Sort extracted colors array according to sorting mode
+  sortExtracted(colors = this.extractedColors, sortBy = this.options.sortBy) {
+    if (!colors || colors.length === 0) return [];
+    const list = [...colors];
+
+    switch (sortBy) {
+      case 'luminance':
+        list.sort((a, b) => a.luminance - b.luminance);
+        break;
+      case 'luminance_desc':
+        list.sort((a, b) => b.luminance - a.luminance);
+        break;
+      case 'hue':
+        list.sort((a, b) => a.hsv.h - b.hsv.h);
+        break;
+      case 'saturation':
+        list.sort((a, b) => (b.hsv.s || 0) - (a.hsv.s || 0));
+        break;
+      case 'warmth':
+        // Warmest (Reds/Oranges ~25°) to Coolest (Blues/Cyans ~200°)
+        const getWarmthScore = (hsv) => {
+          let h = hsv.h;
+          let distFromWarm = Math.abs(h - 30);
+          if (distFromWarm > 180) distFromWarm = 360 - distFromWarm;
+          return (1 - distFromWarm / 180) * (0.4 + hsv.s * 0.6);
+        };
+        list.sort((a, b) => getWarmthScore(b.hsv) - getWarmthScore(a.hsv));
+        break;
+      case 'harmonic':
+        // Order by harmonic progression (luminance wave with sorted hues)
+        list.sort((a, b) => {
+          const scoreA = (a.hsv.h / 360) * 0.6 + a.luminance * 0.4;
+          const scoreB = (b.hsv.h / 360) * 0.6 + b.luminance * 0.4;
+          return scoreA - scoreB;
+        });
+        break;
+      case 'dominance':
+      default:
+        list.sort((a, b) => (b.dominancePercent || 0) - (a.dominancePercent || 0));
+        break;
+    }
+
+    this.extractedColors = list;
+    return list;
+  }
+
+  // Extract palette using perceptual K-Means, targeted sampling, and filtering
+  extractPalette(count = this.options.colorCount, filterMode = this.options.filterMode, sortBy = this.options.sortBy) {
     if (!this.canvas || this.canvas.width === 0) return [];
 
     const width = this.canvas.width;
     const height = this.canvas.height;
     const imgData = this.ctx.getImageData(0, 0, width, height).data;
 
-    // Sample pixels (downsample for performance: step of ~4-8 pixels)
-    const step = Math.max(1, Math.floor(Math.sqrt((width * height) / 8000)));
-    const pixels = [];
+    // Sample general grid pixels
+    const totalPixels = width * height;
+    const step = Math.max(1, Math.floor(Math.sqrt(totalPixels / 9000)));
+    const generalPixels = [];
+    const targetedFeaturePixels = [];
 
     for (let y = 0; y < height; y += step) {
       for (let x = 0; x < width; x += step) {
@@ -107,37 +155,104 @@ export class ImageExtractor {
         const r = imgData[idx];
         const g = imgData[idx + 1];
         const b = imgData[idx + 2];
-        pixels.push([r, g, b]);
+        const p = [r, g, b];
+        generalPixels.push(p);
+
+        // Targeted feature-biased sampling
+        const hsv = ColorMath.rgbToHsv(r, g, b);
+        const lum = ColorMath.getLuminance(r, g, b);
+
+        if (filterMode === 'flesh') {
+          // Human skin tone bounds: Hue 10°-48°, mid-sat, mid-high value
+          if (hsv.h >= 10 && hsv.h <= 48 && hsv.s >= 0.16 && hsv.s <= 0.72 && lum >= 0.22 && lum <= 0.88) {
+            targetedFeaturePixels.push(p);
+          }
+        } else if (filterMode === 'dark') {
+          // Shadow tones: deep darks and low luminance
+          if (lum < 0.32) {
+            targetedFeaturePixels.push(p);
+          }
+        } else if (filterMode === 'vibrant') {
+          // High saturation accents
+          if (hsv.s > 0.42 && lum > 0.12 && lum < 0.92) {
+            targetedFeaturePixels.push(p);
+          }
+        } else if (filterMode === 'pastel') {
+          // Soft tints: high luminance, moderate saturation
+          if (lum > 0.65 && hsv.s < 0.55 && hsv.s > 0.08) {
+            targetedFeaturePixels.push(p);
+          }
+        } else if (filterMode === 'warm') {
+          // Warm solar hues
+          if ((hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320) {
+            targetedFeaturePixels.push(p);
+          }
+        } else if (filterMode === 'cool') {
+          // Cool marine & sky hues
+          if (hsv.h >= 145 && hsv.h <= 270) {
+            targetedFeaturePixels.push(p);
+          }
+        } else if (filterMode === 'contrast') {
+          // Darks and extreme highlights
+          if (lum < 0.25 || lum > 0.78) {
+            targetedFeaturePixels.push(p);
+          }
+        }
       }
     }
 
-    if (pixels.length === 0) return [];
+    if (generalPixels.length === 0) return [];
 
-    // Run K-Means with K = count * 2 to give room for filtering
-    const kInitial = Math.min(Math.max(count * 2, 8), 24);
-    const clusters = this._runKMeans(pixels, kInitial, 12);
+    // Blend targeted pixels into training pool to ensure critical features are not drowned out by large backgrounds
+    let trainingPixels = generalPixels;
+    if (targetedFeaturePixels.length > 50 && filterMode !== 'dominant') {
+      // Inject targeted pixels with high representation
+      const sampleWeightRatio = Math.min(targetedFeaturePixels.length * 3, 4000);
+      const stride = Math.max(1, Math.floor(targetedFeaturePixels.length / sampleWeightRatio));
+      const boostedFeatures = [];
+      for (let i = 0; i < targetedFeaturePixels.length; i += stride) {
+        boostedFeatures.push(targetedFeaturePixels[i]);
+      }
+      trainingPixels = [...generalPixels, ...boostedFeatures];
+    }
+
+    // Run K-Means with K = count * 3 to give wide room for analytical filtering
+    const kInitial = Math.min(Math.max(count * 3, 10), 30);
+    const clusters = this._runKMeans(trainingPixels, kInitial, 12);
 
     // Score and filter clusters based on filterMode
     let scored = clusters.map(c => {
       const rgb = { r: Math.round(c.centroid[0]), g: Math.round(c.centroid[1]), b: Math.round(c.centroid[2]) };
       const hsv = ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b);
       const lum = ColorMath.getLuminance(rgb.r, rgb.g, rgb.b);
-      const dominance = (c.count / pixels.length);
+      const dominance = (c.count / trainingPixels.length);
 
       let score = dominance * 100;
 
       if (filterMode === 'vibrant') {
-        // Boost high saturation & mid luminance
-        score = hsv.s * 60 + (1 - Math.abs(lum - 0.5) * 2) * 30 + dominance * 10;
+        // Boost high saturation & clean chromatic intensity
+        score = hsv.s * 75 + (1 - Math.abs(lum - 0.5) * 2) * 20 + dominance * 5;
       } else if (filterMode === 'pastel') {
-        // Boost light & soft saturation
-        score = lum * 50 + (1 - hsv.s) * 30 + dominance * 20;
+        // Boost light & delicate soft chroma
+        score = lum * 60 + (1 - Math.abs(hsv.s - 0.28) * 2) * 25 + dominance * 15;
       } else if (filterMode === 'dark') {
-        // Boost dark shadows
-        score = (1 - lum) * 70 + dominance * 30;
+        // Heavy boost for deep shadows and dark accents
+        score = (1 - lum) * 85 + (hsv.s * 15) + dominance * 5;
       } else if (filterMode === 'contrast') {
-        // Balance across dynamic range
-        score = dominance * 40 + Math.abs(lum - 0.5) * 60;
+        // Spans the dynamic range: bonus for high polarity away from mid-gray
+        score = Math.abs(lum - 0.5) * 80 + hsv.s * 20;
+      } else if (filterMode === 'flesh') {
+        // Skin tone affinity
+        const isSkinHue = hsv.h >= 10 && hsv.h <= 48;
+        const skinHueDist = Math.abs(hsv.h - 26);
+        const skinFactor = isSkinHue ? (1 - skinHueDist / 30) : 0;
+        score = skinFactor * 70 + (1 - Math.abs(lum - 0.6) * 1.5) * 20 + dominance * 10;
+      } else if (filterMode === 'warm') {
+        const isWarm = (hsv.h >= 0 && hsv.h <= 75) || hsv.h >= 320;
+        score = (isWarm ? 65 : 0) + hsv.s * 25 + dominance * 10;
+      } else if (filterMode === 'cool') {
+        const isCool = hsv.h >= 145 && hsv.h <= 270;
+        score = (isCool ? 65 : 0) + hsv.s * 25 + dominance * 10;
       }
 
       return {
@@ -145,41 +260,46 @@ export class ImageExtractor {
         hex: ColorMath.rgbToHex(rgb.r, rgb.g, rgb.b),
         hsv,
         luminance: lum,
-        dominancePercent: Math.round(dominance * 100),
+        dominancePercent: Math.max(1, Math.round(dominance * 100)),
         score
       };
     });
 
-    // Remove near-duplicates (Delta E < 18)
+    // Remove near-duplicates using Perceptual Delta-E in OKLab
     const unique = [];
     scored.sort((a, b) => b.score - a.score);
 
     for (const item of scored) {
+      const ok1 = ColorMath.rgbToOklch(item.rgb.r, item.rgb.g, item.rgb.b);
       const isDuplicate = unique.some(existing => {
-        const dist = Math.sqrt(
-          Math.pow(item.rgb.r - existing.rgb.r, 2) +
-          Math.pow(item.rgb.g - existing.rgb.g, 2) +
-          Math.pow(item.rgb.b - existing.rgb.b, 2)
-        );
-        return dist < 32;
+        const ok2 = ColorMath.rgbToOklch(existing.rgb.r, existing.rgb.g, existing.rgb.b);
+        const dL = ok1.l - ok2.l;
+        const dH_rad = ((ok1.h - ok2.h) * Math.PI) / 180;
+        const dC = Math.sqrt(Math.max(0, ok1.c * ok1.c + ok2.c * ok2.c - 2 * ok1.c * ok2.c * Math.cos(dH_rad)));
+        const dE = Math.sqrt(dL * dL + dC * dC);
+        return dE < 0.075; // Perceptual threshold: ~18 CIELAB units
       });
+
       if (!isDuplicate) {
         unique.push(item);
       }
       if (unique.length >= count) break;
     }
 
-    // Sort according to preference
-    if (this.options.sortBy === 'hue') {
-      unique.sort((a, b) => a.hsv.h - b.hsv.h);
-    } else if (this.options.sortBy === 'luminance') {
-      unique.sort((a, b) => a.luminance - b.luminance);
-    } else {
-      unique.sort((a, b) => b.dominancePercent - a.dominancePercent);
+    // Fallback if filtering was overly strict
+    if (unique.length < count && scored.length > unique.length) {
+      for (const item of scored) {
+        if (!unique.some(u => u.hex === item.hex)) {
+          unique.push(item);
+          if (unique.length >= count) break;
+        }
+      }
     }
 
-    this.extractedColors = unique;
-    return unique;
+    // Apply sorting
+    const sorted = this.sortExtracted(unique, sortBy || this.options.sortBy);
+    this.extractedColors = sorted;
+    return sorted;
   }
 
   // K-Means clustering internal implementation
@@ -188,13 +308,22 @@ export class ImageExtractor {
       return data.map(p => ({ centroid: p, count: 1 }));
     }
 
+    // Perceptual distance helper (Redmean metric, accurately models human eye perception)
+    const perceptualDistSq = (p, c) => {
+      const rmean = (p[0] + c[0]) * 0.5;
+      const dr = p[0] - c[0];
+      const dg = p[1] - c[1];
+      const db = p[2] - c[2];
+      return (((512 + rmean) * dr * dr) >> 8) + 4 * dg * dg + (((767 - rmean) * db * db) >> 8);
+    };
+
     // K-Means++ initialization for better centroid spread
     const centroids = [data[Math.floor(Math.random() * data.length)]];
     while (centroids.length < k) {
       const distances = data.map(p => {
         let minDist = Infinity;
         for (const c of centroids) {
-          const d = Math.pow(p[0] - c[0], 2) + Math.pow(p[1] - c[1], 2) + Math.pow(p[2] - c[2], 2);
+          const d = perceptualDistSq(p, c);
           if (d < minDist) minDist = d;
         }
         return minDist;
@@ -228,7 +357,7 @@ export class ImageExtractor {
 
         for (let j = 0; j < k; j++) {
           const c = centroids[j];
-          const d = Math.pow(p[0] - c[0], 2) + Math.pow(p[1] - c[1], 2) + Math.pow(p[2] - c[2], 2);
+          const d = perceptualDistSq(p, c);
           if (d < minDist) {
             minDist = d;
             bestCluster = j;
