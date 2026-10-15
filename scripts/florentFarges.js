@@ -7,6 +7,7 @@
  */
 
 import { ColorMath } from './colorMath.js';
+import { MunsellSystem } from './munsellSystem.js?v=3.2';
 
 export const FlorentFargesEngine = {
   // Current active wheel in the Three-Wheel-System viewer:
@@ -17,6 +18,13 @@ export const FlorentFargesEngine = {
   labPigment1Id: 'cad_yellow_med',
   labPigment2Id: 'ivory_black',
   labRatio: 0.5,
+
+  // Paradas configurables para el comparador dinámico y transición multi-muestra
+  transitionStops: [
+    { id: 'farges_stop_1', hex: '#6366F1', rgb: { r: 99, g: 102, b: 241 }, name: 'Muestra A (Frontal)' },
+    { id: 'farges_stop_2', hex: '#F59E0B', rgb: { r: 245, g: 158, b: 11 }, name: 'Muestra B (Fondo)' }
+  ],
+  transitionStepsCount: 9,
 
   // --- FLORENT FARGES PIGMENT DATABASE ---
   // Pigments mapped by their optical hue angle, inherent value (1-9.8), tinting strength (1-10), and properties
@@ -794,6 +802,218 @@ export const FlorentFargesEngine = {
       });
     }
     return steps;
+  },
+
+  // --- COMPARADOR DINÁMICO MULTI-MUESTRA & TRANSICIONES FARGES ---
+
+  findClosestPigment(color) {
+    const rgb = typeof color === 'string' ? ColorMath.hexToRgb(color) : (color.rgb || color);
+    let best = this.PIGMENTS[0];
+    let minDist = Infinity;
+    this.PIGMENTS.forEach(p => {
+      const dist = Math.hypot(rgb.r - p.rgb.r, rgb.g - p.rgb.g, rgb.b - p.rgb.b);
+      if (dist < minDist) {
+        minDist = dist;
+        best = p;
+      }
+    });
+    return { pigment: best, distance: Math.round(minDist) };
+  },
+
+  solveArbitraryColorMixing(c1, c2, ratio = 0.5) {
+    const rgb1 = typeof c1 === 'string' ? ColorMath.hexToRgb(c1) : (c1.rgb || c1);
+    const rgb2 = typeof c2 === 'string' ? ColorMath.hexToRgb(c2) : (c2.rgb || c2);
+    const hex1 = ColorMath.rgbToHex(rgb1.r, rgb1.g, rgb1.b);
+    const hex2 = ColorMath.rgbToHex(rgb2.r, rgb2.g, rgb2.b);
+
+    const match1 = this.findClosestPigment(rgb1);
+    const match2 = this.findClosestPigment(rgb2);
+
+    const r = Math.max(0, Math.min(1, ratio));
+    const s1 = match1.pigment.tintingStrength || 6;
+    const s2 = match2.pigment.tintingStrength || 6;
+
+    // Ponderación de masa no lineal por fuerza de tinte
+    const effectiveWeight = (r * s2) / ((1 - r) * s1 + r * s2);
+
+    // Detección de viraje Olive Shift
+    const hsv1 = ColorMath.rgbToHsv(rgb1.r, rgb1.g, rgb1.b);
+    const hsv2 = ColorMath.rgbToHsv(rgb2.r, rgb2.g, rgb2.b);
+
+    const isYellow1 = (hsv1.h >= 35 && hsv1.h <= 75 && hsv1.s > 0.4 && hsv1.v > 0.6);
+    const isYellow2 = (hsv2.h >= 35 && hsv2.h <= 75 && hsv2.s > 0.4 && hsv2.v > 0.6);
+    const isDarkNeutral1 = (hsv1.v < 0.28 || (hsv1.s < 0.25 && hsv1.v < 0.4));
+    const isDarkNeutral2 = (hsv2.v < 0.28 || (hsv2.s < 0.25 && hsv2.v < 0.4));
+
+    let mixedRgb;
+    let isOliveShift = false;
+
+    if ((isYellow1 && isDarkNeutral2) || (isYellow2 && isDarkNeutral1)) {
+      isOliveShift = true;
+      const yellowRgb = isYellow1 ? rgb1 : rgb2;
+      const yellowWeight = isYellow1 ? (1 - effectiveWeight) : effectiveWeight;
+      const darkWeight = 1 - yellowWeight;
+
+      const oliveR = Math.round(yellowRgb.r * Math.pow(yellowWeight, 1.25) * (1 - darkWeight * 0.7));
+      const oliveG = Math.round(yellowRgb.g * Math.pow(yellowWeight, 0.68) * (1 - darkWeight * 0.42));
+      const oliveB = Math.round(25 + yellowRgb.b * Math.pow(yellowWeight, 2) * (1 - darkWeight * 0.88));
+
+      mixedRgb = {
+        r: Math.max(20, Math.min(255, oliveR)),
+        g: Math.max(25, Math.min(255, oliveG)),
+        b: Math.max(15, Math.min(255, oliveB))
+      };
+    } else {
+      // Mezcla sustractiva física RYB con compensación de bow curve
+      mixedRgb = ColorMath.mixRyb(rgb1, rgb2, effectiveWeight);
+    }
+
+    const mixedHex = ColorMath.rgbToHex(mixedRgb.r, mixedRgb.g, mixedRgb.b);
+    const mixedHsv = ColorMath.rgbToHsv(mixedRgb.r, mixedRgb.g, mixedRgb.b);
+    const mixedMunsell = MunsellSystem ? MunsellSystem.rgbToMunsell(mixedRgb.r, mixedRgb.g, mixedRgb.b) : null;
+
+    // Cálculo del valor inherente Farges (1 a 9)
+    const lum = (0.299 * mixedRgb.r + 0.587 * mixedRgb.g + 0.114 * mixedRgb.b) / 255;
+    const angDiff = this._angularDiff(hsv1.h, hsv2.h);
+    const bowDip = Math.sin(r * Math.PI) * (angDiff / 180) * 0.8;
+    const inherentValue = parseFloat(Math.max(1.0, Math.min(9.0, lum * 8 + 1 - bowDip * 0.5)).toFixed(1));
+
+    return {
+      c1: { hex: hex1, rgb: rgb1, pigment: match1.pigment.name },
+      c2: { hex: hex2, rgb: rgb2, pigment: match2.pigment.name },
+      ratio: r,
+      effectiveWeight,
+      rgb: mixedRgb,
+      hex: mixedHex,
+      hsv: mixedHsv,
+      munsell: mixedMunsell?.notation || '',
+      inherentValue,
+      angSpan: angDiff,
+      isOliveShift,
+      pedagogicalNote: isOliveShift
+        ? 'Fenómeno Olive Shift detectado: el amarilleo con absorción selectiva de longitudes de onda cortas vira físicamente a verde oliva.'
+        : (angDiff > 130
+          ? `Neutralización complementaria: ángulo amplio (${angDiff}°), la curva bow atraviesa el baricentro desaturando el croma central.`
+          : `Mezcla armónica suave: intervalo de ${angDiff}° en la rueda cromática con transición tonal estable.`)
+    };
+  },
+
+  generateMultiSampleTransition(stops = null, totalSteps = 9) {
+    const list = stops && stops.length >= 2 ? stops : this.transitionStops;
+    if (!list || list.length < 2) return [];
+
+    const segmentsCount = list.length - 1;
+    const stepsPerSegment = Math.max(3, Math.ceil(totalSteps / segmentsCount));
+    const allSteps = [];
+
+    for (let s = 0; s < segmentsCount; s++) {
+      const stopA = list[s];
+      const stopB = list[s + 1];
+
+      for (let i = 0; i <= stepsPerSegment; i++) {
+        // En el primer paso del segmento posterior, evitar duplicar el nodo de unión
+        if (s > 0 && i === 0) continue;
+
+        const localRatio = i / stepsPerSegment;
+        const mix = this.solveArbitraryColorMixing(stopA, stopB, localRatio);
+
+        const isStopA = (i === 0 && s === 0);
+        const isStopB = (i === stepsPerSegment);
+        const isStop = isStopA || isStopB;
+        const stopName = isStopA ? (stopA.name || `Parada ${s + 1}`) : (isStopB ? (stopB.name || `Parada ${s + 2}`) : `Paso ${(localRatio * 100).toFixed(0)}%`);
+
+        allSteps.push({
+          globalIndex: allSteps.length,
+          segmentIndex: s,
+          localRatio,
+          rgb: mix.rgb,
+          hex: mix.hex,
+          hsv: mix.hsv,
+          munsell: mix.munsell,
+          inherentValue: mix.inherentValue,
+          isOliveShift: mix.isOliveShift,
+          isStop,
+          stopName,
+          pedagogicalNote: mix.pedagogicalNote
+        });
+      }
+    }
+
+    return allSteps;
+  },
+
+  addTransitionStop(color = null, name = '') {
+    const defaultHexes = ['#6366F1', '#F59E0B', '#10B981', '#EC4899', '#38BDF8', '#8B5CF6'];
+    const id = `farges_stop_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    let hex = '#6366F1';
+    let rgb = { r: 99, g: 102, b: 241 };
+    if (color) {
+      if (typeof color === 'string') {
+        hex = color.toUpperCase();
+        rgb = ColorMath.hexToRgb(hex);
+      } else if (color.r !== undefined) {
+        rgb = color;
+        hex = ColorMath.rgbToHex(rgb.r, rgb.g, rgb.b);
+      } else if (color.hex) {
+        hex = color.hex.toUpperCase();
+        rgb = ColorMath.hexToRgb(hex);
+      }
+    } else {
+      const fallbackHex = defaultHexes[this.transitionStops.length % defaultHexes.length];
+      hex = fallbackHex;
+      rgb = ColorMath.hexToRgb(hex);
+    }
+    const stopName = name || `Muestra ${String.fromCharCode(65 + this.transitionStops.length)}`;
+    const stop = { id, hex, rgb, name: stopName };
+    this.transitionStops.push(stop);
+    return stop;
+  },
+
+  removeTransitionStop(index) {
+    if (this.transitionStops.length <= 2) return false;
+    if (index >= 0 && index < this.transitionStops.length) {
+      this.transitionStops.splice(index, 1);
+      return true;
+    }
+    return false;
+  },
+
+  updateTransitionStop(index, color, name = null) {
+    if (index < 0 || index >= this.transitionStops.length) return null;
+    const stop = this.transitionStops[index];
+    if (color) {
+      if (typeof color === 'string') {
+        stop.hex = color.toUpperCase();
+        stop.rgb = ColorMath.hexToRgb(stop.hex);
+      } else if (color.r !== undefined) {
+        stop.rgb = color;
+        stop.hex = ColorMath.rgbToHex(color.r, color.g, color.b);
+      } else if (color.hex) {
+        stop.hex = color.hex.toUpperCase();
+        stop.rgb = ColorMath.hexToRgb(stop.hex);
+      }
+    }
+    if (name !== null && name !== undefined) {
+      stop.name = name;
+    }
+    return stop;
+  },
+
+  setTransitionStops(stops) {
+    if (Array.isArray(stops) && stops.length >= 2) {
+      this.transitionStops = stops.map((s, idx) => {
+        const hex = (typeof s === 'string' ? s : (s.hex || '#FFFFFF')).toUpperCase();
+        const rgb = typeof s === 'object' && s.rgb ? s.rgb : ColorMath.hexToRgb(hex);
+        return {
+          id: s.id || `farges_stop_${idx + 1}`,
+          hex,
+          rgb,
+          name: s.name || `Muestra ${String.fromCharCode(65 + idx)}`
+        };
+      });
+      return this.transitionStops;
+    }
+    return null;
   },
 
   // --- RENDER DEDICATED FLORENT FARGES WHEEL CANVAS ---

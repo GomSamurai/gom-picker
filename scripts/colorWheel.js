@@ -40,6 +40,9 @@ export class ColorWheel {
   setHarmonyRule(ruleId) {
     this.harmonyRule = ruleId;
     this.render();
+    if (this.onChange) {
+      this._emitChange();
+    }
   }
 
   setColor(hsv, triggerCallback = true) {

@@ -64,6 +64,17 @@ export const HarmonyEngine = {
     }
 
     // Angular rules
+    const roleLabels = {
+      square: ['Cuadrado +90°', 'Cuadrado +180°', 'Cuadrado +270°'],
+      tetradic: ['Tetrádico +60°', 'Complementario +180°', 'Tetrádico +240°'],
+      triadic: ['Triada +120°', 'Triada +240°'],
+      'split-complementary': ['Dividido +150°', 'Dividido +210°'],
+      complementary: ['Complementario 180°'],
+      analogous: ['Análogo -30°', 'Análogo +30°'],
+      'analogous-extended': ['Análogo -60°', 'Análogo -30°', 'Análogo +30°', 'Análogo +60°'],
+      'double-split': ['Dividido -30°', 'Dividido +30°', 'Comp. -30° (150°)', 'Comp. +30° (210°)']
+    };
+
     rule.angles.forEach((offset, idx) => {
       let targetHue;
       if (wheelType === 'ryb') {
@@ -77,8 +88,9 @@ export const HarmonyEngine = {
 
       // Slight natural saturation adjustment for harmonious balance
       const newRgb = ColorMath.hsvToRgb(targetHue, s, v);
+      const customRole = roleLabels[rule.id]?.[idx] || `Armonía ${idx + 1} (${offset > 0 ? '+' : ''}${offset}°)`;
       colors.push({
-        role: `Armonía ${idx + 1}`,
+        role: customRole,
         h: Math.round(targetHue),
         s,
         v,

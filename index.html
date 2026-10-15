@@ -1038,6 +1038,105 @@
           </div>
         </div>
 
+        <!-- SECTION 2.5: COMPARADOR DINÁMICO DE MUESTRAS & TRANSICIÓN MULTI-MUESTRA FARGES -->
+        <div class="glass-panel" id="fargesMultiTransitionPanel">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 8px;">
+            <div class="panel-title">
+              <span>🌈</span> Comparador Dinámico de Muestras & Transición Farges Multi-Muestra
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+              <span style="font-size: 0.72rem; color: var(--accent-emerald); font-weight: 600; background: rgba(16,185,129,0.12); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(16,185,129,0.25);">
+                2 o más Muestras • Curvas Bow Farges
+              </span>
+              <button id="btnFargesTransitionJump4D" class="farges-action-btn farges-action-btn-amber" title="Investigar la trayectoria curvada de esta transición en el Hiperespacio 4D">
+                <span>🔮</span> Investigar en Hiperespacio 4D
+              </button>
+              <button id="btnFargesTransitionSavePalette" class="farges-action-btn farges-action-btn-emerald" title="Exportar la transición intermedia como una nueva paleta en tus Bibliotecas">
+                <span>💾</span> Guardar como Paleta
+              </button>
+            </div>
+          </div>
+
+          <div class="pedagogical-banner">
+            <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+              Permite configurar <strong>2 o más muestras arbitrarias</strong> (o colores de tu caballete y bibliotecas) y calcula la <strong>transición sustractiva física intermedia</strong> siguiendo las curvas convexas de arco de Florent Farges, ponderación no lineal por fuerza de tinte y detección de virajes (como el <em>Olive Shift</em> al combinar amarillos con oscuros). 
+              Esta trayectoria puede proyectarse directamente en el <strong>Hiperespacio 4D</strong> para contrastar la cuerda recta teórica con la curva física real.
+            </p>
+          </div>
+
+          <!-- Presets Rápidos de Transición Farges -->
+          <div style="margin-bottom: 14px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600;">Presets de Transición & Aprendizaje:</span>
+            <div id="fargesTransitionPresetChips" style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button class="chip-select active-toggle" data-fpreset="fgbg">🎨 Frontal (FG) ↔ Fondo (BG)</button>
+              <button class="chip-select" data-fpreset="warm_cool">☀️ Cálido a ❄️ Frío (3 Muestras)</button>
+              <button class="chip-select" data-fpreset="sorolla">🏛️ Tríada Sorolla (Sol → Medio → Sombra)</button>
+              <button class="chip-select" data-fpreset="flesh">👤 Carnación Académica (4 Muestras)</button>
+              <button class="chip-select" data-fpreset="palette">📚 Cargar de Paleta Activa</button>
+            </div>
+          </div>
+
+          <!-- Contenedor Dinámico de Paradas / Muestras -->
+          <div class="farges-section-card" style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+              <div style="font-size: 0.78rem; font-weight: 700; color: #FFFFFF;">
+                Muestras Clave de la Transición (<span id="fargesStopsCount">2</span> paradas activas):
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <label for="fargesTransitionStepsSelect" style="font-size: 0.7rem; color: var(--text-muted);">Resolución de pasos:</label>
+                <select id="fargesTransitionStepsSelect" class="hyper4d-select-mini">
+                  <option value="5">5 Pasos (Boceto)</option>
+                  <option value="7">7 Pasos (Clásico)</option>
+                  <option value="9" selected>9 Pasos (Estándar Farges)</option>
+                  <option value="13">13 Pasos (Detallado)</option>
+                  <option value="17">17 Pasos (Alta Definición)</option>
+                  <option value="21">21 Pasos (Ultra Suave)</option>
+                </select>
+                <button id="btnFargesAddStop" class="farges-action-btn" title="Añadir una nueva muestra intermedia a la transición">
+                  <span>➕</span> Añadir Muestra
+                </button>
+              </div>
+            </div>
+
+            <!-- Grid de Tarjetas de Parada -->
+            <div id="fargesTransitionStopsGrid" class="farges-stops-grid">
+              <!-- Inyectado dinámicamente -->
+            </div>
+          </div>
+
+          <!-- Tira de Pasos Intermedios de la Curva Farges -->
+          <div class="farges-section-card" style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+              <span style="font-size: 0.74rem; font-weight: 700; color: #E2E8F0;">
+                Tira de Muestras Intermedias (Curva de Arco Farges):
+              </span>
+              <span style="font-size: 0.68rem; color: var(--accent-cyan);">
+                💡 Haz clic en cualquier muestra intermedia para cargarla como color frontal (FG)
+              </span>
+            </div>
+
+            <div id="fargesTransitionStepsStrip" class="farges-multi-step-strip">
+              <!-- Inyectado dinámicamente -->
+            </div>
+
+            <!-- Detalle de la Muestra Intermedia Seleccionada -->
+            <div id="fargesStepDetailBox" style="margin-top: 10px; display: none; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px; border: 1px solid var(--border-accent);">
+              <!-- Inyectado al hacer clic -->
+            </div>
+          </div>
+
+          <!-- Diagnóstico de Física Sustractiva & Consejos de Atelier -->
+          <div id="fargesTransitionPhysicsBox" style="background: rgba(15,23,42,0.4); border: 1px solid rgba(99,102,241,0.25); border-radius: 6px; padding: 12px;">
+            <div style="font-size: 0.74rem; font-weight: 700; color: #A5B4FC; margin-bottom: 6px;">
+              🔬 Análisis Físico & Trayectoria de Mezcla por Segmentos:
+            </div>
+            <div id="fargesTransitionSegmentsReport" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Inyectado dinámicamente -->
+            </div>
+          </div>
+
+        </div>
+
         <!-- SECTION 3: AUTOMATIC WORKSHOP PALETTE GENERATOR & CANONICAL LIBRARIES -->
         <div class="glass-panel">
           <div class="panel-header" style="flex-wrap: wrap; gap: 8px;">

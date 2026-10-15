@@ -6994,6 +6994,265 @@ body.value-check-mode {
   color: #FFFFFF;
 }
 
+/* FARGES MULTI-SAMPLE DYNAMIC TRANSITION & COMPARATOR */
+.farges-stops-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.farges-stop-card {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.farges-stop-card:hover {
+  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(15, 23, 42, 0.75);
+}
+
+.farges-stop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.farges-stop-badge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.25);
+  color: #C7D2FE;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.farges-stop-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.farges-stop-color-input-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.farges-stop-color-picker {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 70px;
+  height: 70px;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.farges-stop-inputs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.farges-stop-name-input {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+  font-size: 0.72rem;
+  padding: 3px 6px;
+  border-radius: 4px;
+  outline: none;
+}
+
+.farges-stop-name-input:focus {
+  border-color: var(--accent-primary);
+}
+
+.farges-stop-hex-input {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #38BDF8;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: 4px;
+  outline: none;
+  text-transform: uppercase;
+}
+
+.farges-stop-hex-input:focus {
+  border-color: var(--accent-cyan);
+}
+
+.farges-stop-pigment-tag {
+  font-size: 0.65rem;
+  color: #94A3B8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.farges-stop-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.farges-stop-btn-mini {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.farges-stop-btn-mini:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #FFFFFF;
+}
+
+.farges-stop-btn-del {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #F87171;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.farges-stop-btn-del:hover {
+  background: rgba(239, 68, 68, 0.28);
+  color: #FFFFFF;
+}
+
+/* Multi-Step Transition Strip */
+.farges-multi-step-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 6px 2px 10px 2px;
+  scrollbar-width: thin;
+}
+
+.farges-multi-step-strip::-webkit-scrollbar {
+  height: 5px;
+}
+
+.farges-multi-step-strip::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.farges-multi-step-pill {
+  min-width: 52px;
+  height: 64px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 2px;
+  transition: all var(--transition-fast);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.farges-multi-step-pill:hover {
+  transform: translateY(-3px) scale(1.06);
+  border-color: #FFFFFF;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+  z-index: 5;
+}
+
+.farges-multi-step-pill.is-stop-pill {
+  border: 2px solid #FBBF24;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.35);
+}
+
+.farges-pill-ratio {
+  font-size: 0.6rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: #FFFFFF;
+  background: rgba(0, 0, 0, 0.68);
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
+.farges-pill-val {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.farges-pill-olive-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #EAB308;
+  color: #000;
+  font-size: 0.55rem;
+  font-weight: 800;
+  padding: 1px 3px;
+  border-radius: 3px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.farges-segment-item {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.farges-segment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #F8FAFC;
+}
+
+.farges-segment-note {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+
 
 
 

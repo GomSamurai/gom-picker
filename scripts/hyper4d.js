@@ -14,7 +14,7 @@
 
 import { ColorMath } from './colorMath.js?v=3.1';
 import { MunsellSystem } from './munsellSystem.js?v=3.1';
-import { FlorentFargesEngine } from './florentFarges.js?v=3.1';
+import { FlorentFargesEngine } from './florentFarges.js?v=3.2';
 import { HarmonyEngine } from './harmonies.js?v=3.1';
 import { RampStudio } from './rampStudio.js?v=3.1';
 
@@ -770,8 +770,9 @@ export class Hyper4DStudio {
     }
 
     const swatchNodes = [];
-    paletteColors.forEach((hex, idx) => {
-      const rgb = ColorMath.hexToRgb(hex);
+    paletteColors.forEach((colorItem, idx) => {
+      const hex = (typeof colorItem === 'string' ? colorItem : (colorItem?.hex || '#FFFFFF')).toUpperCase();
+      const rgb = typeof colorItem === 'object' && colorItem?.rgb ? colorItem.rgb : ColorMath.hexToRgb(hex);
       const coords = this._getColor4DCoords(rgb, { minVisualChroma: 4 });
       const node = {
         id: `pal_swatch_${idx}`,
@@ -1079,64 +1080,102 @@ export class Hyper4DStudio {
   }
 
   /**
-   * MODO 5: Despliegue Curva Bow de Florent Farges & Mezcla Sustractiva
-   * Traza la curva física no lineal al mezclar pigmentos complementarios o secundarios.
+   * MODO 5: Despliegue Curva Bow de Florent Farges & Mezcla Sustractiva Multi-Muestra
+   * Traza la curva física no lineal entre 2 o más muestras reales o arbitrarias,
+   * calculando su flexión respecto a la cuerda recta teórica y destacando fenómenos
+   * de taller (Olive Shift, absorción selectiva y valor intrínseco).
    */
   deployFargesBowCurve(activeRgb) {
     const nodes = [];
     const lines = [];
     const faces = [];
 
-    const solver = FlorentFargesEngine.solveMixingForColor(activeRgb);
-    let p1 = solver?.cand1 || { name: 'Amarillo Cadmio (PY35)', hex: '#FFF200', rgb: { r: 255, g: 242, b: 0 } };
-    let p2 = solver?.cand2 || { name: 'Negro Marfil (PBk9)', hex: '#21201F', rgb: { r: 33, g: 32, b: 31 } };
+    // Obtener paradas multi-muestra configuradas en el motor de Farges
+    let stops = FlorentFargesEngine.transitionStops;
+    if (!stops || stops.length < 2) {
+      const fg = activeRgb || this.app?.fgColor || { r: 99, g: 102, b: 241 };
+      const bg = this.app?.bgColor || { r: 245, g: 158, b: 11 };
+      stops = [
+        { id: 'farges_stop_1', hex: ColorMath.rgbToHex(fg.r, fg.g, fg.b), rgb: fg, name: 'Muestra A (Frontal)' },
+        { id: 'farges_stop_2', hex: ColorMath.rgbToHex(bg.r, bg.g, bg.b), rgb: bg, name: 'Muestra B (Fondo)' }
+      ];
+    }
 
-    const curveSteps = 7;
-    const curveNodes = [];
-    for (let i = 0; i <= curveSteps; i++) {
-      const t = i / curveSteps;
-      const mixRgb = ColorMath.mixRyb(p1.rgb, p2.rgb, t);
-      const coords = this._getColor4DCoords(mixRgb, { minVisualChroma: 3 });
+    // Generar la transición multi-muestra física
+    const totalDesiredSteps = Math.max(9, (stops.length - 1) * 5);
+    const transitionSteps = FlorentFargesEngine.generateMultiSampleTransition(stops, totalDesiredSteps);
 
+    const stepNodes = [];
+    transitionSteps.forEach((step, idx) => {
+      const coords = this._getColor4DCoords(step.rgb, { minVisualChroma: 3 });
       const node = {
-        id: `farges_bow_${i}`,
-        type: 'bow_curve_pt',
+        id: `farges_step_${idx}`,
+        type: step.isStop ? 'farges_stop' : 'bow_curve_pt',
         x: coords.x,
         y: coords.y,
         z: coords.z,
-        w: coords.w * (1 - t * 0.3),
-        hex: ColorMath.rgbToHex(mixRgb.r, mixRgb.g, mixRgb.b),
-        rgb: mixRgb,
-        munsell: coords.munsell.notation,
-        name: i === 0 ? p1.name : (i === curveSteps ? p2.name : `Mezcla ${(t * 100).toFixed(0)}% (${ColorMath.rgbToHex(mixRgb.r, mixRgb.g, mixRgb.b)})`),
-        role: i === 0 || i === curveSteps ? 'Pigmento Extremo' : `Paso Físico ${(t * 100).toFixed(0)}%`,
-        isPrimary: i === 0 || i === curveSteps || i === Math.floor(curveSteps / 2),
-        size: i === 0 || i === curveSteps ? 10 : (i === Math.floor(curveSteps / 2) ? 8 : 5)
+        w: coords.w,
+        hex: step.hex,
+        rgb: step.rgb,
+        munsell: step.munsell,
+        name: `${step.stopName} (${step.hex})`,
+        role: step.isStop ? `Parada ${step.stopName}` : `Paso Físico ${(step.localRatio * 100).toFixed(0)}%`,
+        inherentValue: step.inherentValue,
+        isOliveShift: step.isOliveShift,
+        isPrimary: step.isStop,
+        size: step.isStop ? 11 : 6
       };
       nodes.push(node);
-      curveNodes.push(node);
-    }
+      stepNodes.push(node);
+    });
 
-    // Trazar la curva conectiva física (Verde)
-    for (let i = 0; i < curveNodes.length - 1; i++) {
+    // 1. Trazar la curva conectiva física sustractiva (Verde esmeralda o Amarillo si hay Olive Shift)
+    for (let i = 0; i < stepNodes.length - 1; i++) {
+      const isMiddle = i === Math.floor(stepNodes.length / 2);
       lines.push({
-        from: curveNodes[i],
-        to: curveNodes[i + 1],
-        color: '#10B981',
-        width: 3,
-        label: i === 3 ? 'Curva Bow Farges' : ''
+        from: stepNodes[i],
+        to: stepNodes[i + 1],
+        color: stepNodes[i].isOliveShift || stepNodes[i + 1].isOliveShift ? '#EAB308' : '#10B981',
+        width: 3.2,
+        label: isMiddle ? 'Curva Física Farges' : ''
       });
     }
 
-    // Trazar la cuerda recta teórica (Gris punteado) para mostrar visualmente la curvatura física
-    lines.push({
-      from: curveNodes[0],
-      to: curveNodes[curveNodes.length - 1],
-      color: 'rgba(255, 255, 255, 0.3)',
-      width: 1.2,
-      dash: [4, 4],
-      label: 'Cuerda Recta Teórica'
+    // 2. Trazar las cuerdas rectas teóricas (Gris punteado) entre cada par consecutivo de paradas
+    // Esto permite al artista contrastar visualmente la no-linealidad de la mezcla física frente a la línea recta
+    const stopIndices = [];
+    transitionSteps.forEach((s, idx) => {
+      if (s.isStop) stopIndices.push(idx);
     });
+
+    for (let s = 0; s < stopIndices.length - 1; s++) {
+      const idxA = stopIndices[s];
+      const idxB = stopIndices[s + 1];
+      const nodeA = stepNodes[idxA];
+      const nodeB = stepNodes[idxB];
+      if (nodeA && nodeB) {
+        lines.push({
+          from: nodeA,
+          to: nodeB,
+          color: 'rgba(255, 255, 255, 0.35)',
+          width: 1.4,
+          dash: [4, 4],
+          label: s === 0 ? 'Cuerda Recta Teórica' : ''
+        });
+
+        // Cara translúcida triangular entre la cuerda y el punto medio curvado
+        const midIdx = Math.floor((idxA + idxB) / 2);
+        const nodeMid = stepNodes[midIdx];
+        if (nodeMid && nodeMid !== nodeA && nodeMid !== nodeB) {
+          faces.push({
+            p1: nodeA,
+            p2: nodeMid,
+            p3: nodeB,
+            fillColor: 'rgba(16, 185, 129, 0.08)'
+          });
+        }
+      }
+    }
 
     return { nodes, lines, faces };
   }
@@ -1406,7 +1445,7 @@ export class Hyper4DStudio {
     }
 
     // Muestra Activa y sus Desgloses según el Modo de Despliegue
-    const curRgb = this.app?.fgColor || { r: 99, g: 102, b: 241 };
+    const curRgb = this.activeColor || (this.app?.activeWell === 'bg' ? this.app?.bgColor : this.app?.fgColor) || { r: 99, g: 102, b: 241 };
     const activeData = this.getActiveColorNodes(curRgb);
     elementsToDraw.push(...activeData.nodes);
     linesToDraw.push(...activeData.lines);
@@ -1520,6 +1559,7 @@ export class Hyper4DStudio {
             node.type === 'vector_sss' ||
             node.type === 'vector_bounce' ||
             node.type === 'harmony_node' ||
+            node.type === 'farges_stop' ||
             (node.type === 'bow_curve_pt' && node.isPrimary) ||
             (node.type === 'ramp_node' && node.isPrimary) ||
             (node.type === 'palette_swatch' && this.activeDeployment === 'palette')
@@ -2869,8 +2909,21 @@ export class Hyper4DStudio {
     this.syncWithActiveColor(rgb);
   }
 
+  syncWithActivePalette() {
+    this._updateComparisonPanel();
+  }
+
+  setHarmonyRule(ruleId) {
+    this.activeHarmonyRule = ruleId;
+    const harmSelect4D = document.getElementById('hyper4dHarmonyRuleSelect');
+    if (harmSelect4D && harmSelect4D.value !== ruleId) {
+      harmSelect4D.value = ruleId;
+    }
+  }
+
   syncWithActiveColor(rgb = null) {
-    const curRgb = rgb || this.app?.fgColor || { r: 99, g: 102, b: 241 };
+    const curRgb = rgb || (this.app?.activeWell === 'bg' ? this.app?.bgColor : this.app?.fgColor) || { r: 99, g: 102, b: 241 };
+    this.activeColor = curRgb;
     const hex = ColorMath.rgbToHex(curRgb.r, curRgb.g, curRgb.b);
     const munsell = MunsellSystem.rgbToMunsell(curRgb.r, curRgb.g, curRgb.b);
     const hsv = ColorMath.rgbToHsv(curRgb.r, curRgb.g, curRgb.b);
@@ -2882,6 +2935,7 @@ export class Hyper4DStudio {
         targetSlot.hex = hex;
         targetSlot.rgb = curRgb;
         this._updateSlotCardDOM(targetSlot.id);
+        this._updateComparisonPanel();
       }
     }
 

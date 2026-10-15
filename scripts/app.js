@@ -370,6 +370,10 @@ class GomPickerApp {
       if (wBg) wBg.classList.add('active');
       if (wFg) wFg.classList.remove('active');
     }
+    if (this.hyper4dStudio) {
+      const activeColor = well === 'fg' ? this.fgColor : this.bgColor;
+      this.hyper4dStudio.updateActiveColor(activeColor);
+    }
   }
 
   _bindHeroColorAndCompanionBands() {
@@ -1224,6 +1228,7 @@ class GomPickerApp {
       card.dataset.swatchHex = displayHex;
       card.dataset.swatchLabel = col.role;
       card.draggable = true;
+      card.title = `${col.role} (${displayHex}) • Click: Frontal (FG) • Alt+Click: Fondo (BG) • Arrastra para guardar`;
 
       const colorBox = document.createElement('div');
       colorBox.className = 'harmony-card-color';
@@ -1245,8 +1250,32 @@ class GomPickerApp {
       card.appendChild(colorBox);
       card.appendChild(info);
 
-      card.addEventListener('click', () => {
-        this.setColorDirectly(col.rgb);
+      card.addEventListener('click', (e) => {
+        if (e.altKey) {
+          this.activeWell = 'bg';
+          const bgWell = document.getElementById('bgWell');
+          const fgWell = document.getElementById('fgWell');
+          if (bgWell) bgWell.classList.add('active');
+          if (fgWell) fgWell.classList.remove('active');
+          this.setColorDirectly(col.rgb);
+          this.showToast(`Fondo (BG) actualizado: ${displayHex}`);
+        } else {
+          this.activeWell = 'fg';
+          const bgWell = document.getElementById('bgWell');
+          const fgWell = document.getElementById('fgWell');
+          if (fgWell) fgWell.classList.add('active');
+          if (bgWell) bgWell.classList.remove('active');
+          this.setColorDirectly(col.rgb);
+          this.showToast(`Color armónico aplicado: ${col.role} (${displayHex})`);
+        }
+      });
+
+      card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', displayHex);
+        e.dataTransfer.setData('application/gom-swatch', JSON.stringify({
+          paletteId: 'harmony',
+          hex: displayHex
+        }));
       });
 
       grid.appendChild(card);
@@ -3419,6 +3448,8 @@ class GomPickerApp {
     this.renderFlorentWhy('olive_shift');
     this.renderFlorentFleshGrid();
     this.renderFlorentStudioTubes();
+    this._bindFlorentTransitionControls();
+    this.renderFlorentTransitionComparator();
   }
 
   _populateFlorentLabSelects() {
@@ -3639,6 +3670,331 @@ class GomPickerApp {
 
         swatchesEl.appendChild(card);
       });
+    }
+  }
+
+  _bindFlorentTransitionControls() {
+    const btnJump4D = document.getElementById('btnFargesTransitionJump4D');
+    const btnSavePal = document.getElementById('btnFargesTransitionSavePalette');
+    const btnAddStop = document.getElementById('btnFargesAddStop');
+    const stepsSelect = document.getElementById('fargesTransitionStepsSelect');
+
+    if (btnJump4D) {
+      btnJump4D.addEventListener('click', () => {
+        if (this.hyper4dStudio) {
+          this.hyper4dStudio.options.showMixingBowCurve = true;
+          this.hyper4dStudio.activeDeployment = 'farges';
+          const deployPills = document.querySelectorAll('#hyper4dDeployPills button');
+          deployPills.forEach(p => p.classList.remove('active'));
+          const fargesPill = document.querySelector('#hyper4dDeployPills button[data-deploy="farges"]');
+          if (fargesPill) fargesPill.classList.add('active');
+          const curRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+          this.hyper4dStudio.syncWithActiveColor(curRgb);
+        }
+        this.switchTab('hyper4d');
+        this.showToast('🔮 Transición Farges multi-muestra proyectada en el Hiperespacio 4D', 'success');
+      });
+    }
+
+    if (btnSavePal) {
+      btnSavePal.addEventListener('click', () => {
+        const steps = FlorentFargesEngine.generateMultiSampleTransition(
+          FlorentFargesEngine.transitionStops,
+          FlorentFargesEngine.transitionStepsCount || 9
+        );
+        if (!steps || steps.length < 2) return;
+        const hexArray = steps.map(s => s.hex);
+        const palName = `Transición Farges (${FlorentFargesEngine.transitionStops.length} Muestras)`;
+        this.swatchManager.addPalette(palName, hexArray);
+        this.renderQuickPalette();
+        this.renderSwatchesCollection();
+        this.showToast(`💾 Paleta '${palName}' guardada con éxito en tus Bibliotecas`, 'success');
+      });
+    }
+
+    if (btnAddStop) {
+      btnAddStop.addEventListener('click', () => {
+        FlorentFargesEngine.addTransitionStop();
+        this.renderFlorentTransitionComparator();
+        if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
+          this.hyper4dStudio.syncWithActiveColor();
+        }
+        this.showToast('➕ Nueva muestra añadida a la transición de Farges');
+      });
+    }
+
+    if (stepsSelect) {
+      stepsSelect.value = FlorentFargesEngine.transitionStepsCount || 9;
+      stepsSelect.addEventListener('change', (e) => {
+        FlorentFargesEngine.transitionStepsCount = parseInt(e.target.value, 10);
+        this.renderFlorentTransitionComparator();
+        if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
+          this.hyper4dStudio.syncWithActiveColor();
+        }
+      });
+    }
+
+    // Preset Chips
+    const presetChips = document.querySelectorAll('#fargesTransitionPresetChips button[data-fpreset]');
+    presetChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        presetChips.forEach(c => c.classList.remove('active-toggle'));
+        chip.classList.add('active-toggle');
+        const presetKey = chip.dataset.fpreset;
+
+        if (presetKey === 'fgbg') {
+          FlorentFargesEngine.setTransitionStops([
+            { hex: this.fgColor.hex, rgb: this.fgColor, name: 'Color Frontal (FG)' },
+            { hex: this.bgColor.hex, rgb: this.bgColor, name: 'Color Fondo (BG)' }
+          ]);
+        } else if (presetKey === 'warm_cool') {
+          FlorentFargesEngine.setTransitionStops([
+            { hex: '#FFF200', rgb: { r: 255, g: 242, b: 0 }, name: 'Amarillo Limón (PY35)' },
+            { hex: '#CC9933', rgb: { r: 204, g: 153, b: 51 }, name: 'Ocre Dorado (PY43)' },
+            { hex: '#0055A5', rgb: { r: 0, g: 85, b: 165 }, name: 'Azul Ftalo (PB15:3)' }
+          ]);
+        } else if (presetKey === 'sorolla') {
+          FlorentFargesEngine.setTransitionStops([
+            { hex: '#FFF8D6', rgb: { r: 255, g: 248, b: 214 }, name: 'Luz Solar Sorolla' },
+            { hex: '#E89758', rgb: { r: 232, g: 151, b: 88 }, name: 'Halftone Siena' },
+            { hex: '#856B96', rgb: { r: 133, g: 107, b: 150 }, name: 'Sombra Violeta Cobalto' }
+          ]);
+        } else if (presetKey === 'flesh') {
+          FlorentFargesEngine.setTransitionStops([
+            { hex: '#9B4722', rgb: { r: 155, g: 71, b: 34 }, name: 'Siena Tostada (Sombra)' },
+            { hex: '#CC9933', rgb: { r: 204, g: 153, b: 51 }, name: 'Ocre Amarillo (Medio)' },
+            { hex: '#E8B869', rgb: { r: 232, g: 184, b: 105 }, name: 'Carne Luminosa' },
+            { hex: '#FFF5E1', rgb: { r: 255, g: 245, b: 225 }, name: 'Luz Empastada Blanco' }
+          ]);
+        } else if (presetKey === 'palette') {
+          const activePal = this.swatchManager.getActivePalette();
+          if (activePal && activePal.colors && activePal.colors.length >= 2) {
+            const stops = activePal.colors.slice(0, 6).map((c, i) => {
+              const hex = (typeof c === 'string' ? c : c.hex).toUpperCase();
+              return { hex, rgb: ColorMath.hexToRgb(hex), name: `Muestra ${i + 1}` };
+            });
+            FlorentFargesEngine.setTransitionStops(stops);
+          } else {
+            this.showToast('La paleta activa debe tener al menos 2 colores', 'warning');
+            return;
+          }
+        }
+
+        this.renderFlorentTransitionComparator();
+        if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
+          this.hyper4dStudio.syncWithActiveColor();
+        }
+        this.showToast(`Preset Farges aplicado: ${chip.textContent.trim()}`);
+      });
+    });
+  }
+
+  renderFlorentTransitionComparator() {
+    const stopsContainer = document.getElementById('fargesTransitionStopsGrid');
+    const stepsStrip = document.getElementById('fargesTransitionStepsStrip');
+    const countBadge = document.getElementById('fargesStopsCount');
+    const physicsReport = document.getElementById('fargesTransitionSegmentsReport');
+
+    if (!stopsContainer || !stepsStrip) return;
+
+    const stops = FlorentFargesEngine.transitionStops;
+    if (countBadge) countBadge.textContent = stops.length;
+
+    // 1. Render Stops Cards
+    stopsContainer.innerHTML = '';
+    stops.forEach((stop, idx) => {
+      const card = document.createElement('div');
+      card.className = 'farges-stop-card';
+
+      const closest = FlorentFargesEngine.findClosestPigment(stop.rgb);
+      const letter = String.fromCharCode(65 + idx);
+
+      card.innerHTML = `
+        <div class="farges-stop-header">
+          <span class="farges-stop-badge">Muestra ${letter}</span>
+          <div class="farges-stop-actions">
+            <button class="farges-stop-btn-mini btn-stop-fg" title="Asignar el color frontal actual">Usar FG</button>
+            <button class="farges-stop-btn-mini btn-stop-bg" title="Asignar el color de fondo actual">Usar BG</button>
+            ${stops.length > 2 ? `<button class="farges-stop-btn-del btn-del-stop" title="Eliminar esta parada">✕</button>` : ''}
+          </div>
+        </div>
+        <div class="farges-stop-body">
+          <div class="farges-stop-color-input-wrap" style="background-color: ${stop.hex};">
+            <input type="color" class="farges-stop-color-picker" value="${stop.hex}">
+          </div>
+          <div class="farges-stop-inputs">
+            <input type="text" class="farges-stop-name-input" value="${stop.name || `Muestra ${letter}`}" placeholder="Nombre de la parada">
+            <input type="text" class="farges-stop-hex-input" value="${stop.hex}" maxlength="7">
+            <div class="farges-stop-pigment-tag" title="Pigmento genuino más afín de Bellas Artes">
+              🎨 ${closest.pigment.name} (Val ${closest.pigment.inherentValue}, Tinte ${closest.pigment.tintingStrength}/10)
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Event listeners for Stop Card
+      const picker = card.querySelector('.farges-stop-color-picker');
+      const hexInput = card.querySelector('.farges-stop-hex-input');
+      const nameInput = card.querySelector('.farges-stop-name-input');
+      const btnFg = card.querySelector('.btn-stop-fg');
+      const btnBg = card.querySelector('.btn-stop-bg');
+      const btnDel = card.querySelector('.btn-del-stop');
+
+      if (picker) {
+        picker.addEventListener('input', (e) => {
+          FlorentFargesEngine.updateTransitionStop(idx, e.target.value);
+          this.renderFlorentTransitionComparator();
+          if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
+            this.hyper4dStudio.syncWithActiveColor();
+          }
+        });
+      }
+
+      if (hexInput) {
+        hexInput.addEventListener('change', (e) => {
+          let val = e.target.value.trim();
+          if (!val.startsWith('#')) val = '#' + val;
+          if (/^#[0-9A-F]{6}$/i.test(val)) {
+            FlorentFargesEngine.updateTransitionStop(idx, val);
+            this.renderFlorentTransitionComparator();
+            if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
+              this.hyper4dStudio.syncWithActiveColor();
+            }
+          }
+        });
+      }
+
+      if (nameInput) {
+        nameInput.addEventListener('change', (e) => {
+          FlorentFargesEngine.updateTransitionStop(idx, null, e.target.value.trim());
+        });
+      }
+
+      if (btnFg) {
+        btnFg.addEventListener('click', () => {
+          FlorentFargesEngine.updateTransitionStop(idx, this.fgColor.hex, `FG (${this.fgColor.hex})`);
+          this.renderFlorentTransitionComparator();
+          if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
+            this.hyper4dStudio.syncWithActiveColor();
+          }
+          this.showToast(`Muestra ${letter} actualizada con Color Frontal (FG)`);
+        });
+      }
+
+      if (btnBg) {
+        btnBg.addEventListener('click', () => {
+          FlorentFargesEngine.updateTransitionStop(idx, this.bgColor.hex, `BG (${this.bgColor.hex})`);
+          this.renderFlorentTransitionComparator();
+          if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
+            this.hyper4dStudio.syncWithActiveColor();
+          }
+          this.showToast(`Muestra ${letter} actualizada con Color Fondo (BG)`);
+        });
+      }
+
+      if (btnDel) {
+        btnDel.addEventListener('click', () => {
+          FlorentFargesEngine.removeTransitionStop(idx);
+          this.renderFlorentTransitionComparator();
+          if (this.hyper4dStudio && this.hyper4dStudio.activeDeployment === 'farges') {
+            this.hyper4dStudio.syncWithActiveColor();
+          }
+          this.showToast(`Muestra eliminada de la transición`);
+        });
+      }
+
+      stopsContainer.appendChild(card);
+    });
+
+    // 2. Compute Intermediate Steps
+    const totalSteps = FlorentFargesEngine.transitionStepsCount || 9;
+    const steps = FlorentFargesEngine.generateMultiSampleTransition(stops, totalSteps);
+
+    // 3. Render Intermediate Steps Strip
+    stepsStrip.innerHTML = '';
+    const detailBox = document.getElementById('fargesStepDetailBox');
+
+    steps.forEach((step) => {
+      const pill = document.createElement('div');
+      pill.className = `farges-multi-step-pill ${step.isStop ? 'is-stop-pill' : ''}`;
+      pill.style.backgroundColor = step.hex;
+      pill.title = `${step.stopName} (${step.hex})\nMunsell: ${step.munsell}\nValor Farges: ${step.inherentValue}/9\nClick: Cargar como FG`;
+
+      pill.innerHTML = `
+        <span class="farges-pill-ratio">${step.isStop ? '★' : `${Math.round(step.localRatio * 100)}%`}</span>
+        <span class="farges-pill-val">V${step.inherentValue}</span>
+        ${step.isOliveShift ? `<span class="farges-pill-olive-badge" title="Viraje Olive Shift detectado">Oliva</span>` : ''}
+      `;
+
+      pill.addEventListener('click', () => {
+        this.setColorDirectly(step.rgb);
+        this.showToast(`🎯 Paso Farges seleccionado: ${step.stopName} (${step.hex})`);
+
+        if (detailBox) {
+          detailBox.style.display = 'block';
+          detailBox.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 32px; height: 32px; border-radius: 6px; background-color: ${step.hex}; border: 1px solid #FFF;"></div>
+                <div>
+                  <div style="font-size: 0.8rem; font-weight: 700; color: #FFF;">${step.stopName}</div>
+                  <div style="font-family: var(--font-mono); font-size: 0.72rem; color: #38BDF8;">${step.hex} • Munsell: ${step.munsell} • Valor Farges: ${step.inherentValue}/9</div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <button class="farges-action-btn" id="btnFargesDetailBg">Usar Fondo (BG)</button>
+                <button class="farges-action-btn farges-action-btn-emerald" id="btnFargesDetailAddPal">➕ Añadir a Paleta</button>
+              </div>
+            </div>
+            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.4;">
+              💡 <strong>Física Sustractiva:</strong> ${step.pedagogicalNote}
+            </div>
+          `;
+
+          const btnBg = document.getElementById('btnFargesDetailBg');
+          const btnPal = document.getElementById('btnFargesDetailAddPal');
+          if (btnBg) {
+            btnBg.addEventListener('click', () => {
+              this.activeWell = 'bg';
+              this.setColorDirectly(step.rgb);
+              this.showToast(`Color ${step.hex} fijado como Fondo (BG)`);
+            });
+          }
+          if (btnPal) {
+            btnPal.addEventListener('click', () => {
+              this.swatchManager.addColorToActivePalette(step.hex);
+              this.renderQuickPalette();
+              this.renderSwatchesCollection();
+              this.showToast(`Color ${step.hex} añadido a tu paleta activa`);
+            });
+          }
+        }
+      });
+
+      stepsStrip.appendChild(pill);
+    });
+
+    // 4. Render Segments Physics Report
+    if (physicsReport) {
+      physicsReport.innerHTML = '';
+      for (let s = 0; s < stops.length - 1; s++) {
+        const stopA = stops[s];
+        const stopB = stops[s + 1];
+        const mix = FlorentFargesEngine.solveArbitraryColorMixing(stopA, stopB, 0.5);
+
+        const segItem = document.createElement('div');
+        segItem.className = 'farges-segment-item';
+        segItem.innerHTML = `
+          <div class="farges-segment-header">
+            <span>Segmento ${s + 1}: ${stopA.name || stopA.hex} ➔ ${stopB.name || stopB.hex}</span>
+            <span style="font-family: var(--font-mono); color: #FBBF24;">Intervalo: ${mix.angSpan}° • Valor Central: ${mix.inherentValue}</span>
+          </div>
+          <div class="farges-segment-note">
+            ${mix.pedagogicalNote}
+          </div>
+        `;
+        physicsReport.appendChild(segItem);
+      }
     }
   }
 
@@ -4036,6 +4392,7 @@ class GomPickerApp {
 
     // Refresh dynamic tailored workshop palette for active color
     this.renderFlorentWorkshopPalette(curRgb);
+    this.renderFlorentTransitionComparator();
   }
 
 
@@ -5602,6 +5959,9 @@ class GomPickerApp {
         this.swatchManager.setActivePalette(e.target.value);
         this.renderQuickPalette();
         this.renderSwatchesCollection();
+        if (this.hyper4dStudio) {
+          this.hyper4dStudio.syncWithActivePalette();
+        }
         const act = this.swatchManager.getActivePalette();
         if (act) this.showToast(`Paleta activa: '${act.name}'`);
       });
@@ -6317,6 +6677,9 @@ class GomPickerApp {
           this.swatchManager.setActivePalette(pal.id);
           this.renderSwatchesCollection();
           this.renderQuickPalette();
+          if (this.hyper4dStudio) {
+            this.hyper4dStudio.syncWithActivePalette();
+          }
           this.showToast(`Paleta activa: '${pal.name}'`, 'success');
         });
         toolbar.appendChild(btnSetActive);
@@ -6685,7 +7048,16 @@ class GomPickerApp {
 
     if (harmonySelect) {
       harmonySelect.addEventListener('change', (e) => {
-        this.colorWheel.setHarmonyRule(e.target.value);
+        const ruleId = e.target.value;
+        this.colorWheel.setHarmonyRule(ruleId);
+        const curHsv = this.colorWheel ? this.colorWheel.hsv : ColorMath.rgbToHsv(this.fgColor.r, this.fgColor.g, this.fgColor.b);
+        const harmonies = HarmonyEngine.getHarmony(curHsv, ruleId, this.colorWheel?.mode === 'ryb' ? 'ryb' : 'rgb');
+        this.renderHarmonySwatches(harmonies);
+        if (this.hyper4dStudio) {
+          const harmSelect4D = document.getElementById('hyper4dHarmonyRuleSelect');
+          if (harmSelect4D) harmSelect4D.value = ruleId;
+          this.hyper4dStudio.setHarmonyRule(ruleId);
+        }
       });
     }
   }
