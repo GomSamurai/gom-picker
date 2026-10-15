@@ -12,11 +12,11 @@
  * 100% Offline, sin dependencias externas, con aceleración Canvas interactiva a 60fps.
  */
 
-import { ColorMath } from './colorMath.js?v=3.0';
-import { MunsellSystem } from './munsellSystem.js?v=3.0';
-import { FlorentFargesEngine } from './florentFarges.js?v=3.0';
-import { HarmonyEngine } from './harmonies.js?v=3.0';
-import { RampStudio } from './rampStudio.js?v=3.0';
+import { ColorMath } from './colorMath.js?v=3.1';
+import { MunsellSystem } from './munsellSystem.js?v=3.1';
+import { FlorentFargesEngine } from './florentFarges.js?v=3.1';
+import { HarmonyEngine } from './harmonies.js?v=3.1';
+import { RampStudio } from './rampStudio.js?v=3.1';
 
 export class Hyper4DStudio {
   constructor(app) {
@@ -168,6 +168,7 @@ export class Hyper4DStudio {
     this._bindEvents();
     this._bindUI();
     this._bindCompareControls();
+    this._bindResizeControls();
     this.renderCompareSlots();
     this._resizeCanvas();
     this.syncWithActiveColor();
@@ -193,17 +194,27 @@ export class Hyper4DStudio {
   }
 
   _resizeCanvas() {
-    if (!this.canvas) return;
-    const rect = this.canvas.parentElement.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const w = Math.max(320, Math.floor(rect.width));
-    const h = Math.max(340, Math.floor(rect.height || 540));
+    if (!this.canvas || !this.canvas.parentElement) return;
+    const parent = this.canvas.parentElement;
+    const rect = parent.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
 
-    this.canvas.width = w * dpr;
-    this.canvas.height = h * dpr;
-    this.canvas.style.width = `${w}px`;
-    this.canvas.style.height = `${h}px`;
-    this.ctx.scale(dpr, dpr);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.max(280, Math.floor(rect.width));
+    const h = Math.max(320, Math.floor(rect.height || parent.clientHeight || 560));
+
+    const targetW = Math.floor(w * dpr);
+    const targetH = Math.floor(h * dpr);
+
+    if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
+      this.canvas.width = targetW;
+      this.canvas.height = targetH;
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.scale(dpr, dpr);
+    }
+
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = '100%';
     this.displayWidth = w;
     this.displayHeight = h;
   }
@@ -2388,20 +2399,165 @@ export class Hyper4DStudio {
     setTimeout(() => this._resizeCanvas(), 70);
   }
 
+  _bindResizeControls() {
+    const stage = document.getElementById('hyper4dStageLayout') || document.querySelector('.hyper4d-stage-layout');
+    const container = document.getElementById('hyper4dCanvasContainer');
+    const grip = document.getElementById('hyper4dResizeGrip');
+    const splitter = document.getElementById('hyper4dSplitter');
+    const btnToggle = document.getElementById('btnHyper4DToggleSidebar');
+
+    // 1. Restaurar preferencias guardadas
+    try {
+      const savedH = localStorage.getItem('gom_hyper4d_height');
+      if (savedH && stage && container) {
+        const hVal = parseInt(savedH, 10);
+        if (hVal >= 380 && hVal <= 1400) {
+          stage.style.setProperty('--hyper4d-canvas-h', `${hVal}px`);
+        }
+      }
+      const savedW = localStorage.getItem('gom_hyper4d_sidebar_w');
+      if (savedW && stage) {
+        const wVal = parseInt(savedW, 10);
+        if (wVal >= 250 && wVal <= 700) {
+          stage.style.setProperty('--hyper4d-sidebar-w', `${wVal}px`);
+        }
+      }
+      if (localStorage.getItem('gom_hyper4d_sidebar_hidden') === '1') {
+        this.options.isSidebarHidden = false; // para que toggleSidebar lo active a true
+        this.toggleSidebar();
+      }
+    } catch (_) {}
+
+    // 2. Botón Visor Amplio (Toolbar)
+    if (btnToggle) {
+      btnToggle.addEventListener('click', () => this.toggleSidebar());
+    }
+
+    // 3. Arrastre Vertical de Altura (Grip)
+    if (grip && stage && container) {
+      let isDraggingGrip = false;
+      let startY = 0;
+      let startH = 0;
+
+      const onGripMove = (e) => {
+        if (!isDraggingGrip) return;
+        const delta = e.clientY - startY;
+        const maxH = Math.max(700, window.innerHeight - 80);
+        const newH = Math.max(380, Math.min(maxH, Math.round(startH + delta)));
+        stage.style.setProperty('--hyper4d-canvas-h', `${newH}px`);
+        this._resizeCanvas();
+      };
+
+      const onGripUp = () => {
+        if (!isDraggingGrip) return;
+        isDraggingGrip = false;
+        grip.classList.remove('active-dragging');
+        document.body.style.cursor = '';
+        window.removeEventListener('mousemove', onGripMove);
+        window.removeEventListener('mouseup', onGripUp);
+        try {
+          const curH = parseInt(stage.style.getPropertyValue('--hyper4d-canvas-h'), 10) || container.clientHeight;
+          localStorage.setItem('gom_hyper4d_height', curH);
+        } catch (_) {}
+      };
+
+      grip.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        isDraggingGrip = true;
+        startY = e.clientY;
+        startH = container.getBoundingClientRect().height;
+        grip.classList.add('active-dragging');
+        document.body.style.cursor = 'row-resize';
+        window.addEventListener('mousemove', onGripMove);
+        window.addEventListener('mouseup', onGripUp);
+      });
+    }
+
+    // 4. Arrastre Horizontal Lateral (Splitter entre Canvas e Inspector)
+    if (splitter && stage) {
+      let isDraggingSplitter = false;
+      let startX = 0;
+      let startW = 0;
+
+      const onSplitterMove = (e) => {
+        if (!isDraggingSplitter) return;
+        const deltaX = e.clientX - startX;
+        const newW = Math.max(260, Math.min(650, Math.round(startW - deltaX)));
+        stage.style.setProperty('--hyper4d-sidebar-w', `${newW}px`);
+        this._resizeCanvas();
+      };
+
+      const onSplitterUp = () => {
+        if (!isDraggingSplitter) return;
+        isDraggingSplitter = false;
+        splitter.classList.remove('active-dragging');
+        document.body.style.cursor = '';
+        window.removeEventListener('mousemove', onSplitterMove);
+        window.removeEventListener('mouseup', onSplitterUp);
+        try {
+          const curW = parseInt(stage.style.getPropertyValue('--hyper4d-sidebar-w'), 10);
+          if (curW) localStorage.setItem('gom_hyper4d_sidebar_w', curW);
+        } catch (_) {}
+      };
+
+      splitter.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        isDraggingSplitter = true;
+        startX = e.clientX;
+        const sidebar = document.getElementById('hyper4dSidebarPanel');
+        startW = sidebar ? sidebar.getBoundingClientRect().width : 380;
+        splitter.classList.add('active-dragging');
+        document.body.style.cursor = 'col-resize';
+        window.addEventListener('mousemove', onSplitterMove);
+        window.addEventListener('mouseup', onSplitterUp);
+      });
+    }
+
+    // 5. Setup ResizeObserver para respuesta inmediata a cualquier cambio en DOM
+    if (window.ResizeObserver && container) {
+      this._resizeObserver = new ResizeObserver(() => {
+        if (this._resizeRaf) cancelAnimationFrame(this._resizeRaf);
+        this._resizeRaf = requestAnimationFrame(() => {
+          this._resizeCanvas();
+        });
+      });
+      this._resizeObserver.observe(container);
+      if (stage) this._resizeObserver.observe(stage);
+      const view4D = document.getElementById('viewHyper4D');
+      if (view4D) this._resizeObserver.observe(view4D);
+    }
+  }
+
   toggleSidebar() {
     const wrapper = document.getElementById('hyper4dMainWrapper');
-    if (!wrapper) return;
+    const stage = document.getElementById('hyper4dStageLayout') || document.querySelector('.hyper4d-stage-layout');
+    if (!wrapper && !stage) return;
 
     this.options.isSidebarHidden = !this.options.isSidebarHidden;
-    wrapper.classList.toggle('sidebar-hidden', this.options.isSidebarHidden);
+    if (wrapper) wrapper.classList.toggle('sidebar-hidden', this.options.isSidebarHidden);
+    if (stage) stage.classList.toggle('inspector-hidden', this.options.isSidebarHidden);
 
-    const btnToggle = document.getElementById('btnHyper4DFsToggleSidebar');
-    if (btnToggle) {
-      const txtSpan = btnToggle.querySelector('.fs-btn-txt');
+    const btnMain = document.getElementById('btnHyper4DToggleSidebar');
+    if (btnMain) {
+      btnMain.innerHTML = this.options.isSidebarHidden ? '📑 Mostrar Inspector' : '↔️ Visor Amplio';
+      btnMain.classList.toggle('active', this.options.isSidebarHidden);
+    }
+
+    const btnFs = document.getElementById('btnHyper4DFsToggleSidebar');
+    if (btnFs) {
+      const txtSpan = btnFs.querySelector('.fs-btn-txt');
       if (txtSpan) txtSpan.textContent = this.options.isSidebarHidden ? 'Mostrar Panel' : 'Ocultar Panel';
     }
 
-    setTimeout(() => this._resizeCanvas(), 70);
+    try {
+      localStorage.setItem('gom_hyper4d_sidebar_hidden', this.options.isSidebarHidden ? '1' : '0');
+    } catch (_) {}
+
+    requestAnimationFrame(() => this._resizeCanvas());
+    setTimeout(() => this._resizeCanvas(), 80);
+    setTimeout(() => this._resizeCanvas(), 250);
   }
 
   // --- MÉTODOS DE ANÁLISIS DE TEORÍA DEL COLOR (FARGES, GOETHE, ITTEN, GURNEY) ---

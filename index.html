@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="styles/main.css?v=3.0">
+  <link rel="stylesheet" href="styles/main.css?v=3.1">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%236366F1'/><path d='M30 50 Q50 20 70 50 T30 50' fill='%2306B6D4'/></svg>">
 </head>
 <body>
@@ -1793,6 +1793,7 @@
                 <button id="btnHyper4DViewTop" class="hyper4d-icon-btn" title="Vista Cenital (Rueda Cromática)">📐 Cenital</button>
                 <button id="btnHyper4DViewFront" class="hyper4d-icon-btn" title="Vista Frontal (Valor / Matiz)">📐 Frontal</button>
                 <button id="btnHyper4DViewSide" class="hyper4d-icon-btn" title="Vista Lateral (Croma / Valor)">📐 Lateral</button>
+                <button id="btnHyper4DToggleSidebar" class="hyper4d-icon-btn" title="Alternar panel inspector para dar ancho completo al visor 4D">↔️ Visor Amplio</button>
                 <button id="btnHyper4DSnapshot" class="hyper4d-icon-btn hyper4d-btn-accent" title="Descargar captura PNG de alta definición">📸 Captura HD</button>
                 <button id="btnHyper4DFullscreen" class="hyper4d-icon-btn hyper4d-btn-fullscreen" title="Modo Pantalla Completa Inmersiva (Tecla F)">⛶ Pantalla Completa</button>
               </div>
@@ -1844,7 +1845,7 @@
           </div>
 
           <!-- Stage Grid: Canvas a la izquierda + Panel de Control/Comparador a la derecha -->
-          <div class="hyper4d-stage-layout">
+          <div id="hyper4dStageLayout" class="hyper4d-stage-layout">
             
             <!-- Lienzo 4D Interactivo -->
             <div id="hyper4dCanvasContainer" class="hyper4d-canvas-container">
@@ -1930,6 +1931,17 @@
                 <span>Click nodo: Cargar</span> • 
                 <span>F: Pantalla Completa</span>
               </div>
+
+              <!-- Barra Inferior de Reescalado Vertical del Visor -->
+              <div id="hyper4dResizeGrip" class="hyper4d-resize-grip" title="Arrastra verticalmente para reescalar la altura del visor 4D">
+                <div class="hyper4d-resize-grip-line"></div>
+                <span class="hyper4d-resize-grip-label">↕ Arrastrar para reescalar altura ↕</span>
+              </div>
+            </div>
+
+            <!-- Divisor / Splitter Lateral Reescalable -->
+            <div id="hyper4dSplitter" class="hyper4d-stage-splitter" title="Arrastra lateralmente para ajustar el ancho del visor y del panel">
+              <div class="hyper4d-splitter-handle"></div>
             </div>
 
             <!-- Panel Lateral de Inteligencia y Comparación 4D -->
@@ -3467,7 +3479,7 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Scripts -->
-  <script type="module" src="scripts/app.js?v=3.0"></script>
+  <script type="module" src="scripts/app.js?v=3.1"></script>
 
   <!-- Live Reload Client (SSE) -->
   <script>

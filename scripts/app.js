@@ -31,7 +31,7 @@ import { CVDSimulator } from './cvdSimulator.js';
 import { RampStudio } from './rampStudio.js';
 import { SwatchSheetExporter } from './swatchSheetExporter.js';
 import { ProfileBackup } from './profileBackup.js';
-import { Hyper4DStudio } from './hyper4d.js?v=3.0';
+import { Hyper4DStudio } from './hyper4d.js?v=3.1';
 import { PaletteImporterEngine } from './paletteImporter.js';
 
 class GomPickerApp {
@@ -826,6 +826,12 @@ class GomPickerApp {
         try {
           localStorage.setItem('gom_right_col_collapsed', isCollapsed ? '1' : '0');
         } catch (_) {}
+        window.dispatchEvent(new Event('resize'));
+        if (this.hyper4dStudio) {
+          requestAnimationFrame(() => this.hyper4dStudio._resizeCanvas());
+          setTimeout(() => this.hyper4dStudio?._resizeCanvas(), 160);
+          setTimeout(() => this.hyper4dStudio?._resizeCanvas(), 320);
+        }
       });
 
       // Restore collapsed preference
@@ -853,6 +859,12 @@ class GomPickerApp {
           localStorage.setItem('gom_right_col_expanded', isExp ? '1' : '0');
         } catch (_) {}
         this.showToast(isExp ? 'Columna derecha en modo extendido espacioso' : 'Columna derecha en modo estándar');
+        window.dispatchEvent(new Event('resize'));
+        if (this.hyper4dStudio) {
+          requestAnimationFrame(() => this.hyper4dStudio._resizeCanvas());
+          setTimeout(() => this.hyper4dStudio?._resizeCanvas(), 160);
+          setTimeout(() => this.hyper4dStudio?._resizeCanvas(), 320);
+        }
       });
 
       try {
@@ -1006,6 +1018,12 @@ class GomPickerApp {
         try {
           localStorage.setItem('gom_sidebar_collapsed', isCollapsed ? '1' : '0');
         } catch (_) {}
+        window.dispatchEvent(new Event('resize'));
+        if (this.hyper4dStudio) {
+          requestAnimationFrame(() => this.hyper4dStudio._resizeCanvas());
+          setTimeout(() => this.hyper4dStudio?._resizeCanvas(), 160);
+          setTimeout(() => this.hyper4dStudio?._resizeCanvas(), 320);
+        }
       });
 
       // Restore collapsed preference
