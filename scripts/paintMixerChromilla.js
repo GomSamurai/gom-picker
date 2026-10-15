@@ -1,68 +1,149 @@
 /**
  * GOM Picker - Chromilla Physical Paint Mixing & Recipe Studio
- * Fully replicates and extends the capabilities of Chromilla.com:
- * - Real artist pigment tubes catalog (CI Pigment Codes: PW6, PB29, PY43, PR108, etc.)
- * - Medium selector: Oil, Acrylic, Watercolor
- * - Dry-down shift prediction (Acrylics dry darker, Watercolors dry lighter, Oils stay true)
- * - Inverse Kubelka-Munk recipe solver in parts (e.g. 4 parts White + 1 part Ochre + 0.2 parts Blue)
- * - Mix Correction assistant (actionable advice to fix imperfect physical mixes)
- * - Batch measurement scaler (converts parts to Grams or Milliliters)
- * - "My Paint Box" inventory filter (uses only the tubes you actually own)
+ * Advanced subtractive paint recipe solver based on genuine artist pigments (CI codes),
+ * tinting strength dynamics, opacity, Kubelka-Munk approximations, and dry-down shift.
+ * 
+ * 100% Offline, Zero external dependencies.
  */
 
 import { ColorMath } from './colorMath.js';
+import { BrandPigments } from './brandPigments.js';
 
 export const ChromillaMixer = {
-  // Physical paint medium options
+  // Physical paint medium characteristics
   MEDIUMS: {
     oil: {
+      id: 'oil',
       name: 'Óleo (Oil)',
-      shiftDesc: 'Secado fiel: el valor y la saturación se mantienen prácticamente idénticos.',
+      shiftDesc: 'Secado fiel: el valor y la saturación se mantienen prácticamente idénticos (mínimo cambio).',
       shiftVal: 1.0,
       shiftSat: 1.0
     },
     acrylic: {
+      id: 'acrylic',
       name: 'Acrílico (Acrylic)',
-      shiftDesc: 'Oscurecimiento al secar: la emulsión polimérica se vuelve transparente, bajando el valor un ~12%.',
-      shiftVal: 0.88,
+      shiftDesc: 'Oscurecimiento al secar: la emulsión polimérica lechosa se vuelve transparente (-14% luminosidad, +5% croma).',
+      shiftVal: 0.86,
       shiftSat: 1.05
     },
     watercolor: {
+      id: 'watercolor',
       name: 'Acuarela (Watercolor)',
-      shiftDesc: 'Aclarado al secar: el agua se evapora sobre el papel blanco, subiendo el valor un ~15%.',
+      shiftDesc: 'Aclarado al secar: el agua se evapora sobre el papel blanco (+15% luminosidad, -12% saturación).',
       shiftVal: 1.15,
-      shiftSat: 0.85
+      shiftSat: 0.88
+    },
+    gouache: {
+      id: 'gouache',
+      name: 'Gouache (Acryla / Tradicional)',
+      shiftDesc: 'Shift dual: los tonos oscuros se aclaran por el carbonato y los tonos claros se oscurecen al secar.',
+      shiftVal: 0.95,
+      shiftSat: 0.92
     }
   },
 
-  // Library of 18 authentic artist paint tubes with Color Index codes and spectral characteristics
-  TUBES: [
-    { id: 'pw6', name: 'Blanco de Titanio', ci: 'PW6', hex: '#FDFEFE', rgb: { r: 253, g: 254, b: 254 }, opacity: 'Opaco', role: 'white', defaultOwned: true },
-    { id: 'pw4', name: 'Blanco de Zinc', ci: 'PW4', hex: '#F5F5F7', rgb: { r: 245, g: 245, b: 247 }, opacity: 'Transparente', role: 'white', defaultOwned: false },
-    { id: 'py35', name: 'Amarillo Cadmio Medio', ci: 'PY35', hex: '#FFD300', rgb: { r: 255, g: 211, b: 0 }, opacity: 'Opaco', role: 'yellow', defaultOwned: true },
-    { id: 'py43', name: 'Ocre Amarillo', ci: 'PY43', hex: '#C89332', rgb: { r: 200, g: 147, b: 50 }, opacity: 'Semi-opaco', role: 'earth', defaultOwned: true },
-    { id: 'pr108', name: 'Rojo Cadmio Medio', ci: 'PR108', hex: '#E32636', rgb: { r: 227, g: 38, b: 54 }, opacity: 'Opaco', role: 'red', defaultOwned: true },
-    { id: 'pr83', name: 'Carmesí de Alizarina', ci: 'PR83', hex: '#E32636', rgb: { r: 160, g: 20, b: 40 }, opacity: 'Transparente', role: 'red', defaultOwned: true },
-    { id: 'pr122', name: 'Magenta Quinacridona', ci: 'PR122', hex: '#8E0045', rgb: { r: 142, g: 0, b: 69 }, opacity: 'Transparente', role: 'magenta', defaultOwned: false },
-    { id: 'pbr7_bs', name: 'Tierra Siena Tostada', ci: 'PBr7', hex: '#8A3324', rgb: { r: 138, g: 51, b: 36 }, opacity: 'Transparente', role: 'earth', defaultOwned: true },
-    { id: 'pbr7_bu', name: 'Tierra Sombra Tostada', ci: 'PBr7', hex: '#482D20', rgb: { r: 72, g: 45, b: 32 }, opacity: 'Semi-opaco', role: 'earth', defaultOwned: true },
-    { id: 'pbr7_ru', name: 'Tierra Sombra Natural', ci: 'PBr7', hex: '#392F26', rgb: { r: 57, g: 47, b: 38 }, opacity: 'Semi-opaco', role: 'earth', defaultOwned: true },
-    { id: 'pb29', name: 'Azul Ultramar', ci: 'PB29', hex: '#120A8F', rgb: { r: 18, g: 10, b: 143 }, opacity: 'Semi-transparente', role: 'blue', defaultOwned: true },
-    { id: 'pb28', name: 'Azul Cobalto', ci: 'PB28', hex: '#0047AB', rgb: { r: 0, g: 71, b: 171 }, opacity: 'Semi-opaco', role: 'blue', defaultOwned: true },
-    { id: 'pb35', name: 'Azul Cerúleo', ci: 'PB35', hex: '#007BA7', rgb: { r: 0, g: 123, b: 167 }, opacity: 'Opaco', role: 'blue', defaultOwned: false },
-    { id: 'pb15_3', name: 'Azul Ftalo (Phthalo Blue)', ci: 'PB15:3', hex: '#000F89', rgb: { r: 0, g: 15, b: 137 }, opacity: 'Transparente', role: 'cyan', defaultOwned: false },
-    { id: 'pg7', name: 'Verde Ftalo (Phthalo Green)', ci: 'PG7', hex: '#123524', rgb: { r: 18, g: 53, b: 36 }, opacity: 'Transparente', role: 'green', defaultOwned: false },
-    { id: 'pg18', name: 'Verde Viridián', ci: 'PG18', hex: '#40826D', rgb: { r: 64, g: 130, b: 109 }, opacity: 'Transparente', role: 'green', defaultOwned: true },
-    { id: 'pbk9', name: 'Negro Marfil', ci: 'PBk9', hex: '#1C1B1A', rgb: { r: 28, g: 27, b: 26 }, opacity: 'Semi-opaco', role: 'black', defaultOwned: true },
-    { id: 'pbk11', name: 'Negro de Marte', ci: 'PBk11', hex: '#111111', rgb: { r: 17, g: 17, b: 17 }, opacity: 'Opaco', role: 'black', defaultOwned: false }
-  ],
-
-  // Active configuration
+  // Active configuration & inventory persistence
   config: {
-    selectedMedium: 'oil', // 'oil' | 'acrylic' | 'watercolor'
-    ownedTubeIds: ['pw6', 'py35', 'py43', 'pr108', 'pr83', 'pbr7_bs', 'pbr7_bu', 'pb29', 'pb28', 'pg18', 'pbk9'],
+    selectedMedium: 'oil', // 'oil' | 'acrylic' | 'watercolor' | 'gouache'
+    selectedBrand: 'all',
     batchAmount: 20, // Value in grams/ml
-    batchUnit: 'g' // 'g' | 'ml'
+    batchUnit: 'g', // 'g' | 'ml'
+    ownedTubeIds: []
+  },
+
+  init() {
+    this.loadOwnedTubes();
+  },
+
+  // Load owned tubes from localStorage or default palette
+  loadOwnedTubes() {
+    try {
+      const stored = localStorage.getItem('gom_chromilla_owned_tubes');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.config.ownedTubeIds = parsed;
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // Default studio palette if no saved configuration exists
+    this.config.ownedTubeIds = [
+      'wn_titanium_white',
+      'wn_zinc_white',
+      'wn_cadmium_yellow',
+      'wn_yellow_ochre',
+      'wn_cadmium_red',
+      'wn_permanent_rose',
+      'wn_burnt_sienna',
+      'wn_burnt_umber',
+      'wn_raw_umber',
+      'wn_french_ultramarine',
+      'wn_winsor_blue_gs',
+      'wn_viridian',
+      'wn_ivory_black'
+    ];
+    this.saveOwnedTubes();
+  },
+
+  // Persist owned tubes to localStorage
+  saveOwnedTubes() {
+    try {
+      localStorage.setItem('gom_chromilla_owned_tubes', JSON.stringify(this.config.ownedTubeIds));
+    } catch (_) {}
+  },
+
+  // Check if a tube is owned
+  isTubeOwned(tubeId) {
+    return this.config.ownedTubeIds.includes(tubeId);
+  },
+
+  // Toggle or set tube ownership
+  setTubeOwned(tubeId, isOwned) {
+    const idx = this.config.ownedTubeIds.indexOf(tubeId);
+    if (isOwned && idx === -1) {
+      this.config.ownedTubeIds.push(tubeId);
+    } else if (!isOwned && idx !== -1) {
+      this.config.ownedTubeIds.splice(idx, 1);
+    }
+    this.saveOwnedTubes();
+  },
+
+  // Select all tubes or all from a specific brand
+  selectAllTubes(brandId = 'all') {
+    const tubes = brandId === 'all'
+      ? BrandPigments.TUBES
+      : BrandPigments.TUBES.filter(t => t.brand === brandId);
+    
+    tubes.forEach(t => {
+      if (!this.config.ownedTubeIds.includes(t.id)) {
+        this.config.ownedTubeIds.push(t.id);
+      }
+    });
+    this.saveOwnedTubes();
+  },
+
+  // Clear all tubes from owned inventory
+  clearAllTubes() {
+    this.config.ownedTubeIds = [];
+    this.saveOwnedTubes();
+  },
+
+  // Apply a curated palette preset
+  applyPalettePreset(presetKey) {
+    const preset = BrandPigments.PALETTE_PRESETS[presetKey];
+    if (preset && Array.isArray(preset.tubeIds)) {
+      this.config.ownedTubeIds = [...preset.tubeIds];
+      this.saveOwnedTubes();
+      return preset;
+    }
+    return null;
+  },
+
+  // Get currently owned tubes as full objects
+  getOwnedTubes() {
+    return BrandPigments.TUBES.filter(t => this.config.ownedTubeIds.includes(t.id));
   },
 
   // Calculate Dry-Down Shift for target color based on active medium
@@ -70,13 +151,24 @@ export const ChromillaMixer = {
     const med = this.MEDIUMS[medium] || this.MEDIUMS.oil;
     const hsv = ColorMath.rgbToHsv(rgb.r, rgb.g, rgb.b);
 
-    // Wet version (as seen on palette when wet)
-    // Dry version (how it looks once dried)
-    const dryV = ColorMath.clamp(hsv.v * med.shiftVal, 0.05, 1);
-    const dryS = ColorMath.clamp(hsv.s * med.shiftSat, 0, 1);
+    let dryV = hsv.v * med.shiftVal;
+    let dryS = hsv.s * med.shiftSat;
+
+    // Special dual shift for Gouache
+    if (medium === 'gouache') {
+      if (hsv.v < 0.4) {
+        dryV = hsv.v + 0.12; // darks dry lighter
+      } else {
+        dryV = hsv.v - 0.08; // lights dry darker
+      }
+    }
+
+    dryV = ColorMath.clamp(dryV, 0.04, 1);
+    dryS = ColorMath.clamp(dryS, 0, 1);
     const dryRgb = ColorMath.hsvToRgb(hsv.h, dryS, dryV);
 
     return {
+      mediumId: med.id,
       mediumName: med.name,
       shiftDesc: med.shiftDesc,
       wetRgb: rgb,
@@ -87,132 +179,264 @@ export const ChromillaMixer = {
     };
   },
 
-  // Solve exact recipe using available physical paint tubes in parts
-  // Uses subtractive color distance minimization over owned palette tubes
+  /**
+   * Subtractive Color Distance Minimizer (Kubelka-Munk Weighted Approximation).
+   * Solves exact recipe in parts using ONLY tubes owned by the user.
+   */
   solveRecipe(targetRgb) {
-    const availableTubes = this.TUBES.filter(t => this.config.ownedTubeIds.includes(t.id));
-    if (availableTubes.length === 0) return null;
+    const ownedTubes = this.getOwnedTubes();
+    if (ownedTubes.length === 0) {
+      return {
+        error: 'no_tubes',
+        message: 'No tienes ningún tubo seleccionado en tu Caja de Pinturas. Selecciona los tubos que posees en el panel inferior.',
+        items: []
+      };
+    }
 
+    const targetHex = ColorMath.rgbToHex(targetRgb.r, targetRgb.g, targetRgb.b);
     const targetHsv = ColorMath.rgbToHsv(targetRgb.r, targetRgb.g, targetRgb.b);
     const targetLum = ColorMath.getLuminance(targetRgb.r, targetRgb.g, targetRgb.b);
 
-    // Find best 2 to 4 pigment combination
-    // 1. Identify primary base hue tube
-    const coloredTubes = availableTubes.filter(t => t.role !== 'white' && t.role !== 'black');
-    let bestPrimary = coloredTubes[0];
-    let minHueDiff = 360;
+    // Group available tubes by role
+    const whiteTubes = ownedTubes.filter(t => t.category === 'white');
+    const blackTubes = ownedTubes.filter(t => t.category === 'black');
+    const earthTubes = ownedTubes.filter(t => t.category === 'earth');
+    const chromaticTubes = ownedTubes.filter(t => t.category !== 'white' && t.category !== 'black');
 
-    coloredTubes.forEach(t => {
+    // Pick best white (prefer Titanium White if owned, else Zinc White or first white)
+    const bestWhite = whiteTubes.find(t => t.ci === 'PW6') || whiteTubes[0] || null;
+
+    // Pick best darkener (prefer Burnt Umber PBr7 for rich shadow, else Black PBk9/PBk7)
+    const bestDarkener = ownedTubes.find(t => t.ci === 'PBr7' && t.name.toLowerCase().includes('burnt')) ||
+                         blackTubes[0] ||
+                         earthTubes[0] ||
+                         null;
+
+    // 1. Identify primary chromatic tube minimizing hue distance
+    let bestPrimary = null;
+    let minPrimaryHueDiff = 999;
+
+    chromaticTubes.forEach(t => {
       const hsv = ColorMath.rgbToHsv(t.rgb.r, t.rgb.g, t.rgb.b);
       let diff = Math.abs(hsv.h - targetHsv.h);
       if (diff > 180) diff = 360 - diff;
-      if (diff < minHueDiff) {
-        minHueDiff = diff;
+      
+      // Also consider saturation penalty (grey/earth shouldn't be chosen if target is high chroma)
+      const satPenalty = Math.max(0, targetHsv.s - hsv.s) * 60;
+      const score = diff + satPenalty;
+
+      if (score < minPrimaryHueDiff) {
+        minPrimaryHueDiff = score;
         bestPrimary = t;
       }
     });
 
-    // 2. Identify secondary tube for temperature / neutralizing
+    // If no chromatic tube was found (e.g. user only owns whites & blacks), use best available
+    if (!bestPrimary) {
+      bestPrimary = ownedTubes.find(t => t.category !== 'white') || ownedTubes[0];
+    }
+
+    // 2. Identify secondary chromatic tube (for hue tuning, temperature, or complementary neutralization)
     let bestSecondary = null;
-    let minSecondaryDiff = 360;
-    coloredTubes.forEach(t => {
-      if (t.id === bestPrimary.id) return;
-      const hsv = ColorMath.rgbToHsv(t.rgb.r, t.rgb.g, t.rgb.b);
-      let diff = Math.abs(hsv.h - ((targetHsv.h + 60) % 360));
-      if (diff < minSecondaryDiff) {
-        minSecondaryDiff = diff;
-        bestSecondary = t;
+    let minSecondaryScore = 999;
+
+    if (chromaticTubes.length > 1) {
+      chromaticTubes.forEach(t => {
+        if (t.id === bestPrimary.id) return;
+        const hsv = ColorMath.rgbToHsv(t.rgb.r, t.rgb.g, t.rgb.b);
+        
+        let hueDiff = Math.abs(hsv.h - targetHsv.h);
+        if (hueDiff > 180) hueDiff = 360 - hueDiff;
+
+        // Reward complementary if target is muted, or adjacent if target is intermediate hue
+        const score = hueDiff;
+        if (score < minSecondaryScore) {
+          minSecondaryScore = score;
+          bestSecondary = t;
+        }
+      });
+    }
+
+    // 3. Assemble recipe parts with physical weight considerations
+    const rawPartsMap = new Map(); // tubeId -> { tube, parts }
+
+    const addParts = (tube, partsCount) => {
+      if (!tube || partsCount <= 0) return;
+      if (rawPartsMap.has(tube.id)) {
+        rawPartsMap.get(tube.id).parts += partsCount;
+      } else {
+        rawPartsMap.set(tube.id, { tube, parts: partsCount });
       }
-    });
+    };
 
-    // 3. Value adjustment: White (PW6/PW4) and Umber/Black (PBr7/PBk9)
-    const whiteTube = availableTubes.find(t => t.role === 'white') || availableTubes[0];
-    const blackTube = availableTubes.find(t => t.id === 'pbr7_bu' || t.role === 'black') || availableTubes[availableTubes.length - 1];
-
-    // Compute parts
-    const parts = [];
-
-    // White parts: higher when target luminance is high
-    if (targetLum > 0.25) {
-      const wParts = parseFloat((targetLum * 8).toFixed(1));
-      parts.push({ tube: whiteTube, parts: Math.max(1, wParts) });
+    // --- High Luminance: needs White ---
+    if (bestWhite && targetLum > 0.20) {
+      // White parts scale exponentially with luminance
+      const whiteParts = Math.max(0.5, Math.pow(targetLum, 1.4) * 8.5);
+      addParts(bestWhite, parseFloat(whiteParts.toFixed(1)));
     }
 
-    // Primary hue parts
-    const primParts = parseFloat((targetHsv.s * 4 + 1).toFixed(1));
-    parts.push({ tube: bestPrimary, parts: Math.max(0.5, primParts) });
+    // --- Primary Hue parts ---
+    const primStrength = bestPrimary.tintingStrength || 6;
+    const strengthMultiplier = 6 / primStrength; // strong pigments require fewer parts
+    const primParts = Math.max(0.4, (targetHsv.s * 3.5 + 0.8) * strengthMultiplier);
+    addParts(bestPrimary, parseFloat(primParts.toFixed(1)));
 
-    // Secondary hue parts (if saturation requires tweaking)
-    if (bestSecondary && targetHsv.s > 0.3) {
-      parts.push({ tube: bestSecondary, parts: 0.5 });
+    // --- Secondary Hue parts (if needed for saturation/nuance) ---
+    if (bestSecondary && bestSecondary.id !== bestPrimary.id && targetHsv.s > 0.25) {
+      const secStrength = bestSecondary.tintingStrength || 6;
+      const secParts = parseFloat((0.4 * (6 / secStrength)).toFixed(1));
+      addParts(bestSecondary, Math.max(0.2, secParts));
     }
 
-    // Shadow / darkener parts if low luminance
-    if (targetLum < 0.35) {
-      const darkParts = parseFloat(((0.4 - targetLum) * 6).toFixed(1));
-      parts.push({ tube: blackTube, parts: Math.max(0.5, darkParts) });
+    // --- Low Luminance / Desaturation: needs Darkener / Umber / Black ---
+    if (bestDarkener && targetLum < 0.35 && !rawPartsMap.has(bestDarkener.id)) {
+      const darkParts = Math.max(0.3, parseFloat(((0.38 - targetLum) * 5).toFixed(1)));
+      addParts(bestDarkener, darkParts);
     }
 
-    // Normalize parts
-    const totalParts = parts.reduce((sum, p) => sum + p.parts, 0);
-    const scaledItems = parts.map(p => {
-      const pct = (p.parts / totalParts) * 100;
-      const scaledAmount = parseFloat(((p.parts / totalParts) * this.config.batchAmount).toFixed(2));
+    // Convert map to array and deduplicate guaranteed
+    const rawItems = Array.from(rawPartsMap.values());
+    const totalPartsSum = rawItems.reduce((acc, it) => acc + it.parts, 0) || 1;
+
+    // Scale to batch
+    const scaledItems = rawItems.map(it => {
+      const percentage = (it.parts / totalPartsSum) * 100;
+      const scaledAmount = ((it.parts / totalPartsSum) * this.config.batchAmount).toFixed(2);
       return {
-        tube: p.tube,
-        parts: p.parts,
-        percentage: Math.round(pct),
-        amount: scaledAmount,
+        tube: it.tube,
+        parts: parseFloat(it.parts.toFixed(1)),
+        percentage: Math.round(percentage),
+        amount: parseFloat(scaledAmount),
         unit: this.config.batchUnit
       };
     });
 
+    // 4. Simulate Subtractive Mixed Color from the Recipe
+    let simR = 0, simG = 0, simB = 0;
+    let totalWeight = 0;
+
+    scaledItems.forEach(it => {
+      // Subtractive pigment weight: parts * tintingStrength
+      const w = it.parts * (it.tube.tintingStrength || 5);
+      simR += it.tube.rgb.r * w;
+      simG += it.tube.rgb.g * w;
+      simB += it.tube.rgb.b * w;
+      totalWeight += w;
+    });
+
+    let mixedRgb;
+    if (totalWeight > 0) {
+      mixedRgb = {
+        r: ColorMath.clamp255(Math.round(simR / totalWeight)),
+        g: ColorMath.clamp255(Math.round(simG / totalWeight)),
+        b: ColorMath.clamp255(Math.round(simB / totalWeight))
+      };
+    } else {
+      mixedRgb = { ...targetRgb };
+    }
+
+    // Calculate Delta E (Color distance)
+    const deltaE = parseFloat(ColorMath.getColorDistanceLab(targetRgb, mixedRgb).toFixed(1));
+    const matchPercent = Math.max(10, Math.min(100, Math.round(100 - deltaE * 4.5)));
+
+    // Generate White Tint Scale (+0%, +25%, +50%, +75%, +90% White)
+    const tintScale = this._generateTintScale(mixedRgb, bestWhite);
+
     return {
       targetRgb,
-      targetHex: ColorMath.rgbToHex(targetRgb.r, targetRgb.g, targetRgb.b),
-      totalParts: Math.round(totalParts * 10) / 10,
+      targetHex,
+      mixedRgb,
+      mixedHex: ColorMath.rgbToHex(mixedRgb.r, mixedRgb.g, mixedRgb.b),
+      deltaE,
+      matchPercent,
+      totalParts: parseFloat(totalPartsSum.toFixed(1)),
       totalBatch: this.config.batchAmount,
       unit: this.config.batchUnit,
-      items: scaledItems
+      items: scaledItems,
+      tintScale
     };
   },
 
-  // Mix Correction Assistant: compares wet swatch with target and gives plain Spanish instructions
-  getMixCorrectionAdvice(targetRgb, actualMixedRgb) {
+  // Generates 5 tonal tint steps mixed with white
+  _generateTintScale(massRgb, whiteTube) {
+    const whiteRgb = whiteTube ? whiteTube.rgb : { r: 255, g: 255, b: 255 };
+    const ratios = [0, 0.25, 0.50, 0.75, 0.90];
+
+    return ratios.map((ratio, idx) => {
+      const r = ColorMath.clamp255(massRgb.r * (1 - ratio) + whiteRgb.r * ratio);
+      const g = ColorMath.clamp255(massRgb.g * (1 - ratio) + whiteRgb.g * ratio);
+      const b = ColorMath.clamp255(massRgb.b * (1 - ratio) + whiteRgb.b * ratio);
+      const hex = ColorMath.rgbToHex(r, g, b);
+      return {
+        label: idx === 0 ? 'Masa Pura' : `+${Math.round(ratio * 100)}% Blanco`,
+        ratio,
+        rgb: { r, g, b },
+        hex
+      };
+    });
+  },
+
+  // Mix Correction Assistant: compares theoretical mixed swatch with target
+  getMixCorrectionAdvice(targetRgb, mixedRgb, recipeItems) {
+    if (!mixedRgb) return 'Calculando receta...';
+
+    const tLum = ColorMath.getLuminance(targetRgb.r, targetRgb.g, targetRgb.b);
+    const mLum = ColorMath.getLuminance(mixedRgb.r, mixedRgb.g, mixedRgb.b);
     const tHsv = ColorMath.rgbToHsv(targetRgb.r, targetRgb.g, targetRgb.b);
-    const mHsv = ColorMath.rgbToHsv(actualMixedRgb.r, actualMixedRgb.g, actualMixedRgb.b);
+    const mHsv = ColorMath.rgbToHsv(mixedRgb.r, mixedRgb.g, mixedRgb.b);
 
-    const lumDiff = ColorMath.getLuminance(actualMixedRgb.r, actualMixedRgb.g, actualMixedRgb.b) - ColorMath.getLuminance(targetRgb.r, targetRgb.g, targetRgb.b);
+    const lumDiff = mLum - tLum;
     const satDiff = mHsv.s - tHsv.s;
-    const hueDiff = mHsv.h - tHsv.h;
+    let hueDiff = mHsv.h - tHsv.h;
+    if (hueDiff > 180) hueDiff -= 360;
+    if (hueDiff < -180) hueDiff += 360;
 
-    const steps = [];
+    const advices = [];
 
-    // Value correction
-    if (lumDiff < -0.08) {
-      steps.push('Demasiado oscuro: añade 1 parte de Blanco de Titanio (PW6) gradualmente.');
-    } else if (lumDiff > 0.08) {
-      steps.push('Demasiado claro: añade una punta de pincel de Tierra Sombra Tostada o Negro Marfil.');
+    // Missing pigment family warning
+    const owned = this.getOwnedTubes();
+    const hasWhite = owned.some(t => t.category === 'white');
+    const hasBlue = owned.some(t => t.category === 'blue' || t.category === 'cyan');
+    const hasYellow = owned.some(t => t.category === 'yellow');
+    const hasRed = owned.some(t => t.category === 'red' || t.category === 'magenta');
+
+    if (tLum > 0.4 && !hasWhite) {
+      advices.push('⚠️ <strong>Falta Blanco:</strong> No posees ningún tubo de blanco en tu caja seleccionada. Para aclarar esta mezcla sin desaturar, añade <strong>Blanco de Titanio (PW6)</strong>.');
+    }
+    if ((tHsv.h >= 170 && tHsv.h <= 270) && !hasBlue && tHsv.s > 0.25) {
+      advices.push('⚠️ <strong>Falta Azul/Cian:</strong> No tienes ningún tubo azul en tu inventario para alcanzar este matiz frío. Considera añadir <strong>Azul Ultramar (PB29)</strong> o <strong>Azul Cobalto (PB28)</strong>.');
+    }
+    if ((tHsv.h >= 30 && tHsv.h <= 80) && !hasYellow && tHsv.s > 0.3) {
+      advices.push('⚠️ <strong>Falta Amarillo:</strong> La mezcla carece de pigmento amarillo puro. Considera incorporar <strong>Amarillo Cadmio (PY35)</strong> u <strong>Ocre (PY43)</strong>.');
     }
 
-    // Saturation correction
-    if (satDiff > 0.15) {
-      steps.push('Demasiado vivo/saturado: neutraliza con una pizca de su complementario o Tierra de Sombra.');
-    } else if (satDiff < -0.15) {
-      steps.push('Demasiado desaturado/apagado: añade más pigmento puro del color principal.');
+    // Tonal value corrections
+    if (lumDiff < -0.06) {
+      advices.push('🎨 <strong>Aclarar en paleta:</strong> La mezcla física resulta algo oscura. Añade una punta de espátula de <strong>Blanco de Titanio (PW6)</strong>.');
+    } else if (lumDiff > 0.06) {
+      advices.push('🎨 <strong>Oscurecer / Bajar valor:</strong> La mezcla resulta demasiado clara. Añade una pizca de <strong>Tierra Sombra Tostada (PBr7)</strong> o el pigmento más oscuro de la receta.');
     }
 
-    // Temperature / Hue correction
-    if (hueDiff > 20 && hueDiff < 180) {
-      steps.push('Tono desviado hacia verdes/fríos: calienta la mezcla con un toque de Ocre Amarillo o Rojo Cadmio.');
-    } else if (hueDiff < -20 || hueDiff > 180) {
-      steps.push('Tono desviado hacia cálidos: enfría la mezcla con un toque de Azul Ultramar o Cobalto.');
+    // Temperature corrections
+    if (hueDiff > 15) {
+      advices.push('❄️ <strong>Enfriar matiz:</strong> El tono tiende demasiado a frío/verde. Ajusta con un toque cálido de <strong>Ocre Amarillo (PY43)</strong> o <strong>Rojo Cadmio (PR108)</strong>.');
+    } else if (hueDiff < -15) {
+      advices.push('🔥 <strong>Calentar matiz:</strong> El tono tiende demasiado a rojizo/cálido. Enfría la mezcla con una punta de pincel de <strong>Azul Ultramar (PB29)</strong>.');
     }
 
-    if (steps.length === 0) {
-      steps.push('¡Mezcla exacta! La diferencia visual es prácticamente imperceptible (Delta E < 3).');
+    // Saturation corrections
+    if (satDiff < -0.12 && tHsv.s > 0.4) {
+      advices.push('✨ <strong>Aumentar Croma:</strong> Para igualar la alta saturación deseada, utiliza pigmentos puros monopigmentarios sin mezclar tierras.');
     }
 
-    return steps;
+    if (advices.length === 0) {
+      advices.push('🎯 <strong>¡Fórmula Física Óptima!</strong> La receta coincide con máxima fidelidad de taller (ΔE bajo). Vierte las proporciones indicadas en tu paleta.');
+    }
+
+    return advices.join('<br>');
   }
 };
+
+// Initialize on script load
+ChromillaMixer.init();

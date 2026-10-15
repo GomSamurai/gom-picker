@@ -2517,20 +2517,94 @@ class GomPickerApp {
     modal.style.display = 'flex';
   }
 
-  // --- CHROMILLA PHYSICAL TUBE INVENTORY & BRANDS ---
+  // --- CHROMILLA PHYSICAL TUBE INVENTORY & BRANDS STUDIO ---
 
   _bindChromillaControls() {
+    this._chromillaActiveBrand = 'all';
+    this._chromillaActiveCategory = 'all';
+    this._chromillaSearchQuery = '';
+    this._lastChromillaRecipe = null;
+
     const brandSelect = document.getElementById('chromillaBrandFilterSelect');
     const medSelect = document.getElementById('chromillaMediumSelect');
     const batchInput = document.getElementById('chromillaBatchInput');
     const batchUnit = document.getElementById('chromillaBatchUnit');
+    const searchInput = document.getElementById('chromillaSearchInput');
+    const categoryChips = document.querySelectorAll('.chromilla-cat-chip');
+    const presetBtns = document.querySelectorAll('.chromilla-preset-btn');
+    const btnSelectAll = document.getElementById('btnChromillaSelectAll');
+    const btnClearAll = document.getElementById('btnChromillaClearAll');
+    const btnSaveLibrary = document.getElementById('btnChromillaSaveToLibrary');
+    const btnSendWetMixer = document.getElementById('btnChromillaSendToWetMixer');
+    const btnCopyRecipe = document.getElementById('btnChromillaCopyRecipe');
 
+    // Brand filter dropdown
     if (brandSelect) {
       brandSelect.addEventListener('change', () => {
-        this.renderChromillaBrandTubes(brandSelect.value);
+        this._chromillaActiveBrand = brandSelect.value;
+        this.renderChromillaBrandTubes();
       });
     }
 
+    // Search filter input (real-time debounced/direct)
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        this._chromillaSearchQuery = (e.target.value || '').trim().toLowerCase();
+        this.renderChromillaBrandTubes();
+      });
+    }
+
+    // Category / Color Family filter chips
+    if (categoryChips && categoryChips.length > 0) {
+      categoryChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+          categoryChips.forEach(c => c.classList.remove('active-toggle'));
+          chip.classList.add('active-toggle');
+          this._chromillaActiveCategory = chip.dataset.cat || 'all';
+          this.renderChromillaBrandTubes();
+        });
+      });
+    }
+
+    // Studio Palette Presets
+    if (presetBtns && presetBtns.length > 0) {
+      presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const presetKey = btn.dataset.preset;
+          const preset = ChromillaMixer.applyPalettePreset(presetKey);
+          if (preset) {
+            this.renderChromillaBrandTubes();
+            const currentRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+            this.renderChromillaMixer(currentRgb);
+            this.showToast(`Caja de pintura: ${preset.name}`, 'info');
+          }
+        });
+      });
+    }
+
+    // Select all visible / all brand tubes
+    if (btnSelectAll) {
+      btnSelectAll.addEventListener('click', () => {
+        ChromillaMixer.selectAllTubes(this._chromillaActiveBrand || 'all');
+        this.renderChromillaBrandTubes();
+        const currentRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        this.renderChromillaMixer(currentRgb);
+        this.showToast('Todos los tubos del catálogo han sido marcados', 'success');
+      });
+    }
+
+    // Clear all tubes
+    if (btnClearAll) {
+      btnClearAll.addEventListener('click', () => {
+        ChromillaMixer.clearAllTubes();
+        this.renderChromillaBrandTubes();
+        const currentRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        this.renderChromillaMixer(currentRgb);
+        this.showToast('Inventario de tubos vaciado. Selecciona al menos un tubo para formular recetas.', 'warning');
+      });
+    }
+
+    // Medium select (Oil, Acrylic, Watercolor, Gouache)
     if (medSelect) {
       medSelect.addEventListener('change', (e) => {
         ChromillaMixer.config.selectedMedium = e.target.value;
@@ -2539,6 +2613,7 @@ class GomPickerApp {
       });
     }
 
+    // Batch Amount scaling
     if (batchInput) {
       batchInput.addEventListener('input', (e) => {
         const val = parseFloat(e.target.value) || 20;
@@ -2548,6 +2623,7 @@ class GomPickerApp {
       });
     }
 
+    // Batch Unit (g / ml)
     if (batchUnit) {
       batchUnit.addEventListener('change', (e) => {
         ChromillaMixer.config.batchUnit = e.target.value;
@@ -2556,69 +2632,228 @@ class GomPickerApp {
       });
     }
 
-    this.renderChromillaBrandTubes('all');
+    // Suite Action: Save recipe to palette library
+    if (btnSaveLibrary) {
+      btnSaveLibrary.addEventListener('click', () => {
+        const currentRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        const recipe = this._lastChromillaRecipe || ChromillaMixer.solveRecipe(currentRgb);
+        if (!recipe || !recipe.items || recipe.items.length === 0) {
+          this.showToast('No hay una receta formulada con tubos disponibles.', 'warning');
+          return;
+        }
+        const colors = [recipe.targetHex, recipe.mixedHex, ...recipe.items.map(i => i.tube.hex)];
+        const uniqueColors = Array.from(new Set(colors));
+        const createFn = this.swatchManager.createPalette || this.swatchManager.addPalette;
+        createFn.call(this.swatchManager, `Chromilla ${recipe.targetHex} (${recipe.items.length}p)`, uniqueColors);
+        this.renderSwatchesCollection();
+        this.renderQuickPalette();
+        this.showToast(`Receta guardada en Bibliotecas con ${uniqueColors.length} colores`, 'success');
+      });
+    }
+
+    // Suite Action: Send recipe tubes to Wet Mixer palette
+    if (btnSendWetMixer) {
+      btnSendWetMixer.addEventListener('click', () => {
+        const currentRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        const recipe = this._lastChromillaRecipe || ChromillaMixer.solveRecipe(currentRgb);
+        if (!recipe || !recipe.items || recipe.items.length === 0) {
+          this.showToast('No hay tubos en la receta para transferir al Wet Mixer.', 'warning');
+          return;
+        }
+        this.switchTab('wetmixer');
+        if (!this.wetMixer) this._initWetMixer();
+        if (this.wetMixer) {
+          const cx = this.wetMixer.width * 0.5;
+          const cy = this.wetMixer.height * 0.5;
+          const rad = Math.min(this.wetMixer.width, this.wetMixer.height) * 0.32;
+          const n = recipe.items.length;
+          recipe.items.forEach((item, idx) => {
+            const angle = (idx / n) * Math.PI * 2 - Math.PI / 2;
+            const px = cx + Math.cos(angle) * rad;
+            const py = cy + Math.sin(angle) * rad;
+            const size = Math.max(28, Math.min(65, Math.round(25 + item.percentage * 0.55)));
+            this.wetMixer.depositDab(px, py, item.tube.rgb, size);
+          });
+          this.showToast(`${recipe.items.length} tubos físicos depositados en la paleta húmeda`, 'success');
+        }
+      });
+    }
+
+    // Suite Action: Copy recipe sheet to clipboard
+    if (btnCopyRecipe) {
+      btnCopyRecipe.addEventListener('click', () => {
+        const currentRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        const recipe = this._lastChromillaRecipe || ChromillaMixer.solveRecipe(currentRgb);
+        if (!recipe) return;
+        const dryDown = ChromillaMixer.getDryDownPrediction(currentRgb);
+        const mediumName = ChromillaMixer.MEDIUMS[ChromillaMixer.config.selectedMedium]?.name || 'Óleo';
+        
+        let sheet = `🧪 FICHA DE TALLER: RECETA DE MEZCLA FÍSICA CHROMILLA\n`;
+        sheet += `══════════════════════════════════════════════════════════════\n`;
+        sheet += `🎯 Color Objetivo: ${recipe.targetHex}\n`;
+        sheet += `🎨 Mezcla en Paleta (Húmeda): ${recipe.mixedHex} (ΔE: ${recipe.deltaE} | Coincidencia: ${recipe.matchPercent}%)\n`;
+        sheet += `🖼️ Muestra Seca en Lienzo (${mediumName}): ${dryDown.dryHex}\n`;
+        sheet += `ℹ️ Comportamiento de Secado: ${dryDown.shiftDesc}\n`;
+        sheet += `⚖️ Lote de Trabajo: ${recipe.totalBatch} ${recipe.unit} (${recipe.totalParts} partes totales en la mezcla)\n\n`;
+        sheet += `📦 FORMULACIÓN EXACTA POR TUBOS:\n`;
+        if (recipe.items.length > 0) {
+          recipe.items.forEach(it => {
+            sheet += `  • ${it.parts} partes (${it.percentage}%) = ${it.amount} ${it.unit}  ➔  ${it.tube.name} [CI: ${it.tube.ci}] (${it.tube.brandName}) | Opacidad: ${it.tube.opacity} | Serie ${it.tube.series}\n`;
+          });
+        } else {
+          sheet += `  (No hay tubos seleccionados en el inventario de taller)\n`;
+        }
+        sheet += `\n🛠️ ASISTENTE DE CORRECCIÓN EN CABALLETE:\n`;
+        const adviceDiv = document.getElementById('chromillaCorrectionAdvice');
+        sheet += `  ${adviceDiv ? adviceDiv.innerText.replace(/\\n+/g, ' ') : ''}\n`;
+        sheet += `══════════════════════════════════════════════════════════════\n`;
+
+        navigator.clipboard.writeText(sheet).then(() => {
+          this.showToast('📋 Ficha de receta física copiada al portapapeles', 'success');
+        }).catch(() => {
+          this.showToast('Error al copiar al portapapeles', 'error');
+        });
+      });
+    }
+
+    this.renderChromillaBrandTubes();
   }
 
-  renderChromillaBrandTubes(brandId = 'all') {
+  renderChromillaBrandTubes() {
     const grid = document.getElementById('chromillaTubeInventoryGrid');
     const countBadge = document.getElementById('chromillaTubesCountBadge');
     if (!grid) return;
     grid.innerHTML = '';
 
-    const tubes = brandId === 'all' 
-      ? BrandPigments.TUBES 
-      : BrandPigments.TUBES.filter(t => t.brand === brandId);
+    const brandFilter = this._chromillaActiveBrand || 'all';
+    const categoryFilter = this._chromillaActiveCategory || 'all';
+    const query = this._chromillaSearchQuery || '';
 
-    if (countBadge) countBadge.textContent = `${tubes.length} Tubos Disponibles`;
+    let filtered = BrandPigments.TUBES;
 
-    tubes.forEach(tube => {
+    // Filter by brand
+    if (brandFilter !== 'all') {
+      filtered = filtered.filter(t => t.brand === brandFilter);
+    }
+
+    // Filter by category
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(t => t.category === categoryFilter);
+    }
+
+    // Filter by query
+    if (query) {
+      filtered = filtered.filter(t => {
+        const nameMatch = (t.name || '').toLowerCase().includes(query);
+        const ciMatch = (t.ci || '').toLowerCase().includes(query);
+        const brandMatch = (t.brandName || '').toLowerCase().includes(query);
+        const descMatch = (t.description || '').toLowerCase().includes(query);
+        return nameMatch || ciMatch || brandMatch || descMatch;
+      });
+    }
+
+    // Calculate owned counts
+    const totalOwned = ChromillaMixer.config.ownedTubeIds.length;
+    const filteredOwned = filtered.filter(t => ChromillaMixer.isTubeOwned(t.id)).length;
+
+    if (countBadge) {
+      countBadge.textContent = `${totalOwned} en caja (${filtered.length} visibles / ${filteredOwned} marcados)`;
+    }
+
+    if (filtered.length === 0) {
+      const emptyMsg = document.createElement('div');
+      emptyMsg.style.gridColumn = '1 / -1';
+      emptyMsg.style.textAlign = 'center';
+      emptyMsg.style.padding = '30px 20px';
+      emptyMsg.style.color = 'var(--text-muted)';
+      emptyMsg.style.fontSize = '0.85rem';
+      emptyMsg.innerHTML = `🔍 No se encontraron tubos con el filtro actual ("${query || categoryFilter}").<br><span style="font-size:0.75rem; color:var(--text-secondary);">Prueba cambiando de familia o buscando por código CI como "PW6", "PB29" o "PR108".</span>`;
+      grid.appendChild(emptyMsg);
+      return;
+    }
+
+    filtered.forEach(tube => {
+      const isOwned = ChromillaMixer.isTubeOwned(tube.id);
       const card = document.createElement('div');
-      card.style.background = 'rgba(0,0,0,0.35)';
-      card.style.border = '1px solid var(--border-subtle)';
-      card.style.borderRadius = '6px';
-      card.style.padding = '8px 10px';
-      card.style.display = 'flex';
-      card.style.alignItems = 'center';
-      card.style.gap = '8px';
-      card.style.cursor = 'pointer';
-      card.title = `${tube.brandName}: ${tube.name} (${tube.ci})\n${tube.opacity} • ${tube.lightfastness}\n${tube.description}`;
+      card.className = `chromilla-tube-card${isOwned ? ' owned' : ''}`;
+      card.title = `${tube.brandName}: ${tube.name} (${tube.ci})\n${tube.opacity} • Serie ${tube.series} • Fuerza: ${tube.tintingStrength || 5}/10\n${tube.description || ''}\n\n[Click en la casilla para marcar si lo tienes en tu taller | Click en la tarjeta para activar el color]`;
       card.draggable = true;
       card.dataset.swatchHex = tube.hex;
+      card.dataset.tubeId = tube.id;
 
+      // Custom Checkbox
+      const checkboxWrap = document.createElement('label');
+      checkboxWrap.className = 'chromilla-tube-check-wrap';
+      checkboxWrap.onclick = (e) => e.stopPropagation();
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'chromilla-tube-checkbox';
+      checkbox.checked = isOwned;
+      checkbox.addEventListener('change', (e) => {
+        e.stopPropagation();
+        const checked = checkbox.checked;
+        ChromillaMixer.setTubeOwned(tube.id, checked);
+        if (checked) {
+          card.classList.add('owned');
+        } else {
+          card.classList.remove('owned');
+        }
+        // Update badge count
+        const newTotal = ChromillaMixer.config.ownedTubeIds.length;
+        const newFilteredOwned = filtered.filter(t => ChromillaMixer.isTubeOwned(t.id)).length;
+        if (countBadge) {
+          countBadge.textContent = `${newTotal} en caja (${filtered.length} visibles / ${newFilteredOwned} marcados)`;
+        }
+        // Recalculate recipe immediately with updated physical paint box!
+        const currentRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        this.renderChromillaMixer(currentRgb);
+      });
+
+      checkboxWrap.appendChild(checkbox);
+
+      // Tube color dot / swatch
       const dot = document.createElement('div');
-      dot.style.width = '16px';
-      dot.style.height = '16px';
-      dot.style.borderRadius = '4px';
+      dot.className = 'chromilla-tube-dot';
       dot.style.backgroundColor = tube.hex;
-      dot.style.border = '1px solid rgba(255,255,255,0.3)';
-      dot.style.flexShrink = '0';
 
+      // Tube information column
       const textWrap = document.createElement('div');
-      textWrap.style.flex = '1';
-      textWrap.style.minWidth = '0';
+      textWrap.className = 'chromilla-tube-info';
+
+      const titleRow = document.createElement('div');
+      titleRow.style.display = 'flex';
+      titleRow.style.justifyContent = 'space-between';
+      titleRow.style.alignItems = 'center';
+      titleRow.style.gap = '4px';
 
       const title = document.createElement('div');
-      title.style.fontSize = '0.72rem';
-      title.style.fontWeight = '600';
-      title.style.color = '#FFFFFF';
-      title.style.whiteSpace = 'nowrap';
-      title.style.overflow = 'hidden';
-      title.style.textOverflow = 'ellipsis';
+      title.className = 'chromilla-tube-name';
       title.textContent = tube.name;
 
+      const brandBadge = document.createElement('span');
+      brandBadge.className = 'chromilla-tube-brand-badge';
+      brandBadge.textContent = tube.brandName.split(' ')[0];
+
+      titleRow.appendChild(title);
+      titleRow.appendChild(brandBadge);
+
       const sub = document.createElement('div');
-      sub.style.fontSize = '0.64rem';
-      sub.style.color = 'var(--text-muted)';
+      sub.className = 'chromilla-tube-meta';
       sub.textContent = `${tube.ci} • S.${tube.series} • ${tube.opacity}`;
 
-      textWrap.appendChild(title);
+      textWrap.appendChild(titleRow);
       textWrap.appendChild(sub);
+
+      card.appendChild(checkboxWrap);
       card.appendChild(dot);
       card.appendChild(textWrap);
 
-      card.addEventListener('click', () => {
+      // Clicking card body activates the color in the suite
+      card.addEventListener('click', (e) => {
+        if (e.target === checkbox) return;
         this.setColorDirectly(tube.rgb);
-        this.showToast(`Tubo: ${tube.name} (${tube.brandName})`);
+        this.showToast(`Tubo activo: ${tube.name} (${tube.brandName})`);
       });
 
       grid.appendChild(card);
@@ -2626,76 +2861,227 @@ class GomPickerApp {
   }
 
   renderChromillaMixer(targetRgb) {
+    if (!targetRgb) {
+      targetRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+    }
+
+    const targetHex = ColorMath.rgbToHex(targetRgb.r, targetRgb.g, targetRgb.b);
     const dryDown = ChromillaMixer.getDryDownPrediction(targetRgb);
-    const badge = document.getElementById('chromillaShiftBadge');
+
+    // Update Swatches
+    const targetSwatch = document.getElementById('chromillaTargetSwatch');
+    const targetHexEl = document.getElementById('chromillaTargetHex');
     const wetSwatch = document.getElementById('chromillaWetSwatch');
     const wetHex = document.getElementById('chromillaWetHex');
     const drySwatch = document.getElementById('chromillaDrySwatch');
     const dryHex = document.getElementById('chromillaDryHex');
+    const shiftBadge = document.getElementById('chromillaShiftBadge');
 
-    if (badge) badge.textContent = dryDown.shiftDesc;
-    if (wetSwatch) wetSwatch.style.backgroundColor = dryDown.wetHex;
-    if (wetHex) wetHex.textContent = dryDown.wetHex;
+    if (targetSwatch) targetSwatch.style.backgroundColor = targetHex;
+    if (targetHexEl) targetHexEl.textContent = targetHex;
     if (drySwatch) drySwatch.style.backgroundColor = dryDown.dryHex;
     if (dryHex) dryHex.textContent = dryDown.dryHex;
+    if (shiftBadge) shiftBadge.textContent = dryDown.shiftDesc;
 
+    // Solve Physical Recipe strictly from owned studio tubes
     const recipe = ChromillaMixer.solveRecipe(targetRgb);
-    const recipeList = document.getElementById('chromillaRecipeList');
+    this._lastChromillaRecipe = recipe;
 
+    if (wetSwatch && recipe) wetSwatch.style.backgroundColor = recipe.mixedHex;
+    if (wetHex && recipe) wetHex.textContent = recipe.mixedHex;
+
+    // Delta-E & Match Quality
+    const deltaBadge = document.getElementById('chromillaDeltaEBadge');
+    const qualityBadge = document.getElementById('chromillaMatchQualityBadge');
+
+    if (deltaBadge && recipe) {
+      deltaBadge.textContent = `ΔE ${recipe.deltaE}`;
+      if (recipe.deltaE <= 1.5) {
+        deltaBadge.style.borderColor = 'rgba(16, 185, 129, 0.6)';
+        deltaBadge.style.color = '#10B981';
+      } else if (recipe.deltaE <= 4.0) {
+        deltaBadge.style.borderColor = 'rgba(245, 158, 11, 0.6)';
+        deltaBadge.style.color = '#F59E0B';
+      } else {
+        deltaBadge.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+        deltaBadge.style.color = '#EF4444';
+      }
+    }
+
+    if (qualityBadge && recipe) {
+      let qualityText = 'Excelente';
+      let qualityColor = '#10B981';
+      if (recipe.deltaE <= 1.5) {
+        qualityText = 'Fidelidad Máxima';
+        qualityColor = '#10B981';
+      } else if (recipe.deltaE <= 3.5) {
+        qualityText = 'Muy Cercana';
+        qualityColor = '#34D399';
+      } else if (recipe.deltaE <= 6.0) {
+        qualityText = 'Aproximación';
+        qualityColor = '#F59E0B';
+      } else {
+        qualityText = 'Diferencia Notable';
+        qualityColor = '#EF4444';
+      }
+      qualityBadge.textContent = `${recipe.matchPercent}% • ${qualityText}`;
+      qualityBadge.style.color = qualityColor;
+    }
+
+    // Visual Proportion Bar
+    const proportionBar = document.getElementById('chromillaProportionBar');
+    const proportionSummary = document.getElementById('chromillaProportionSummary');
+
+    if (proportionBar && recipe) {
+      proportionBar.innerHTML = '';
+      if (recipe.items.length === 0) {
+        proportionBar.innerHTML = '<div style="flex:1; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.68rem; color:var(--text-muted);">Sin tubos en caja</div>';
+      } else {
+        recipe.items.forEach(it => {
+          const seg = document.createElement('div');
+          seg.className = 'chromilla-proportion-segment';
+          seg.style.width = `${it.percentage}%`;
+          seg.style.backgroundColor = it.tube.hex;
+          seg.title = `${it.tube.name}: ${it.percentage}% (${it.parts} partes)`;
+          proportionBar.appendChild(seg);
+        });
+      }
+    }
+
+    if (proportionSummary && recipe) {
+      if (recipe.items.length > 0) {
+        proportionSummary.textContent = `${recipe.items.length} pigmentos en mezcla • ${recipe.totalParts} partes totales`;
+      } else {
+        proportionSummary.textContent = '0 tubos';
+      }
+    }
+
+    // Recipe Items Breakdown List
+    const recipeList = document.getElementById('chromillaRecipeList');
     if (recipeList && recipe) {
       recipeList.innerHTML = '';
-      recipe.items.forEach(item => {
-        const itemRow = document.createElement('div');
-        itemRow.style.display = 'flex';
-        itemRow.style.alignItems = 'center';
-        itemRow.style.justifyContent = 'space-between';
-        itemRow.style.gap = '10px';
+      if (recipe.items.length === 0) {
+        const noTubesMsg = document.createElement('div');
+        noTubesMsg.style.padding = '12px';
+        noTubesMsg.style.background = 'rgba(239, 68, 68, 0.1)';
+        noTubesMsg.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        noTubesMsg.style.borderRadius = '6px';
+        noTubesMsg.style.fontSize = '0.76rem';
+        noTubesMsg.style.color = '#FCA5A5';
+        noTubesMsg.innerHTML = '⚠️ <strong>No hay tubos seleccionados en tu caja de pinturas.</strong><br>Baja a "Mi Caja de Pinturas" y marca los tubos que posees en tu taller o pulsa uno de los presets rápidos (Básica, Split-Primary, Zorn...) para generar la receta.';
+        recipeList.appendChild(noTubesMsg);
+      } else {
+        recipe.items.forEach(item => {
+          const itemRow = document.createElement('div');
+          itemRow.style.display = 'flex';
+          itemRow.style.alignItems = 'center';
+          itemRow.style.justifyContent = 'space-between';
+          itemRow.style.gap = '10px';
+          itemRow.style.padding = '5px 8px';
+          itemRow.style.background = 'rgba(0,0,0,0.2)';
+          itemRow.style.borderRadius = '4px';
+          itemRow.style.border = '1px solid rgba(255,255,255,0.05)';
 
-        const left = document.createElement('div');
-        left.style.display = 'flex';
-        left.style.alignItems = 'center';
-        left.style.gap = '8px';
+          const left = document.createElement('div');
+          left.style.display = 'flex';
+          left.style.alignItems = 'center';
+          left.style.gap = '8px';
+          left.style.cursor = 'pointer';
+          left.title = 'Click para cargar este pigmento individual';
+          left.onclick = () => {
+            this.setColorDirectly(item.tube.rgb);
+            this.showToast(`Pigmento: ${item.tube.name}`);
+          };
 
-        const dot = document.createElement('div');
-        dot.style.width = '14px';
-        dot.style.height = '14px';
-        dot.style.borderRadius = '4px';
-        dot.style.backgroundColor = item.tube.hex;
+          const dot = document.createElement('div');
+          dot.style.width = '14px';
+          dot.style.height = '14px';
+          dot.style.borderRadius = '3px';
+          dot.style.backgroundColor = item.tube.hex;
+          dot.style.border = '1px solid rgba(255,255,255,0.25)';
+          dot.style.flexShrink = '0';
 
-        const name = document.createElement('span');
-        name.style.fontSize = '0.74rem';
-        name.textContent = `${item.tube.name} (${item.tube.ci})`;
+          const name = document.createElement('span');
+          name.style.fontSize = '0.75rem';
+          name.style.color = '#FFFFFF';
+          name.textContent = `${item.tube.name} (${item.tube.ci})`;
 
-        left.appendChild(dot);
-        left.appendChild(name);
+          const brandTag = document.createElement('span');
+          brandTag.style.fontSize = '0.64rem';
+          brandTag.style.color = 'var(--text-muted)';
+          brandTag.textContent = `• ${item.tube.brandName.split(' ')[0]}`;
 
-        const right = document.createElement('div');
-        right.style.display = 'flex';
-        right.style.gap = '8px';
+          left.appendChild(dot);
+          left.appendChild(name);
+          left.appendChild(brandTag);
 
-        const partsTag = document.createElement('span');
-        partsTag.style.fontFamily = 'var(--font-mono)';
-        partsTag.style.fontSize = '0.74rem';
-        partsTag.style.color = 'var(--accent-amber)';
-        partsTag.textContent = `${item.parts} partes`;
+          const right = document.createElement('div');
+          right.style.display = 'flex';
+          right.style.alignItems = 'center';
+          right.style.gap = '8px';
 
-        const amountTag = document.createElement('span');
-        amountTag.style.fontFamily = 'var(--font-mono)';
-        amountTag.style.fontSize = '0.74rem';
-        amountTag.style.color = '#FFFFFF';
-        amountTag.textContent = `${item.amount} ${item.unit}`;
+          const pctTag = document.createElement('span');
+          pctTag.style.fontFamily = 'var(--font-mono)';
+          pctTag.style.fontSize = '0.72rem';
+          pctTag.style.color = 'var(--text-muted)';
+          pctTag.textContent = `${item.percentage}%`;
 
-        right.appendChild(partsTag);
-        right.appendChild(amountTag);
-        itemRow.appendChild(left);
-        itemRow.appendChild(right);
-        recipeList.appendChild(itemRow);
+          const partsTag = document.createElement('span');
+          partsTag.style.fontFamily = 'var(--font-mono)';
+          partsTag.style.fontSize = '0.74rem';
+          partsTag.style.fontWeight = '600';
+          partsTag.style.color = 'var(--accent-amber)';
+          partsTag.textContent = `${item.parts} partes`;
+
+          const amountTag = document.createElement('span');
+          amountTag.style.fontFamily = 'var(--font-mono)';
+          amountTag.style.fontSize = '0.74rem';
+          amountTag.style.fontWeight = '700';
+          amountTag.style.color = '#FFFFFF';
+          amountTag.textContent = `${item.amount} ${item.unit}`;
+
+          right.appendChild(pctTag);
+          right.appendChild(partsTag);
+          right.appendChild(amountTag);
+
+          itemRow.appendChild(left);
+          itemRow.appendChild(right);
+          recipeList.appendChild(itemRow);
+        });
+      }
+    }
+
+    // White Tint Ramp / Glaze Scale
+    const tintContainer = document.getElementById('chromillaTintScaleContainer');
+    if (tintContainer && recipe && recipe.tintScale) {
+      tintContainer.innerHTML = '';
+      recipe.tintScale.forEach(step => {
+        const stepEl = document.createElement('div');
+        stepEl.className = 'chromilla-tint-step';
+        stepEl.style.backgroundColor = step.hex;
+        stepEl.title = `${step.label}: ${step.hex}\nClick para cargar este tono aclarado`;
+
+        const stepLabel = document.createElement('span');
+        stepLabel.className = 'chromilla-tint-label';
+        // Auto high contrast text
+        const lum = ColorMath.getLuminance(step.rgb.r, step.rgb.g, step.rgb.b);
+        stepLabel.style.color = lum > 0.45 ? '#111827' : '#F9FAFB';
+        stepLabel.textContent = step.label;
+
+        stepEl.appendChild(stepLabel);
+        stepEl.addEventListener('click', () => {
+          this.setColorDirectly(step.rgb);
+          this.showToast(`Tinte cargado: ${step.hex} (${step.label})`);
+        });
+
+        tintContainer.appendChild(stepEl);
       });
     }
 
+    // Actionable Correction Advice Box
     const adviceEl = document.getElementById('chromillaCorrectionAdvice');
     if (adviceEl && recipe) {
-      adviceEl.innerHTML = `Para conseguir este tono con exactitud física: <strong>${recipe.items.map(i => `${i.parts}p de ${i.tube.name}`).join(' + ')}</strong>.`;
+      adviceEl.innerHTML = ChromillaMixer.getMixCorrectionAdvice(targetRgb, recipe.mixedRgb, recipe.items);
     }
   }
 

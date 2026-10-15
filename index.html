@@ -951,102 +951,207 @@
       <!-- TAB 4: CHROMILLA PHYSICAL PAINT MIXING STUDIO & GENUINE BRANDS -->
       <div id="viewChromilla" class="tab-view" style="display: none;">
         
+        <!-- PANEL 1: PHYSICAL RECIPE & DRY-DOWN LABORATORY -->
         <div class="glass-panel">
           <div class="panel-header">
             <div class="panel-title">
-              <span>🧪</span> Chromilla: Recetas Físicas & Catálogo de Tubos Reales de Artista
+              <span>🧪</span> Chromilla: Recetas Físicas & Laboratorio de Mezcla de Pigmentos
             </div>
-            <div style="display: flex; gap: 8px;">
-              <select id="chromillaBrandFilterSelect" class="chip-select" title="Filtrar tubos por casa fabricante de bellas artes">
-                <option value="all">Todas las Marcas</option>
-                <option value="winsor_newton">Winsor & Newton (Artists' Oil)</option>
-                <option value="sennelier">Sennelier (Huile Extra-Fine)</option>
-                <option value="golden">Golden (Heavy Body Acrylic)</option>
-                <option value="old_holland">Old Holland (Classic Oils)</option>
-                <option value="rembrandt">Rembrandt (Royal Talens)</option>
-              </select>
-              <select id="chromillaMediumSelect" class="chip-select">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <select id="chromillaMediumSelect" class="chip-select" title="Técnica física de pintura (afecta la predicción de secado)">
                 <option value="oil" selected>Óleo (Oil)</option>
                 <option value="acrylic">Acrílico (Acrylic)</option>
                 <option value="watercolor">Acuarela (Watercolor)</option>
+                <option value="gouache">Gouache (Acryla / Tradicional)</option>
               </select>
+              <button id="btnChromillaSaveToLibrary" class="tool-action-btn" title="Guardar la receta de tubos como nueva paleta en Bibliotecas">
+                <span>📦</span> Guardar en Biblioteca
+              </button>
+              <button id="btnChromillaSendToWetMixer" class="tool-action-btn" title="Cargar los tubos de la receta en la paleta del Wet Mixer">
+                <span>🖌️</span> Cargar en Wet Mixer
+              </button>
+              <button id="btnChromillaCopyRecipe" class="tool-action-btn" title="Copiar receta detallada al portapapeles">
+                <span>📋</span> Copiar Ficha
+              </button>
             </div>
           </div>
 
           <div class="pedagogical-banner">
             <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
-              Inspirado en la tecnología de <strong>Chromilla</strong>: calcula la <strong>receta exacta de mezcla física</strong> 
-              utilizando exclusivamente los tubos reales de tu estudio, teniendo en cuenta la física de pigmentos sustractivos, la opacidad y la <strong>predicción de secado (Dry-down shift)</strong>.
+              <strong>Tecnología Chromilla de Mezcla Sustractiva de Pigmentos Reales:</strong> 
+              Calcula la <strong>fórmula física exacta de caballete</strong> utilizando <em>estrictamente los tubos que posees en tu taller</em>. 
+              Tiene en cuenta los códigos genéticos del Color Index (CI), la opacidad real, la fuerza de tinción asimétrica y la <strong>predicción de secado (Dry-Down Shift)</strong> según el medio.
             </p>
           </div>
 
-          <!-- Dry-down prediction card -->
-          <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px; margin-bottom: 14px;">
-            <div style="font-size: 0.75rem; font-weight: 600; color: #FFFFFF; margin-bottom: 6px; display: flex; justify-content: space-between;">
-              <span>Predicción de Secado (Dry-Down Shift):</span>
-              <span id="chromillaShiftBadge" style="font-size: 0.7rem; color: var(--accent-cyan);">Óleo: Secado fiel</span>
+          <!-- Triple Comparison Swatch Grid: Target vs. Theoretical Physical Mix vs. Dried on Canvas -->
+          <div class="chromilla-tri-swatch-box">
+            <!-- Swatch 1: Target Color -->
+            <div class="chromilla-swatch-col">
+              <div class="chromilla-swatch-header">
+                <span class="chromilla-swatch-title">🎯 Color Deseado (Objetivo):</span>
+                <span id="chromillaTargetHex" class="copyable-hex" style="cursor: pointer;">#6366F1</span>
+              </div>
+              <div id="chromillaTargetSwatch" class="chromilla-main-swatch"></div>
+              <span class="chromilla-swatch-sub">Muestra pura seleccionada en la rueda</span>
             </div>
-            <div style="display: flex; gap: 14px; align-items: center;">
-              <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
-                <span style="font-size: 0.68rem; color: var(--text-muted);">Muestra Húmeda (En Paleta):</span>
-                <div id="chromillaWetSwatch" style="height: 38px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2);"></div>
-                <span id="chromillaWetHex" class="copyable-hex" style="font-family: var(--font-mono); font-size: 0.7rem; cursor: pointer;">#6366F1</span>
+
+            <!-- Direction arrow with Delta-E Badge -->
+            <div class="chromilla-swatch-arrow-col">
+              <span style="font-size: 1.2rem; color: var(--text-muted);">➔</span>
+              <span id="chromillaDeltaEBadge" class="chromilla-delta-badge" title="Distancia de color perceptual CIE Lab">ΔE 0.8</span>
+              <span id="chromillaMatchQualityBadge" class="chromilla-match-quality" style="font-size: 0.65rem; color: #10B981; font-weight: 700;">Excelente</span>
+            </div>
+
+            <!-- Swatch 2: Wet Physical Palette Mix -->
+            <div class="chromilla-swatch-col">
+              <div class="chromilla-swatch-header">
+                <span class="chromilla-swatch-title">🎨 Mezcla Física en Paleta (Húmeda):</span>
+                <span id="chromillaWetHex" class="copyable-hex" style="cursor: pointer;">#6366F1</span>
               </div>
-              <div style="font-size: 1.2rem; color: var(--text-muted);">➔</div>
-              <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
-                <span style="font-size: 0.68rem; color: var(--text-muted);">Muestra Seca (En Lienzo):</span>
-                <div id="chromillaDrySwatch" style="height: 38px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2);"></div>
-                <span id="chromillaDryHex" class="copyable-hex" style="font-family: var(--font-mono); font-size: 0.7rem; cursor: pointer;">#6366F1</span>
+              <div id="chromillaWetSwatch" class="chromilla-main-swatch"></div>
+              <span class="chromilla-swatch-sub">Resultado real con tus tubos de estudio</span>
+            </div>
+
+            <!-- Direction arrow with Shift info -->
+            <div class="chromilla-swatch-arrow-col">
+              <span style="font-size: 1.2rem; color: var(--text-muted);">➔</span>
+              <span style="font-size: 0.65rem; color: var(--text-secondary); text-align: center;">Secado</span>
+            </div>
+
+            <!-- Swatch 3: Dry on Canvas -->
+            <div class="chromilla-swatch-col">
+              <div class="chromilla-swatch-header">
+                <span class="chromilla-swatch-title">🖼️ Muestra Seca (En Lienzo):</span>
+                <span id="chromillaDryHex" class="copyable-hex" style="cursor: pointer;">#6366F1</span>
               </div>
+              <div id="chromillaDrySwatch" class="chromilla-main-swatch"></div>
+              <span id="chromillaShiftBadge" class="chromilla-swatch-sub" style="color: var(--accent-cyan);">Óleo: Secado fiel</span>
             </div>
           </div>
 
-          <!-- Exact Paint Tube Recipe -->
-          <div style="margin-bottom: 14px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 0.82rem; font-weight: 600;">Receta Exacta en Partes:</span>
+          <!-- Visual Pigment Proportions Stacked Bar -->
+          <div style="margin-top: 14px; margin-bottom: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
+              <span>Proporciones Visuales de la Mezcla:</span>
+              <span id="chromillaProportionSummary" style="font-family: var(--font-mono); color: var(--text-muted);">100% Total</span>
+            </div>
+            <div id="chromillaProportionBar" class="chromilla-proportion-bar">
+              <!-- Dynamically rendered colored bars -->
+            </div>
+          </div>
+
+          <!-- Exact Paint Tube Recipe Header with Batch scaling -->
+          <div style="margin-top: 14px; margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+              <span style="font-size: 0.82rem; font-weight: 700;">Receta Exacta en Partes & Gramaje de Taller:</span>
               <div style="display: flex; align-items: center; gap: 6px;">
                 <label style="font-size: 0.72rem; color: var(--text-muted);">Tamaño Lote:</label>
-                <input type="number" id="chromillaBatchInput" value="20" min="1" max="500" style="width: 50px; background: rgba(0,0,0,0.4); border: 1px solid var(--border-subtle); color: #fff; font-family: var(--font-mono); font-size: 0.75rem; border-radius: 4px; padding: 2px 4px; text-align: right;">
-                <select id="chromillaBatchUnit" class="chip-select" style="padding: 2px 6px;">
-                  <option value="g">Gramos (g)</option>
+                <input type="number" id="chromillaBatchInput" value="20" min="1" max="1000" style="width: 55px; background: rgba(0,0,0,0.4); border: 1px solid var(--border-subtle); color: #fff; font-family: var(--font-mono); font-size: 0.76rem; border-radius: 4px; padding: 3px 6px; text-align: right;">
+                <select id="chromillaBatchUnit" class="chip-select" style="padding: 3px 8px;">
+                  <option value="g" selected>Gramos (g)</option>
                   <option value="ml">Mililitros (ml)</option>
                 </select>
               </div>
             </div>
 
             <!-- Recipe items list -->
-            <div id="chromillaRecipeList" style="display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.25); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+            <div id="chromillaRecipeList" style="display: flex; flex-direction: column; gap: 8px;">
               <!-- Rendered by paintMixerChromilla.js -->
             </div>
           </div>
 
-          <!-- Mix Correction Assistant -->
-          <div style="background: rgba(99,102,241,0.08); border: 1px solid var(--border-accent); border-radius: var(--radius-md); padding: 12px;">
-            <div style="font-size: 0.78rem; font-weight: 700; color: #A5B4FC; margin-bottom: 6px;">
-              🛠️ Asistente de Corrección de Mezclas en Caballete:
+          <!-- White Tint Ramp / Glaze Scale -->
+          <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px; margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 0.76rem; font-weight: 700; color: #FFFFFF;">Escala de Tinte con Blanco (Mass Tone ➔ Veladuras):</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Click en cualquier tono para cargarlo</span>
             </div>
-            <div id="chromillaCorrectionAdvice" style="font-size: 0.74rem; color: var(--text-secondary); line-height: 1.45;">
-              Mezcla calculada con éxito.
+            <div id="chromillaTintScaleContainer" class="chromilla-tint-ramp">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Mix Correction Assistant on the Easel -->
+          <div class="chromilla-advice-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <div style="font-size: 0.78rem; font-weight: 700; color: #A5B4FC; display: flex; align-items: center; gap: 6px;">
+                <span>🛠️</span> Asistente de Corrección de Mezclas en Caballete:
+              </div>
+            </div>
+            <div id="chromillaCorrectionAdvice" style="font-size: 0.74rem; color: var(--text-secondary); line-height: 1.5;">
+              Calculando mezcla física óptima...
             </div>
           </div>
         </div>
 
         <!-- PANEL 2: MY PAINT BOX / TUBE INVENTORY -->
-        <div class="glass-panel">
-          <div class="panel-header">
+        <div class="glass-panel" style="margin-top: 14px;">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 8px;">
             <div class="panel-title">
               <span>📦</span> Mi Caja de Pinturas (Inventario de Tubos Reales de Artista)
             </div>
-            <span id="chromillaTubesCountBadge" style="font-size: 0.72rem; color: var(--accent-cyan); font-weight: 600; background: rgba(6,182,212,0.12); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(6,182,212,0.25);">26 Tubos Disponibles</span>
+            <span id="chromillaTubesCountBadge" class="chromilla-count-badge">13 seleccionados de 52 tubos disponibles</span>
           </div>
 
-          <p style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
-            Selecciona los tubos que posees físicamente en tu estudio para que Chromilla calcule recetas factibles exclusivamente con tus pigmentos disponibles.
+          <p style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.4;">
+            Marca las casillas de los tubos que <strong>posees físicamente en tu taller</strong>. 
+            El motor de Chromilla calculará recetas <strong>exclusivamente utilizando tus tubos seleccionados</strong>.
           </p>
 
-          <div id="chromillaTubeInventoryGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; max-height: 380px; overflow-y: auto; padding: 4px;">
-            <!-- Tubes rendered by script -->
+          <!-- Search & Filter Controls -->
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+            <div style="flex: 1; min-width: 200px;">
+              <input type="text" id="chromillaSearchInput" placeholder="🔍 Buscar tubo por nombre, pigmento CI (ej. PB29, Cadmio, Ocre)..." class="input-text-clean" style="width: 100%; font-size: 0.76rem; padding: 6px 10px;">
+            </div>
+            <select id="chromillaBrandFilterSelect" class="chip-select" style="min-width: 180px;" title="Filtrar por casa fabricante de bellas artes">
+              <option value="all">Todas las Marcas (Catálogo Maestro)</option>
+              <option value="winsor_newton">Winsor & Newton (Artists' Oil & W/C)</option>
+              <option value="sennelier">Sennelier (Huile Extra-Fine & L'Aquarelle)</option>
+              <option value="golden">Golden (Heavy Body & Fluid Acrylics)</option>
+              <option value="old_holland">Old Holland (Classic Oil Colours)</option>
+              <option value="rembrandt">Rembrandt (Royal Talens Artists' Oil)</option>
+              <option value="schmincke">Schmincke (Mussini Oil & Horadam W/C)</option>
+              <option value="daniel_smith">Daniel Smith (Extra Fine Watercolors)</option>
+              <option value="michael_harding">Michael Harding (Handmade Oil Colours)</option>
+              <option value="holbein">Holbein (Artists' Oil & Acryla Gouache)</option>
+              <option value="gamblin">Gamblin (Artists' Oil Colors)</option>
+            </select>
+          </div>
+
+          <!-- Color Family Filter Chips -->
+          <div id="chromillaCategoryChips" style="display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px;">
+            <button class="chip-select active-toggle chromilla-cat-chip" data-cat="all">Todas las Familias</button>
+            <button class="chip-select chromilla-cat-chip" data-cat="white">⚪ Blancos</button>
+            <button class="chip-select chromilla-cat-chip" data-cat="yellow">🟡 Amarillos</button>
+            <button class="chip-select chromilla-cat-chip" data-cat="orange">🟠 Naranjas</button>
+            <button class="chip-select chromilla-cat-chip" data-cat="red">🔴 Rojos</button>
+            <button class="chip-select chromilla-cat-chip" data-cat="magenta">🌸 Magentas</button>
+            <button class="chip-select chromilla-cat-chip" data-cat="violet">🟣 Violetas</button>
+            <button class="chip-select chromilla-cat-chip" data-cat="blue">🔵 Azules</button>
+            <button class="chip-select chromilla-cat-chip" data-cat="green">🟢 Verdes</button>
+            <button class="chip-select chromilla-cat-chip" data-cat="earth">🟤 Tierras</button>
+            <button class="chip-select chromilla-cat-chip" data-cat="black">⚫ Negros</button>
+          </div>
+
+          <!-- Quick Palette Presets Bar (1-Click setup) -->
+          <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 8px 12px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+            <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted);">CONFIGURACIÓN RÁPIDA DE CAJA:</span>
+            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+              <button class="chip-select chromilla-preset-btn" data-preset="basic" title="Blanco, Cadmio Amarillo, Cadmio Rojo, Ultramar, Sombra Tostada, Negro Marfil">🎨 Básica (6)</button>
+              <button class="chip-select chromilla-preset-btn" data-preset="split_primary" title="Doble versión cálida y fría de cada primario más blanco">🌓 Split-Primary (7)</button>
+              <button class="chip-select chromilla-preset-btn" data-preset="zorn" title="Paleta de Anders Zorn (Blanco, Ocre, Rojo Cadmio, Negro Marfil)">🏛️ Zorn (4)</button>
+              <button class="chip-select chromilla-preset-btn" data-preset="portrait_classical" title="Paleta académica completa para retrato y carnaciones">👨‍🎨 Retrato (10)</button>
+              <button class="chip-select chromilla-preset-btn" data-preset="landscape_pleinair" title="Paleta rica en azules atmosféricos, verdes de campo y tierras">🌿 Paisaje (10)</button>
+              <button class="chip-select chromilla-preset-btn" data-preset="modern_high_chroma" title="Pigmentos orgánicos de altísimo croma">⚡ High-Chroma (8)</button>
+              <button id="btnChromillaSelectAll" class="chip-select" style="border-color: rgba(99,102,241,0.5);" title="Marcar todos los tubos disponibles">✅ Todos</button>
+              <button id="btnChromillaClearAll" class="chip-select" style="border-color: rgba(239,68,68,0.4);" title="Desmarcar todos los tubos">🗑️ Limpiar</button>
+            </div>
+          </div>
+
+          <!-- Tubes Grid -->
+          <div id="chromillaTubeInventoryGrid" class="chromilla-tube-grid">
+            <!-- Tubes rendered dynamically by app.js -->
           </div>
         </div>
 

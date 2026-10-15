@@ -7515,11 +7515,281 @@ body.value-check-mode {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.extracted-swatch-item:hover {
-  transform: translateY(-2px) scale(1.03);
-  z-index: 5;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6);
+/* CHROMILLA PHYSICAL MIXER & PAINT BOX STUDIO */
+.chromilla-tri-swatch-box {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
 }
+
+@media (max-width: 768px) {
+  .chromilla-tri-swatch-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.chromilla-swatch-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chromilla-swatch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+}
+
+.chromilla-swatch-title {
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.chromilla-main-swatch {
+  height: 44px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.chromilla-swatch-sub {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.chromilla-swatch-arrow-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+}
+
+.chromilla-delta-badge {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid #10B981;
+  color: #6EE7B7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.chromilla-proportion-bar {
+  display: flex;
+  width: 100%;
+  height: 16px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.chromilla-prop-segment {
+  height: 100%;
+  transition: width 0.25s ease;
+  position: relative;
+  cursor: pointer;
+}
+
+.chromilla-prop-segment:hover {
+  filter: brightness(1.2);
+}
+
+.chromilla-tint-ramp {
+  display: flex;
+  gap: 8px;
+}
+
+.chromilla-tint-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.chromilla-tint-swatch {
+  width: 100%;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.chromilla-tint-step:hover .chromilla-tint-swatch {
+  transform: translateY(-2px);
+  border-color: #FFFFFF;
+}
+
+.chromilla-tint-label {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.chromilla-tint-hex {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--accent-cyan);
+}
+
+.chromilla-advice-box {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.chromilla-count-badge {
+  font-size: 0.72rem;
+  color: var(--accent-cyan);
+  font-weight: 600;
+  background: rgba(6, 182, 212, 0.12);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(6, 182, 212, 0.25);
+}
+
+.chromilla-tube-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.chromilla-tube-card {
+  background: rgba(18, 20, 30, 0.75);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  user-select: none;
+}
+
+.chromilla-tube-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.chromilla-tube-card.owned {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: inset 0 0 8px rgba(99, 102, 241, 0.15);
+}
+
+.chromilla-tube-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.chromilla-tube-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.chromilla-tube-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chromilla-tube-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.chromilla-tube-brand {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chromilla-tube-tags {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+.chromilla-tag {
+  font-size: 0.60rem;
+  font-family: var(--font-mono);
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chromilla-tag.ci {
+  color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.25);
+  font-weight: 700;
+}
+
+.chromilla-tag.series {
+  color: #FBBF24;
+  background: rgba(251, 191, 36, 0.08);
+  border-color: rgba(251, 191, 36, 0.2);
+}
+
+.chromilla-tag.strength {
+  color: #EC4899;
+  background: rgba(236, 72, 153, 0.08);
+  border-color: rgba(236, 72, 153, 0.2);
+}
+
+.chromilla-recipe-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 8px 12px;
+  transition: border-color var(--transition-fast);
+}
+
+.chromilla-recipe-card:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
 
 
 

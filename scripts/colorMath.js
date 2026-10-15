@@ -247,6 +247,28 @@ export const ColorMath = {
     return check.nearestGamutRgb;
   },
 
+  // Perceptual Delta-E color distance (OKLab / CIE76 approximation)
+  getColorDistanceLab(rgb1, rgb2) {
+    if (typeof this.rgbToOklch === 'function') {
+      const ok1 = this.rgbToOklch(rgb1.r, rgb1.g, rgb1.b);
+      const ok2 = this.rgbToOklch(rgb2.r, rgb2.g, rgb2.b);
+      const dL = (ok1.l - ok2.l) * 100;
+      const dC = (ok1.c - ok2.c) * 100;
+      let dH = (ok1.h - ok2.h) * (Math.PI / 180);
+      const dH_val = 2 * Math.sqrt(Math.max(0, ok1.c * ok2.c)) * Math.sin(dH / 2) * 100;
+      return Math.sqrt(dL * dL + dC * dC + dH_val * dH_val);
+    }
+    const rmean = (rgb1.r + rgb2.r) / 2;
+    const r = rgb1.r - rgb2.r;
+    const g = rgb1.g - rgb2.g;
+    const b = rgb1.b - rgb2.b;
+    return Math.sqrt((((512 + rmean) * r * r) >> 8) + 4 * g * g + (((767 - rmean) * b * b) >> 8)) / 14;
+  },
+
+  getDeltaE(rgb1, rgb2) {
+    return this.getColorDistanceLab(rgb1, rgb2);
+  },
+
   // Relative Luminance according to WCAG 2.1 (0 = Black, 1 = White)
   getLuminance(r, g, b) {
     const a = [r, g, b].map(v => {
