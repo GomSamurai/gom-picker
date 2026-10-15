@@ -468,27 +468,122 @@
             </p>
           </div>
 
-          <!-- Time of Day Slider & Presets -->
-          <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 14px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 0.8rem; font-weight: 600;">Hora del Día (Trayectoria Solar):</span>
-              <span id="displayTimeOfDay" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent-cyan); font-weight: 600;">14:00 (Mediodía)</span>
+          <!-- Visualizer & Atmospheric Environment Split (3D Sphere + Sky Dome + Time of Day) -->
+          <div class="atmo-hero-container">
+            <!-- Left Column: 3D Optical Sphere & Directional Vector -->
+            <div class="atmo-sphere-panel">
+              <div class="atmo-subpanel-title">
+                <span>🌐</span> Visor Óptico Físico 3D (Lambert & Phong)
+              </div>
+              <div class="atmo-canvas-wrapper">
+                <canvas id="atmoSphereCanvas" width="220" height="220" title="Arrastra sobre la esfera para orientar el vector solar en 3D"></canvas>
+                <div class="atmo-sphere-overlay-hint">
+                  <span>🖱️ Arrastra para rotar la luz solar en 3D</span>
+                </div>
+              </div>
+              <!-- Solar Vector Angle Sliders -->
+              <div class="atmo-vector-controls">
+                <div class="atmo-control-row">
+                  <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 2px;">
+                    <span>Elevación Solar:</span>
+                    <span id="displaySunElevation" style="font-family: var(--font-mono); color: var(--accent-cyan); font-weight: 600;">65°</span>
+                  </div>
+                  <input type="range" id="sliderSunElevation" min="0" max="90" step="1" value="65" class="atmo-slider" style="width: 100%;">
+                </div>
+                <div class="atmo-control-row">
+                  <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 2px;">
+                    <span>Acimut Solar:</span>
+                    <span id="displaySunAzimuth" style="font-family: var(--font-mono); color: var(--accent-cyan); font-weight: 600;">140°</span>
+                  </div>
+                  <input type="range" id="sliderSunAzimuth" min="0" max="360" step="2" value="140" class="atmo-slider" style="width: 100%;">
+                </div>
+              </div>
             </div>
-            <input type="range" id="sliderTimeOfDay" min="0" max="24" step="0.25" value="14" style="width: 100%; accent-color: var(--accent-primary); cursor: pointer;">
-            
-            <!-- Atmospheric Presets -->
-            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
-              <button class="chip-select atmo-preset-btn" data-preset="dawn">🌅 Amanecer (06:30)</button>
-              <button class="chip-select atmo-preset-btn" data-preset="noon">☀️ Mediodía (12:00)</button>
-              <button class="chip-select atmo-preset-btn" data-preset="golden_hour">🌇 Golden Hour (18:45)</button>
-              <button class="chip-select atmo-preset-btn" data-preset="blue_hour">🌌 Hora Azul (20:00)</button>
-              <button class="chip-select atmo-preset-btn" data-preset="moonlight">🌕 Luna Llena / Purkinje (00:30)</button>
-              <button class="chip-select atmo-preset-btn" data-preset="overcast">☁️ Día Nublado (14:00)</button>
+
+            <!-- Right Column: Atmospheric Sky Dome Gradient, Time of Day & Ground Terrain -->
+            <div class="atmo-environment-panel">
+              <!-- Sky Dome Continuous Gradient Section -->
+              <div class="atmo-gradient-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <span class="atmo-subpanel-title" style="margin: 0;">🌌 Domo Celeste & Gradiente Rayleigh de la Atmósfera</span>
+                  <div style="display: flex; gap: 6px;">
+                    <button id="btnCopyAtmoCssGrad" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.7rem;" title="Copiar código CSS del gradiente atmosférico">
+                      📋 Copiar CSS
+                    </button>
+                    <button id="btnAtmoGradToLibrary" class="tool-action-btn" style="padding: 3px 8px; font-size: 0.7rem;" title="Guardar las paradas de color atmosféricas en Biblioteca">
+                      📚 Guardar Paradas
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Continuous Sky Dome Gradient Bar -->
+                <div id="atmoSkyDomeBar" class="atmo-sky-dome-bar"></div>
+
+                <!-- Gradient Stops Indicators -->
+                <div id="atmoGradStopsContainer" class="atmo-grad-stops-row">
+                  <div class="atmo-grad-stop-chip" id="atmoGradZenithChip" title="Click para cargar color de Zenith">
+                    <span class="atmo-stop-dot" style="background: #1B4582;"></span>
+                    <span class="atmo-stop-label">Zenith</span>
+                    <span class="atmo-stop-hex">#1B4582</span>
+                  </div>
+                  <div class="atmo-grad-stop-chip" id="atmoGradHorizonChip" title="Click para cargar color de Horizonte">
+                    <span class="atmo-stop-dot" style="background: #E8A87C;"></span>
+                    <span class="atmo-stop-label">Horizonte</span>
+                    <span class="atmo-stop-hex">#E8A87C</span>
+                  </div>
+                  <div class="atmo-grad-stop-chip" id="atmoGradGroundChip" title="Click para cargar color de Suelo">
+                    <span class="atmo-stop-dot" style="background: #C39164;"></span>
+                    <span class="atmo-stop-label">Terreno</span>
+                    <span class="atmo-stop-hex">#C39164</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Time of Day Slider & Presets -->
+              <div class="atmo-time-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <span style="font-size: 0.8rem; font-weight: 600;">Hora del Día (Trayectoria Solar):</span>
+                  <span id="displayTimeOfDay" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent-cyan); font-weight: 600;">14:00 (Mediodía)</span>
+                </div>
+                <input type="range" id="sliderTimeOfDay" min="0" max="24" step="0.25" value="14" style="width: 100%; accent-color: var(--accent-primary); cursor: pointer;">
+                
+                <!-- Atmospheric Presets -->
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+                  <button class="chip-select atmo-preset-btn" data-preset="dawn">🌅 Amanecer (06:30)</button>
+                  <button class="chip-select atmo-preset-btn" data-preset="noon">☀️ Mediodía (12:00)</button>
+                  <button class="chip-select atmo-preset-btn" data-preset="golden_hour">🌇 Golden Hour (18:45)</button>
+                  <button class="chip-select atmo-preset-btn" data-preset="blue_hour">🌌 Hora Azul (20:00)</button>
+                  <button class="chip-select atmo-preset-btn" data-preset="moonlight">🌕 Luna Llena (00:30)</button>
+                  <button class="chip-select atmo-preset-btn" data-preset="overcast">☁️ Día Nublado (14:00)</button>
+                </div>
+              </div>
+
+              <!-- Ground Terrain Material Selector -->
+              <div class="atmo-terrain-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <span style="font-size: 0.78rem; font-weight: 600;">Material de Rebote del Terreno (Suelo):</span>
+                  <span id="displayTerrainName" style="font-size: 0.72rem; color: var(--accent-primary); font-family: var(--font-mono);">Tierra / Arcilla</span>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <select id="atmoTerrainSelect" class="atmo-select" style="flex: 1;">
+                    <option value="earth">🌱 Tierra / Arcilla Húmeda (Rebote cálido rojizo)</option>
+                    <option value="grass">🌿 Hierba / Vegetación (Rebote verde clorofila)</option>
+                    <option value="sand">🏖️ Arena / Playa / Desierto (Rebote dorado brillante)</option>
+                    <option value="snow">❄️ Nieve / Hielo Glacial (Rebote frío de alto albedo)</option>
+                    <option value="asphalt">🏙️ Asfalto Urbano / Ciudad (Rebote neutro desaturado)</option>
+                    <option value="water">🌊 Agua Marina / Superficie Oceánica (Rebote azul profundo)</option>
+                    <option value="custom">🎨 Personalizado (Color libre de suelo)</option>
+                  </select>
+                  <div id="atmoCustomGroundContainer" style="display: none; align-items: center; gap: 4px;">
+                    <input type="color" id="atmoCustomGroundColor" value="#D7A578" style="width: 34px; height: 32px; padding: 0; border: 1px solid var(--border-subtle); border-radius: 4px; cursor: pointer;">
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- Scientific Shading Decomposition for Active Color -->
-          <div style="margin-bottom: 14px;">
+          <div style="margin-top: 14px; margin-bottom: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <span style="font-size: 0.82rem; font-weight: 600;">Desglose Científico del Color Activo (Luz, Terminador, Sombra, Rebote):</span>
               <span style="font-size: 0.7rem; color: var(--text-muted);">Click en cualquier tono para cargarlo como color frontal</span>
@@ -497,10 +592,32 @@
               <!-- Rendered dynamically by atmosphereEngine -->
             </div>
           </div>
+
+          <!-- Suite Integration Action Bar -->
+          <div class="atmo-integration-bar">
+            <span style="font-size: 0.74rem; font-weight: 600; color: var(--text-secondary);">Integración con la Suite:</span>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button id="btnAtmoSaveBreakdownToLibrary" class="tool-action-btn" title="Crea una nueva paleta con los 6 tonos de luz y sombra calculados">
+                <span>📦</span> Guardar en Biblioteca
+              </button>
+              <button id="btnAtmoProjectTo4D" class="tool-action-btn" title="Lleva los tonos de luz y sombra al visualizador SO(4) 4D">
+                <span>🔮</span> Proyectar en Hiperspacio 4D
+              </button>
+              <button id="btnAtmoSendToFlorent" class="tool-action-btn" title="Ver receta y mezcla de pigmentos en Florent Farges">
+                <span>👨‍🎨</span> Curva Florent Farges
+              </button>
+              <button id="btnAtmoSendToRampStudio" class="tool-action-btn" title="Generar rampa perceptual de sombras en Ramp Studio">
+                <span>📐</span> Enviar a Ramp Studio
+              </button>
+              <button id="btnAtmoSendToWetMixer" class="tool-action-btn" title="Cargar los tonos calculados en la paleta húmeda del Wet Mixer">
+                <span>🖌️</span> Cargar en Wet Mixer
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- PANEL 2: ADVANCED ATMOSPHERIC CONTROLS -->
-        <div class="glass-panel">
+        <div class="glass-panel" style="margin-top: 14px;">
           <div class="panel-header">
             <div class="panel-title">
               <span>🎛️</span> Física de Sombras & Parámetros Ópticos de Escena
@@ -515,7 +632,7 @@
             <div>
               <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
                 <span>Temperatura Sol (Kelvin):</span>
-                <span id="displaySunKelvin" style="font-family: var(--font-mono); color: #F59E0B;">5500K</span>
+                <span id="displaySunKelvin" style="font-family: var(--font-mono); color: #F59E0B; font-weight: 600;">5500K</span>
               </div>
               <input type="range" id="sliderSunKelvin" min="2000" max="9500" step="100" value="5500" style="width: 100%;">
             </div>
@@ -524,16 +641,25 @@
             <div>
               <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
                 <span>Matiz Cielo (Relleno Sombra):</span>
-                <span id="displaySkyHue" style="font-family: var(--font-mono); color: #06B6D4;">215° (Azul)</span>
+                <span id="displaySkyHue" style="font-family: var(--font-mono); color: #06B6D4; font-weight: 600;">215° (Azul)</span>
               </div>
               <input type="range" id="sliderSkyHue" min="0" max="360" step="5" value="215" style="width: 100%;">
+            </div>
+
+            <!-- Skylight Ambient Saturation -->
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
+                <span>Saturación Cielo (Domo):</span>
+                <span id="displaySkySat" style="font-family: var(--font-mono); color: #38BDF8; font-weight: 600;">50%</span>
+              </div>
+              <input type="range" id="sliderSkySat" min="0" max="100" step="5" value="50" style="width: 100%;">
             </div>
 
             <!-- Ground Bounce Intensity -->
             <div>
               <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
                 <span>Rebote de Suelo (Bounce):</span>
-                <span id="displayBounce" style="font-family: var(--font-mono);">35%</span>
+                <span id="displayBounce" style="font-family: var(--font-mono); font-weight: 600;">35%</span>
               </div>
               <input type="range" id="sliderBounce" min="0" max="100" step="5" value="35" style="width: 100%;">
             </div>
@@ -542,7 +668,7 @@
             <div>
               <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
                 <span>Saturación del Terminador (SSS):</span>
-                <span id="displaySss" style="font-family: var(--font-mono); color: #EC4899;">40%</span>
+                <span id="displaySss" style="font-family: var(--font-mono); color: #EC4899; font-weight: 600;">40%</span>
               </div>
               <input type="range" id="sliderSss" min="0" max="100" step="5" value="40" style="width: 100%;">
             </div>
@@ -551,7 +677,7 @@
             <div>
               <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
                 <span>Perspectiva Aérea / Neblina:</span>
-                <span id="displayHaze" style="font-family: var(--font-mono);">0%</span>
+                <span id="displayHaze" style="font-family: var(--font-mono); font-weight: 600;">0%</span>
               </div>
               <input type="range" id="sliderHaze" min="0" max="80" step="5" value="0" style="width: 100%;">
             </div>
@@ -568,13 +694,112 @@
             <!-- Purkinje Effect Toggle & Master Strength -->
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <label style="font-size: 0.74rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="checkPurkinje" style="accent-color: var(--accent-primary);">
+                <input type="checkbox" id="checkPurkinje" style="accent-color: var(--accent-primary); width: 16px; height: 16px;">
                 <span>Efecto Purkinje (Sensibilidad Nocturna a Azules)</span>
               </label>
             </div>
 
           </div>
 
+        </div>
+
+        <!-- PANEL 3: GLOBAL TINT, GLAZE & SPLIT-TONING STUDIO -->
+        <div class="glass-panel" style="margin-top: 14px;">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🎨</span> Estudio de Tinte Global, Veladuras & Color Cast Studio
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label class="atmo-toggle-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.78rem; font-weight: 600;">
+                <input type="checkbox" id="atmoTintEnableCheck" style="accent-color: var(--accent-primary); width: 16px; height: 16px;">
+                <span>Activar Tinte Global (Color Cast)</span>
+              </label>
+            </div>
+          </div>
+
+          <p style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+            Aplica una <strong>dominante cromática unificadora</strong> sobre toda la escena, simulando filtros gel de cine, veladuras al óleo clásicas o <strong>split-toning</strong> fotográfico (luces cálidas con sombras frías) con modos de fusión de alta fidelidad.
+          </p>
+
+          <!-- Tint Preset Chips -->
+          <div style="margin-bottom: 12px;">
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">PRESETS CINEMATOGRÁFICOS DE TINTE:</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button class="chip-select atmo-tint-preset-btn" data-preset="amber" data-hex="#F59E0B" data-mode="soft_light">🌅 Ámbar Solar</button>
+              <button class="chip-select atmo-tint-preset-btn" data-preset="sepia" data-hex="#A16207" data-mode="multiply">☕ Sepia Vintage</button>
+              <button class="chip-select atmo-tint-preset-btn" data-preset="scifi" data-hex="#06B6D4" data-mode="screen">🌌 Cyan Sci-Fi</button>
+              <button class="chip-select atmo-tint-preset-btn" data-preset="emerald" data-hex="#10B981" data-mode="soft_light">🌲 Esmeralda Místico</button>
+              <button class="chip-select atmo-tint-preset-btn" data-preset="crimson" data-hex="#E11D48" data-mode="multiply">🩸 Carmín Tenebrista</button>
+              <button class="chip-select atmo-tint-preset-btn" data-preset="violet" data-hex="#8B5CF6" data-mode="overlay">🔮 Violeta Mágico</button>
+              <button class="chip-select atmo-tint-preset-btn" data-preset="glacial" data-hex="#38BDF8" data-mode="soft_light">🌕 Azul Glacial</button>
+              <button class="chip-select" id="btnAtmoTintPickActiveColor" title="Usar el color frontal actual como tinte global">🎯 Usar Color Frontal</button>
+            </div>
+          </div>
+
+          <!-- Tint Configuration Controls Grid -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; background: rgba(0,0,0,0.25); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+            
+            <!-- Tint Primary Color Picker -->
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
+                <span>Color Primario del Tinte:</span>
+                <span id="displayTintColorHex" style="font-family: var(--font-mono); color: #F59E0B; font-weight: 600;">#F59E0B</span>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="atmoTintColorInput" value="#F59E0B" style="width: 38px; height: 32px; padding: 0; border: 1px solid var(--border-subtle); border-radius: 4px; cursor: pointer;">
+                <input type="text" id="atmoTintColorText" value="#F59E0B" class="input-text-clean" style="font-family: var(--font-mono); font-size: 0.78rem; flex: 1;">
+              </div>
+            </div>
+
+            <!-- Tint Target Application Zone -->
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
+                <span>Zona de Aplicación del Tinte:</span>
+              </div>
+              <select id="atmoTintTargetSelect" class="atmo-select" style="width: 100%;">
+                <option value="all">🌐 Tinte Global Homogéneo (Toda la escena)</option>
+                <option value="highlights">☀️ Solo Luz Clave & Puntos de Luz (Highlights)</option>
+                <option value="shadows">🌑 Solo Sombras & Penumbra (Shadow Cast)</option>
+                <option value="split">🌓 Bicromía Térmica / Split-Toning (Luces vs Sombras)</option>
+              </select>
+            </div>
+
+            <!-- Secondary Tint Color (Only for Split-Toning) -->
+            <div id="atmoTintSecondaryContainer" style="display: none;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
+                <span>Color Sombras (Split-Toning):</span>
+                <span id="displayTintSecondaryColorHex" style="font-family: var(--font-mono); color: #38BDF8; font-weight: 600;">#38BDF8</span>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="color" id="atmoTintSecondaryColorInput" value="#38BDF8" style="width: 38px; height: 32px; padding: 0; border: 1px solid var(--border-subtle); border-radius: 4px; cursor: pointer;">
+                <input type="text" id="atmoTintSecondaryColorText" value="#38BDF8" class="input-text-clean" style="font-family: var(--font-mono); font-size: 0.78rem; flex: 1;">
+              </div>
+            </div>
+
+            <!-- Photographic Blend Mode -->
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
+                <span>Modo de Fusión Fotográfica:</span>
+              </div>
+              <select id="atmoTintBlendSelect" class="atmo-select" style="width: 100%;">
+                <option value="soft_light">🔆 Luz Suave (Soft Light - Fusión natural unificadora)</option>
+                <option value="multiply">🎨 Multiplicar (Multiply - Filtro Gel / Cristal / Veladura al óleo)</option>
+                <option value="overlay">⚡ Superponer (Overlay - Contraste cinematográfico dramático)</option>
+                <option value="color">🎭 Color Puro (Color Wash - Tiñe conservando luminosidad)</option>
+                <option value="screen">🌫️ Trama / Screen (Niebla luminosa / Resplandor etéreo)</option>
+              </select>
+            </div>
+
+            <!-- Tint Intensity Slider -->
+            <div style="grid-column: 1 / -1;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 4px;">
+                <span>Intensidad de la Dominante de Tinte:</span>
+                <span id="displayTintIntensity" style="font-family: var(--font-mono); color: var(--accent-cyan); font-weight: 600;">0% (Inactivo)</span>
+              </div>
+              <input type="range" id="atmoTintIntensitySlider" min="0" max="100" step="2" value="0" style="width: 100%; accent-color: var(--accent-cyan); cursor: pointer;">
+            </div>
+
+          </div>
         </div>
 
       </div>

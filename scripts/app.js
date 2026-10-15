@@ -2708,6 +2708,8 @@ class GomPickerApp {
     const dispKelvin = document.getElementById('displaySunKelvin');
     const sliderSky = document.getElementById('sliderSkyHue');
     const dispSky = document.getElementById('displaySkyHue');
+    const sliderSkySat = document.getElementById('sliderSkySat');
+    const dispSkySat = document.getElementById('displaySkySat');
     const sliderBounce = document.getElementById('sliderBounce');
     const dispBounce = document.getElementById('displayBounce');
     const sliderSss = document.getElementById('sliderSss');
@@ -2719,6 +2721,49 @@ class GomPickerApp {
     const checkPurkinje = document.getElementById('checkPurkinje');
     const btnPanelToggle = document.getElementById('btnAtmospherePanelToggle');
     const btnApplyLibrary = document.getElementById('btnApplyAtmosphereToLibrary');
+
+    // 3D Solar Vector Elements
+    const sliderElevation = document.getElementById('sliderSunElevation');
+    const dispElevation = document.getElementById('displaySunElevation');
+    const sliderAzimuth = document.getElementById('sliderSunAzimuth');
+    const dispAzimuth = document.getElementById('displaySunAzimuth');
+    const sphereCanvas = document.getElementById('atmoSphereCanvas');
+
+    // Terrain Elements
+    const terrainSelect = document.getElementById('atmoTerrainSelect');
+    const displayTerrainName = document.getElementById('displayTerrainName');
+    const customGroundContainer = document.getElementById('atmoCustomGroundContainer');
+    const customGroundColorInput = document.getElementById('atmoCustomGroundColor');
+
+    // Sky Dome Gradient Elements
+    const btnCopyCssGrad = document.getElementById('btnCopyAtmoCssGrad');
+    const btnGradToLibrary = document.getElementById('btnAtmoGradToLibrary');
+    const chipZenith = document.getElementById('atmoGradZenithChip');
+    const chipHorizon = document.getElementById('atmoGradHorizonChip');
+    const chipGround = document.getElementById('atmoGradGroundChip');
+
+    // Global Tint & Glaze Elements
+    const tintEnableCheck = document.getElementById('atmoTintEnableCheck');
+    const tintColorInput = document.getElementById('atmoTintColorInput');
+    const tintColorText = document.getElementById('atmoTintColorText');
+    const dispTintColorHex = document.getElementById('displayTintColorHex');
+    const tintTargetSelect = document.getElementById('atmoTintTargetSelect');
+    const tintSecondaryContainer = document.getElementById('atmoTintSecondaryContainer');
+    const tintSecondaryColorInput = document.getElementById('atmoTintSecondaryColorInput');
+    const tintSecondaryColorText = document.getElementById('atmoTintSecondaryColorText');
+    const dispTintSecondaryColorHex = document.getElementById('displayTintSecondaryColorHex');
+    const tintBlendSelect = document.getElementById('atmoTintBlendSelect');
+    const tintIntensitySlider = document.getElementById('atmoTintIntensitySlider');
+    const dispTintIntensity = document.getElementById('displayTintIntensity');
+    const btnTintPickActive = document.getElementById('btnAtmoTintPickActiveColor');
+    const tintPresetBtns = document.querySelectorAll('.atmo-tint-preset-btn');
+
+    // Suite Integration Action Buttons
+    const btnSaveBreakdown = document.getElementById('btnAtmoSaveBreakdownToLibrary');
+    const btnProject4D = document.getElementById('btnAtmoProjectTo4D');
+    const btnSendFlorent = document.getElementById('btnAtmoSendToFlorent');
+    const btnSendRamps = document.getElementById('btnAtmoSendToRampStudio');
+    const btnSendWetMixer = document.getElementById('btnAtmoSendToWetMixer');
 
     if (btnPanelToggle) {
       btnPanelToggle.addEventListener('click', () => this.toggleAtmosphereModifier());
@@ -2752,6 +2797,7 @@ class GomPickerApp {
       }
     };
 
+    // Time of Day Slider
     if (sliderTime) {
       sliderTime.addEventListener('input', (e) => {
         const val = parseFloat(e.target.value);
@@ -2759,10 +2805,25 @@ class GomPickerApp {
         const hours = Math.floor(val);
         const mins = Math.round((val - hours) * 60);
         if (dispTime) dispTime.textContent = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+        
+        // Auto-update sun angles corresponding to time of day
+        const normAngle = ((val - 6) / 12) * 180;
+        const calcAzimuth = Math.round((normAngle + 360) % 360);
+        const calcElevation = Math.max(0, Math.round(Math.sin(((val - 6) / 12) * Math.PI) * 75));
+        
+        AtmosphereEngine.state.sunAzimuth = calcAzimuth;
+        AtmosphereEngine.state.sunElevation = calcElevation;
+        
+        if (sliderAzimuth) sliderAzimuth.value = calcAzimuth;
+        if (dispAzimuth) dispAzimuth.textContent = `${calcAzimuth}°`;
+        if (sliderElevation) sliderElevation.value = calcElevation;
+        if (dispElevation) dispElevation.textContent = `${calcElevation}°`;
+
         onAtmosphereParamChange();
       });
     }
 
+    // Kelvin Sunlight Slider
     if (sliderKelvin) {
       sliderKelvin.addEventListener('input', (e) => {
         const val = parseInt(e.target.value, 10);
@@ -2772,6 +2833,7 @@ class GomPickerApp {
       });
     }
 
+    // Sky Ambient Hue Slider
     if (sliderSky) {
       sliderSky.addEventListener('input', (e) => {
         const val = parseInt(e.target.value, 10);
@@ -2781,6 +2843,17 @@ class GomPickerApp {
       });
     }
 
+    // Sky Ambient Saturation Slider
+    if (sliderSkySat) {
+      sliderSkySat.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        AtmosphereEngine.state.skyAmbientSat = val / 100;
+        if (dispSkySat) dispSkySat.textContent = `${val}%`;
+        onAtmosphereParamChange();
+      });
+    }
+
+    // Ground Bounce Intensity Slider
     if (sliderBounce) {
       sliderBounce.addEventListener('input', (e) => {
         const val = parseInt(e.target.value, 10);
@@ -2790,6 +2863,7 @@ class GomPickerApp {
       });
     }
 
+    // Terminator SSS Saturation Slider
     if (sliderSss) {
       sliderSss.addEventListener('input', (e) => {
         const val = parseInt(e.target.value, 10);
@@ -2799,6 +2873,7 @@ class GomPickerApp {
       });
     }
 
+    // Aerial Perspective (Haze) Slider
     if (sliderHaze) {
       sliderHaze.addEventListener('input', (e) => {
         const val = parseInt(e.target.value, 10);
@@ -2808,6 +2883,7 @@ class GomPickerApp {
       });
     }
 
+    // Master Modifier Intensity Slider
     if (sliderIntensity) {
       sliderIntensity.addEventListener('input', (e) => {
         const val = parseInt(e.target.value, 10);
@@ -2817,6 +2893,7 @@ class GomPickerApp {
       });
     }
 
+    // Purkinje Shift Checkbox
     if (checkPurkinje) {
       checkPurkinje.addEventListener('change', (e) => {
         AtmosphereEngine.state.purkinjeShift = e.target.checked;
@@ -2824,7 +2901,86 @@ class GomPickerApp {
       });
     }
 
-    // Atmospheric Presets
+    // Solar Elevation Slider
+    if (sliderElevation) {
+      sliderElevation.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        AtmosphereEngine.state.sunElevation = val;
+        if (dispElevation) dispElevation.textContent = `${val}°`;
+        onAtmosphereParamChange();
+      });
+    }
+
+    // Solar Azimuth Slider
+    if (sliderAzimuth) {
+      sliderAzimuth.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        AtmosphereEngine.state.sunAzimuth = val;
+        if (dispAzimuth) dispAzimuth.textContent = `${val}°`;
+        onAtmosphereParamChange();
+      });
+    }
+
+    // Interactive Dragging on 3D Optical Sphere Canvas
+    if (sphereCanvas) {
+      let isDragging = false;
+      let startX = 0;
+      let startY = 0;
+      let initAzimuth = 140;
+      let initElevation = 65;
+
+      const onDragStart = (clientX, clientY) => {
+        isDragging = true;
+        startX = clientX;
+        startY = clientY;
+        initAzimuth = AtmosphereEngine.state.sunAzimuth !== undefined ? AtmosphereEngine.state.sunAzimuth : 140;
+        initElevation = AtmosphereEngine.state.sunElevation !== undefined ? AtmosphereEngine.state.sunElevation : 65;
+      };
+
+      const onDragMove = (clientX, clientY) => {
+        if (!isDragging) return;
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+
+        let newAzimuth = Math.round((initAzimuth + dx * 0.75) % 360);
+        if (newAzimuth < 0) newAzimuth += 360;
+        let newElevation = Math.round(Math.max(0, Math.min(90, initElevation - dy * 0.5)));
+
+        AtmosphereEngine.state.sunAzimuth = newAzimuth;
+        AtmosphereEngine.state.sunElevation = newElevation;
+
+        if (sliderAzimuth) sliderAzimuth.value = newAzimuth;
+        if (dispAzimuth) dispAzimuth.textContent = `${newAzimuth}°`;
+        if (sliderElevation) sliderElevation.value = newElevation;
+        if (dispElevation) dispElevation.textContent = `${newElevation}°`;
+
+        onAtmosphereParamChange();
+      };
+
+      const onDragEnd = () => {
+        isDragging = false;
+      };
+
+      sphereCanvas.addEventListener('mousedown', (e) => onDragStart(e.clientX, e.clientY));
+      window.addEventListener('mousemove', (e) => onDragMove(e.clientX, e.clientY));
+      window.addEventListener('mouseup', onDragEnd);
+
+      sphereCanvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 0) {
+          onDragStart(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (e) => {
+        if (isDragging && e.touches.length > 0) {
+          onDragMove(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }, { passive: true });
+
+      window.addEventListener('touchend', onDragEnd);
+    }
+
+    // Atmospheric Presets Buttons
     const presetBtns = document.querySelectorAll('.atmo-preset-btn');
     presetBtns.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -2838,70 +2994,380 @@ class GomPickerApp {
           AtmosphereEngine.state.bounceIntensity = p.bounce;
           AtmosphereEngine.state.sssIntensity = p.sss;
           AtmosphereEngine.state.purkinjeShift = !!p.purkinje;
+          if (p.sunElevation !== undefined) AtmosphereEngine.state.sunElevation = p.sunElevation;
+          if (p.sunAzimuth !== undefined) AtmosphereEngine.state.sunAzimuth = p.sunAzimuth;
+          if (p.groundType) AtmosphereEngine.state.groundType = p.groundType;
 
           if (sliderTime) sliderTime.value = p.time;
           if (sliderKelvin) sliderKelvin.value = p.sunTempK;
           if (sliderSky) sliderSky.value = p.skyHue;
+          if (sliderSkySat) sliderSkySat.value = Math.round(p.skySat * 100);
           if (sliderBounce) sliderBounce.value = Math.round(p.bounce * 100);
           if (sliderSss) sliderSss.value = Math.round(p.sss * 100);
           if (checkPurkinje) checkPurkinje.checked = !!p.purkinje;
+          if (sliderElevation && p.sunElevation !== undefined) sliderElevation.value = p.sunElevation;
+          if (sliderAzimuth && p.sunAzimuth !== undefined) sliderAzimuth.value = p.sunAzimuth;
+          if (terrainSelect && p.groundType) {
+            terrainSelect.value = p.groundType;
+            if (displayTerrainName) displayTerrainName.textContent = AtmosphereEngine.TERRAIN_TYPES[p.groundType]?.name || 'Terreno';
+          }
 
           if (dispTime) dispTime.textContent = p.name;
           if (dispKelvin) dispKelvin.textContent = `${p.sunTempK}K`;
           if (dispSky) dispSky.textContent = `${p.skyHue}°`;
+          if (dispSkySat) dispSkySat.textContent = `${Math.round(p.skySat * 100)}%`;
+          if (dispElevation && p.sunElevation !== undefined) dispElevation.textContent = `${p.sunElevation}°`;
+          if (dispAzimuth && p.sunAzimuth !== undefined) dispAzimuth.textContent = `${p.sunAzimuth}°`;
 
           onAtmosphereParamChange();
-          this.showToast(`Atmósfera: ${p.name}`);
+          this.showToast(`Escena: ${p.name}`);
         }
       });
     });
+
+    // Ground Terrain Selector
+    if (terrainSelect) {
+      terrainSelect.addEventListener('change', (e) => {
+        const type = e.target.value;
+        AtmosphereEngine.state.groundType = type;
+        if (displayTerrainName) {
+          displayTerrainName.textContent = AtmosphereEngine.TERRAIN_TYPES[type]?.name || 'Terreno';
+        }
+        if (customGroundContainer) {
+          customGroundContainer.style.display = type === 'custom' ? 'flex' : 'none';
+        }
+        onAtmosphereParamChange();
+      });
+    }
+
+    if (customGroundColorInput) {
+      customGroundColorInput.addEventListener('input', (e) => {
+        AtmosphereEngine.state.customGroundRgb = ColorMath.hexToRgb(e.target.value);
+        onAtmosphereParamChange();
+      });
+    }
+
+    // Sky Dome Gradient Export Buttons & Color Chips
+    if (btnCopyCssGrad) {
+      btnCopyCssGrad.addEventListener('click', () => {
+        const grad = AtmosphereEngine.getAtmosphereGradient();
+        navigator.clipboard.writeText(grad.cssGradient);
+        this.showToast('Gradiente CSS copiado al portapapeles');
+      });
+    }
+
+    if (btnGradToLibrary) {
+      btnGradToLibrary.addEventListener('click', () => {
+        const grad = AtmosphereEngine.getAtmosphereGradient();
+        const hexes = [grad.zenith.hex, grad.horizon.hex, grad.ground.hex];
+        const palName = `Domo Rayleigh (${Math.floor(AtmosphereEngine.state.timeOfDay)}h)`;
+        this.swatchManager.addPalette(palName, hexes);
+        this.renderSwatchesCollection();
+        this.showToast(`Añadida paleta: '${palName}' a Muestras`);
+      });
+    }
+
+    if (chipZenith) {
+      chipZenith.addEventListener('click', () => {
+        const grad = AtmosphereEngine.getAtmosphereGradient();
+        this.setColorDirectly(grad.zenith.rgb);
+        this.showToast(`Cargado color Zenith: ${grad.zenith.hex}`);
+      });
+    }
+
+    if (chipHorizon) {
+      chipHorizon.addEventListener('click', () => {
+        const grad = AtmosphereEngine.getAtmosphereGradient();
+        this.setColorDirectly(grad.horizon.rgb);
+        this.showToast(`Cargado color Horizonte: ${grad.horizon.hex}`);
+      });
+    }
+
+    if (chipGround) {
+      chipGround.addEventListener('click', () => {
+        const grad = AtmosphereEngine.getAtmosphereGradient();
+        this.setColorDirectly(grad.ground.rgb);
+        this.showToast(`Cargado color Terreno: ${grad.ground.hex}`);
+      });
+    }
+
+    // Global Tint & Glaze Studio Controls
+    if (tintEnableCheck) {
+      tintEnableCheck.addEventListener('change', (e) => {
+        AtmosphereEngine.state.tintEnabled = e.target.checked;
+        if (e.target.checked && AtmosphereEngine.state.tintAmount <= 0) {
+          AtmosphereEngine.state.tintAmount = 0.45;
+          if (tintIntensitySlider) tintIntensitySlider.value = 45;
+          if (dispTintIntensity) dispTintIntensity.textContent = '45%';
+        }
+        onAtmosphereParamChange();
+        this.showToast(e.target.checked ? 'Tinte Global Activado' : 'Tinte Global Desactivado');
+      });
+    }
+
+    const setTintColor = (hex) => {
+      AtmosphereEngine.state.tintColor = hex;
+      AtmosphereEngine.state.tintRgb = ColorMath.hexToRgb(hex);
+      if (tintColorInput) tintColorInput.value = hex;
+      if (tintColorText) tintColorText.value = hex;
+      if (dispTintColorHex) dispTintColorHex.textContent = hex;
+    };
+
+    if (tintColorInput) {
+      tintColorInput.addEventListener('input', (e) => {
+        setTintColor(e.target.value.toUpperCase());
+        onAtmosphereParamChange();
+      });
+    }
+
+    if (tintColorText) {
+      tintColorText.addEventListener('input', (e) => {
+        let val = e.target.value.trim();
+        if (!val.startsWith('#')) val = '#' + val;
+        if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+          setTintColor(val.toUpperCase());
+          onAtmosphereParamChange();
+        }
+      });
+    }
+
+    if (tintTargetSelect) {
+      tintTargetSelect.addEventListener('change', (e) => {
+        AtmosphereEngine.state.tintTarget = e.target.value;
+        if (tintSecondaryContainer) {
+          tintSecondaryContainer.style.display = e.target.value === 'split' ? 'block' : 'none';
+        }
+        onAtmosphereParamChange();
+      });
+    }
+
+    const setSecondaryTintColor = (hex) => {
+      AtmosphereEngine.state.tintSecondaryColor = hex;
+      AtmosphereEngine.state.tintSecondaryRgb = ColorMath.hexToRgb(hex);
+      if (tintSecondaryColorInput) tintSecondaryColorInput.value = hex;
+      if (tintSecondaryColorText) tintSecondaryColorText.value = hex;
+      if (dispTintSecondaryColorHex) dispTintSecondaryColorHex.textContent = hex;
+    };
+
+    if (tintSecondaryColorInput) {
+      tintSecondaryColorInput.addEventListener('input', (e) => {
+        setSecondaryTintColor(e.target.value.toUpperCase());
+        onAtmosphereParamChange();
+      });
+    }
+
+    if (tintSecondaryColorText) {
+      tintSecondaryColorText.addEventListener('input', (e) => {
+        let val = e.target.value.trim();
+        if (!val.startsWith('#')) val = '#' + val;
+        if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+          setSecondaryTintColor(val.toUpperCase());
+          onAtmosphereParamChange();
+        }
+      });
+    }
+
+    if (tintBlendSelect) {
+      tintBlendSelect.addEventListener('change', (e) => {
+        AtmosphereEngine.state.tintBlendMode = e.target.value;
+        onAtmosphereParamChange();
+      });
+    }
+
+    if (tintIntensitySlider) {
+      tintIntensitySlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        AtmosphereEngine.state.tintAmount = val / 100;
+        if (dispTintIntensity) dispTintIntensity.textContent = `${val}%`;
+
+        if (val > 0 && !AtmosphereEngine.state.tintEnabled) {
+          AtmosphereEngine.state.tintEnabled = true;
+          if (tintEnableCheck) tintEnableCheck.checked = true;
+        }
+
+        onAtmosphereParamChange();
+      });
+    }
+
+    tintPresetBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const hex = btn.dataset.hex;
+        const mode = btn.dataset.mode || 'soft_light';
+        setTintColor(hex);
+        if (tintBlendSelect) tintBlendSelect.value = mode;
+        AtmosphereEngine.state.tintBlendMode = mode;
+        AtmosphereEngine.state.tintEnabled = true;
+        if (tintEnableCheck) tintEnableCheck.checked = true;
+
+        if (AtmosphereEngine.state.tintAmount <= 0) {
+          AtmosphereEngine.state.tintAmount = 0.5;
+          if (tintIntensitySlider) tintIntensitySlider.value = 50;
+          if (dispTintIntensity) dispTintIntensity.textContent = '50%';
+        }
+
+        onAtmosphereParamChange();
+        this.showToast(`Tinte aplicado: ${btn.textContent.trim()}`);
+      });
+    });
+
+    if (btnTintPickActive) {
+      btnTintPickActive.addEventListener('click', () => {
+        const curRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
+        const hex = curRgb.hex;
+        setTintColor(hex);
+        AtmosphereEngine.state.tintEnabled = true;
+        if (tintEnableCheck) tintEnableCheck.checked = true;
+
+        if (AtmosphereEngine.state.tintAmount <= 0) {
+          AtmosphereEngine.state.tintAmount = 0.5;
+          if (tintIntensitySlider) tintIntensitySlider.value = 50;
+          if (dispTintIntensity) dispTintIntensity.textContent = '50%';
+        }
+
+        onAtmosphereParamChange();
+        this.showToast(`Tinte global establecido desde color activo: ${hex}`);
+      });
+    }
+
+    // Suite Integration Action Buttons
+    if (btnSaveBreakdown) {
+      btnSaveBreakdown.addEventListener('click', () => {
+        const baseRgb = this.activeWell === 'fg' ? this.baseFgColor : this.baseBgColor;
+        const stages = AtmosphereEngine.calculateLightingStages(baseRgb);
+        const hexes = [
+          stages.highlight.hex,
+          stages.directLight.hex,
+          stages.terminator.hex,
+          stages.shadow.hex,
+          stages.occlusion.hex
+        ];
+        const palName = `Física Sombras (${Math.floor(AtmosphereEngine.state.timeOfDay)}h - ${baseRgb.hex || ''})`;
+        this.swatchManager.addPalette(palName, hexes);
+        this.renderSwatchesCollection();
+        this.showToast(`Guardada paleta de 5 etapas en Biblioteca: '${palName}'`);
+      });
+    }
+
+    if (btnProject4D) {
+      btnProject4D.addEventListener('click', () => {
+        const navBtn = document.querySelector('.nav-tab-btn[data-tab="hyper4d"]');
+        if (navBtn) navBtn.click();
+        this.showToast('Desglose de iluminación proyectado en el Hiperespacio 4D');
+      });
+    }
+
+    if (btnSendFlorent) {
+      btnSendFlorent.addEventListener('click', () => {
+        const navBtn = document.querySelector('.nav-tab-btn[data-tab="florent"]');
+        if (navBtn) navBtn.click();
+        this.showToast('Luz y sombras transferidas al estudio Florent Farges');
+      });
+    }
+
+    if (btnSendRamps) {
+      btnSendRamps.addEventListener('click', () => {
+        const navBtn = document.querySelector('.nav-tab-btn[data-tab="ramps"]');
+        if (navBtn) navBtn.click();
+        this.showToast('Desglose de sombras enviado a Ramps Studio');
+      });
+    }
+
+    if (btnSendWetMixer) {
+      btnSendWetMixer.addEventListener('click', () => {
+        const navBtn = document.querySelector('.nav-tab-btn[data-tab="wetmixer"]');
+        if (navBtn) navBtn.click();
+        this.showToast('Tonos transferidos a la paleta húmeda Wet Mixer');
+      });
+    }
   }
 
   renderAtmosphereStages() {
     const grid = document.getElementById('atmoShadingStagesGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
+    const sphereCanvas = document.getElementById('atmoSphereCanvas');
     const baseRgb = this.activeWell === 'fg' ? this.baseFgColor : this.baseBgColor;
+
+    // 1. Calculate lighting stages using the updated atmosphereEngine
     const stages = AtmosphereEngine.calculateLightingStages(baseRgb);
 
-    Object.values(stages).forEach(stage => {
-      const card = document.createElement('div');
-      card.className = 'atmo-stage-card';
-      card.dataset.swatchHex = stage.hex;
-      card.dataset.swatchLabel = stage.name;
-      card.draggable = true;
+    // 2. Render 6 Scientific Stage Cards
+    if (grid) {
+      grid.innerHTML = '';
+      Object.values(stages).forEach(stage => {
+        const card = document.createElement('div');
+        card.className = 'atmo-stage-card';
+        card.dataset.swatchHex = stage.hex;
+        card.dataset.swatchLabel = stage.name;
+        card.draggable = true;
 
-      const pill = document.createElement('div');
-      pill.className = 'atmo-stage-color-pill';
-      pill.style.backgroundColor = stage.hex;
+        const pill = document.createElement('div');
+        pill.className = 'atmo-stage-color-pill';
+        pill.style.backgroundColor = stage.hex;
 
-      const title = document.createElement('div');
-      title.className = 'atmo-stage-name';
-      title.textContent = stage.name;
+        const title = document.createElement('div');
+        title.className = 'atmo-stage-name';
+        title.textContent = stage.name;
 
-      const hex = document.createElement('div');
-      hex.className = 'atmo-stage-hex copyable-hex';
-      hex.textContent = stage.hex;
+        const hex = document.createElement('div');
+        hex.className = 'atmo-stage-hex copyable-hex';
+        hex.textContent = stage.hex;
 
-      const desc = document.createElement('div');
-      desc.className = 'atmo-stage-desc';
-      desc.textContent = stage.desc;
+        const desc = document.createElement('div');
+        desc.className = 'atmo-stage-desc';
+        desc.textContent = stage.desc;
 
-      card.title = `${stage.name} (${stage.hex}) - ${stage.desc}`;
+        card.title = `${stage.name} (${stage.hex}) - ${stage.desc}`;
 
-      card.appendChild(pill);
-      card.appendChild(title);
-      card.appendChild(hex);
-      card.appendChild(desc);
+        card.appendChild(pill);
+        card.appendChild(title);
+        card.appendChild(hex);
+        card.appendChild(desc);
 
-      card.addEventListener('click', () => {
-        this.setColorDirectly(stage.rgb);
-        this.showToast(`Tono ${stage.name} cargado: ${stage.hex}`);
+        card.addEventListener('click', () => {
+          this.setColorDirectly(stage.rgb);
+          this.showToast(`Tono ${stage.name} cargado: ${stage.hex}`);
+        });
+
+        grid.appendChild(card);
       });
+    }
 
-      grid.appendChild(card);
-    });
+    // 3. Render 3D Physically Lit Optical Sphere
+    if (sphereCanvas) {
+      AtmosphereEngine.renderSphere(sphereCanvas, baseRgb);
+    }
+
+    // 4. Update Continuous Sky Dome Gradient Bar & Chips
+    const atmoGrad = AtmosphereEngine.getAtmosphereGradient();
+    const skyDomeBar = document.getElementById('atmoSkyDomeBar');
+    if (skyDomeBar) {
+      skyDomeBar.style.background = atmoGrad.cssGradient;
+    }
+
+    const zChip = document.getElementById('atmoGradZenithChip');
+    if (zChip) {
+      const dot = zChip.querySelector('.atmo-stop-dot');
+      const hex = zChip.querySelector('.atmo-stop-hex');
+      if (dot) dot.style.backgroundColor = atmoGrad.zenith.hex;
+      if (hex) hex.textContent = atmoGrad.zenith.hex;
+    }
+
+    const hChip = document.getElementById('atmoGradHorizonChip');
+    if (hChip) {
+      const dot = hChip.querySelector('.atmo-stop-dot');
+      const hex = hChip.querySelector('.atmo-stop-hex');
+      if (dot) dot.style.backgroundColor = atmoGrad.horizon.hex;
+      if (hex) hex.textContent = atmoGrad.horizon.hex;
+    }
+
+    const gChip = document.getElementById('atmoGradGroundChip');
+    if (gChip) {
+      const dot = gChip.querySelector('.atmo-stop-dot');
+      const hex = gChip.querySelector('.atmo-stop-hex');
+      const lbl = gChip.querySelector('.atmo-stop-label');
+      if (dot) dot.style.backgroundColor = atmoGrad.ground.hex;
+      if (hex) hex.textContent = atmoGrad.ground.hex;
+      if (lbl) lbl.textContent = atmoGrad.ground.label;
+    }
   }
 
   // --- MUNSELL & JAMES GURNEY MASKS ---
