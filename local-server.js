@@ -35,6 +35,37 @@ const MIME_TYPES = {
 };
 
 function startServer(port) {
+  const clients = new Set();
+
+  // Watcher para Live-Reload automático en cambios de disco
+  const watchDirs = [ROOT_DIR, path.join(ROOT_DIR, 'scripts'), path.join(ROOT_DIR, 'styles')];
+  let reloadDebounce = null;
+  const notifyClients = () => {
+    clearTimeout(reloadDebounce);
+    reloadDebounce = setTimeout(() => {
+      console.log('[LiveReload] Cambio detectado en archivos -> notificando al navegador...');
+      for (const client of clients) {
+        try {
+          client.write('data: reload\n\n');
+        } catch (e) {
+          clients.delete(client);
+        }
+      }
+    }, 120);
+  };
+
+  watchDirs.forEach(dir => {
+    if (fs.existsSync(dir)) {
+      try {
+        fs.watch(dir, { recursive: false }, (evt, filename) => {
+          if (filename && (filename.endsWith('.js') || filename.endsWith('.css') || filename.endsWith('.html'))) {
+            notifyClients();
+          }
+        });
+      } catch (e) {}
+    }
+  });
+
   const server = http.createServer((req, res) => {
     // Cabeceras CORS completas para Photoshop UXP / CEP
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -48,6 +79,21 @@ function startServer(port) {
     }
 
     let reqUrl = req.url.split('?')[0];
+
+    // Endpoint de Live-Reload (SSE)
+    if (reqUrl === '/livereload-stream') {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.write(': connected\n\n');
+      clients.add(res);
+      req.on('close', () => clients.delete(res));
+      return;
+    }
+
     if (reqUrl === '/' || reqUrl === '') {
       reqUrl = '/index.html';
     }
@@ -68,6 +114,8 @@ function startServer(port) {
       res.writeHead(200, {
         'Content-Type': contentType,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
         'Content-Length': stats.size
       });
 

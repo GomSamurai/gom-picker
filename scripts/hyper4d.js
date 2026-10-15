@@ -12,11 +12,11 @@
  * 100% Offline, sin dependencias externas, con aceleración Canvas interactiva a 60fps.
  */
 
-import { ColorMath } from './colorMath.js';
-import { MunsellSystem } from './munsellSystem.js';
-import { FlorentFargesEngine } from './florentFarges.js';
-import { HarmonyEngine } from './harmonies.js';
-import { RampStudio } from './rampStudio.js';
+import { ColorMath } from './colorMath.js?v=3.0';
+import { MunsellSystem } from './munsellSystem.js?v=3.0';
+import { FlorentFargesEngine } from './florentFarges.js?v=3.0';
+import { HarmonyEngine } from './harmonies.js?v=3.0';
+import { RampStudio } from './rampStudio.js?v=3.0';
 
 export class Hyper4DStudio {
   constructor(app) {

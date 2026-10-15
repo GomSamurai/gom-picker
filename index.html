@@ -4,8 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GOM Color Picker Pro — El Color Picker Definitivo para Photoshop y Artistas</title>
-  <meta name="description" content="Suite definitiva de color para ilustradores y pintores: Rueda Coolorus, Hero Color, Bandas Compañeras, Munsell, Gamut Masks de James Gurney, Pigmentos Florent Farges, Chromilla, Atmósfera Dinámica, Maestros del Arte, Extractor K-Means en Lote y Asesor IA Local y Privado.">
-  <link rel="stylesheet" href="styles/main.css?v=2.2">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <link rel="stylesheet" href="styles/main.css?v=3.0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%236366F1'/><path d='M30 50 Q50 20 70 50 T30 50' fill='%2306B6D4'/></svg>">
 </head>
 <body>
@@ -3465,6 +3467,21 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Scripts -->
-  <script type="module" src="scripts/app.js?v=2.2"></script>
+  <script type="module" src="scripts/app.js?v=3.0"></script>
+
+  <!-- Live Reload Client (SSE) -->
+  <script>
+    if (window.location.protocol.startsWith('http')) {
+      try {
+        const es = new EventSource('/livereload-stream');
+        es.onmessage = (e) => {
+          if (e.data === 'reload') {
+            console.log('[LiveReload] Recarga automática activada por cambio en servidor');
+            window.location.reload();
+          }
+        };
+      } catch (err) {}
+    }
+  </script>
 </body>
 </html>

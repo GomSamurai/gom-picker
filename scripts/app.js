@@ -31,7 +31,7 @@ import { CVDSimulator } from './cvdSimulator.js';
 import { RampStudio } from './rampStudio.js';
 import { SwatchSheetExporter } from './swatchSheetExporter.js';
 import { ProfileBackup } from './profileBackup.js';
-import { Hyper4DStudio } from './hyper4d.js';
+import { Hyper4DStudio } from './hyper4d.js?v=3.0';
 import { PaletteImporterEngine } from './paletteImporter.js';
 
 class GomPickerApp {
@@ -975,8 +975,10 @@ class GomPickerApp {
           this.renderRampStudio();
         }
         if (tabKey === 'hyper4d' && this.hyper4dStudio) {
-          this.hyper4dStudio._resizeCanvas();
-          this.hyper4dStudio.syncWithActiveColor();
+          requestAnimationFrame(() => {
+            this.hyper4dStudio._resizeCanvas();
+            this.hyper4dStudio.syncWithActiveColor();
+          });
         }
 
         // Scroll content wrapper smoothly to top when switching workspaces
