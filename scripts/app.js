@@ -31,7 +31,7 @@ import { CVDSimulator } from './cvdSimulator.js';
 import { RampStudio } from './rampStudio.js';
 import { SwatchSheetExporter } from './swatchSheetExporter.js';
 import { ProfileBackup } from './profileBackup.js';
-import { Hyper4DStudio } from './hyper4d.js?v=3.1';
+import { Hyper4DStudio } from './hyper4d.js?v=3.2';
 import { PaletteImporterEngine } from './paletteImporter.js';
 
 class GomPickerApp {
@@ -990,7 +990,10 @@ class GomPickerApp {
           requestAnimationFrame(() => {
             this.hyper4dStudio._resizeCanvas();
             this.hyper4dStudio.syncWithActiveColor();
+            this.hyper4dStudio._startRenderLoop();
           });
+          setTimeout(() => this.hyper4dStudio?._resizeCanvas(), 80);
+          setTimeout(() => this.hyper4dStudio?._resizeCanvas(), 250);
         }
 
         // Scroll content wrapper smoothly to top when switching workspaces

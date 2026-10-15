@@ -158,6 +158,11 @@ export class Hyper4DStudio {
     this._geometryCache = {};
     this.particles = [];
     this._initParticles();
+
+    // Dimensiones de pantalla seguras por defecto (evita divisiones por 0 o NaN antes del primer resize)
+    this.displayWidth = 800;
+    this.displayHeight = 560;
+    this.animId = null;
   }
 
   init() {
@@ -194,14 +199,30 @@ export class Hyper4DStudio {
   }
 
   _resizeCanvas() {
-    if (!this.canvas || !this.canvas.parentElement) return;
-    const parent = this.canvas.parentElement;
-    const rect = parent.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
+    if (!this.canvas) return;
+    const parent = this.canvas.parentElement || document.getElementById('hyper4dCanvasContainer');
+    if (!parent) return;
 
+    const rect = parent.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.max(280, Math.floor(rect.width));
-    const h = Math.max(320, Math.floor(rect.height || parent.clientHeight || 560));
+
+    let w = Math.floor(rect.width);
+    let h = Math.floor(rect.height || parent.clientHeight);
+
+    // Si el contenedor está temporalmente oculto (display: none al cargar la suite)
+    if (w <= 0 || h <= 0) {
+      const stage = document.getElementById('hyper4dStageLayout');
+      const stageRect = stage ? stage.getBoundingClientRect() : null;
+      if (stageRect && stageRect.width > 0) {
+        w = Math.max(280, Math.floor(stageRect.width - (this.options.isSidebarHidden ? 0 : 380)));
+      } else {
+        w = this.displayWidth || 800;
+      }
+      h = this.displayHeight || 560;
+    }
+
+    w = Math.max(280, w);
+    h = Math.max(320, h);
 
     const targetW = Math.floor(w * dpr);
     const targetH = Math.floor(h * dpr);
@@ -209,9 +230,10 @@ export class Hyper4DStudio {
     if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
       this.canvas.width = targetW;
       this.canvas.height = targetH;
-      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-      this.ctx.scale(dpr, dpr);
     }
+    // Asegurar que la transformación siempre esté correctamente escalada con el DPR
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.scale(dpr, dpr);
 
     this.canvas.style.width = '100%';
     this.canvas.style.height = '100%';
@@ -1256,8 +1278,16 @@ export class Hyper4DStudio {
   // --- RENDERIZADOR PRINCIPAL EN CANVAS ---
 
   _startRenderLoop() {
+    if (this.animId) {
+      cancelAnimationFrame(this.animId);
+      this.animId = null;
+    }
     const loop = () => {
-      this._renderFrame();
+      try {
+        this._renderFrame();
+      } catch (err) {
+        console.warn('Hyper4DStudio render frame warning:', err);
+      }
       this.animId = requestAnimationFrame(loop);
     };
     this.animId = requestAnimationFrame(loop);
@@ -1265,6 +1295,24 @@ export class Hyper4DStudio {
 
   _renderFrame() {
     if (!this.ctx || !this.canvas) return;
+
+    // Si la vista está oculta en el DOM (display: none), evitar cálculos innecesarios
+    const view = document.getElementById('viewHyper4D');
+    if (view && (view.style.display === 'none' || view.classList.contains('tab-hidden')) && !this.options.isFullscreen) {
+      return;
+    }
+
+    let w = this.displayWidth;
+    let h = this.displayHeight;
+
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 50 || h <= 50) {
+      this._resizeCanvas();
+      w = this.displayWidth;
+      h = this.displayHeight;
+      if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 50 || h <= 50) {
+        return; // Aún sin dimensiones válidas en el DOM, saltar frame limpiamente
+      }
+    }
 
     // 1. Interpolación suave de cámara (Lerp)
     const lerpSpeed = 0.08;
@@ -1306,12 +1354,10 @@ export class Hyper4DStudio {
       this._updateWDisplayLabel();
     }
 
-    const w = this.displayWidth;
-    const h = this.displayHeight;
-
     // 2. Fondo Cósmico con Gradiente Espacial Profundo
     this.ctx.clearRect(0, 0, w, h);
-    const bgGrad = this.ctx.createRadialGradient(w / 2, h / 2, 20, w / 2, h / 2, Math.max(w, h) * 0.75);
+    const gradR = Math.max(10, Math.max(w, h) * 0.75);
+    const bgGrad = this.ctx.createRadialGradient(w / 2, h / 2, 20, w / 2, h / 2, gradR);
     bgGrad.addColorStop(0, '#0F1322');
     bgGrad.addColorStop(0.5, '#090B12');
     bgGrad.addColorStop(1, '#040508');
@@ -1510,13 +1556,15 @@ export class Hyper4DStudio {
    * reflejo ambiental, oclusión en limbo y niebla atmosférica.
    */
   _drawSphere(x, y, radius, hex, depthFactor, isHovered, isPrimary, isGhost = false) {
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius) || radius <= 0) return;
     const ctx = this.ctx;
     const rad = Math.max(1.8, radius);
 
     // Si es nodo fantasma de fondo, renderizado ultraligero y sutil como polvo estelar
     if (isGhost) {
       ctx.save();
-      ctx.globalAlpha = Math.max(0.06, Math.min(0.18, 0.09 + depthFactor * 0.08));
+      const safeDepth = Number.isFinite(depthFactor) ? depthFactor : 0.5;
+      ctx.globalAlpha = Math.max(0.06, Math.min(0.18, 0.09 + safeDepth * 0.08));
       ctx.fillStyle = hex;
       ctx.beginPath();
       ctx.arc(x, y, Math.max(1.2, rad * 0.65), 0, Math.PI * 2);
@@ -1526,37 +1574,42 @@ export class Hyper4DStudio {
     }
 
     // Niebla de profundidad (alpha atenuada y fusión cósmica)
-    const alpha = Math.max(0.25, Math.min(1.0, 0.4 + depthFactor * 0.6));
+    const safeDepth = Number.isFinite(depthFactor) ? depthFactor : 0.5;
+    const alpha = Math.max(0.25, Math.min(1.0, 0.4 + safeDepth * 0.6));
 
     // Halo / Bloom cuántico para nodos primarios o hovered
     if (isPrimary || isHovered) {
       const glowRad = rad * 3.2;
-      const glowGrad = ctx.createRadialGradient(x, y, rad * 0.2, x, y, glowRad);
-      glowGrad.addColorStop(0, hex + '99');
-      glowGrad.addColorStop(0.5, hex + '33');
-      glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = glowGrad;
-      ctx.beginPath();
-      ctx.arc(x, y, glowRad, 0, Math.PI * 2);
-      ctx.fill();
+      if (Number.isFinite(glowRad) && glowRad > rad * 0.2) {
+        const glowGrad = ctx.createRadialGradient(x, y, rad * 0.2, x, y, glowRad);
+        glowGrad.addColorStop(0, hex + '99');
+        glowGrad.addColorStop(0.5, hex + '33');
+        glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = glowGrad;
+        ctx.beginPath();
+        ctx.arc(x, y, glowRad, 0, Math.PI * 2);
+        ctx.fill();
 
-      // Anillo de energía hiperdimensional
-      ctx.save();
-      ctx.strokeStyle = isPrimary ? '#FBBF24' : '#38BDF8';
-      ctx.lineWidth = isHovered ? 2.2 : 1.6;
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.arc(x, y, rad + 4, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
+        // Anillo de energía hiperdimensional
+        ctx.save();
+        ctx.strokeStyle = isPrimary ? '#FBBF24' : '#38BDF8';
+        ctx.lineWidth = isHovered ? 2.2 : 1.6;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(x, y, rad + 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     // Gradiente Phong 3D con luz especular desplazada al cuadrante superior izquierdo
     const lightOffsetX = -rad * 0.32;
     const lightOffsetY = -rad * 0.35;
+    const rInner = Math.max(0.1, rad * 0.08);
+    const rOuter = Math.max(rInner + 0.1, rad);
     const sphereGrad = ctx.createRadialGradient(
-      x + lightOffsetX, y + lightOffsetY, rad * 0.08,
-      x, y, rad
+      x + lightOffsetX, y + lightOffsetY, rInner,
+      x, y, rOuter
     );
 
     const rgb = ColorMath.hexToRgb(hex);
