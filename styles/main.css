@@ -7790,6 +7790,270 @@ body.value-check-mode {
   border-color: rgba(255, 255, 255, 0.25);
 }
 
+/* ==========================================================================
+   PALETTE STUDIO & 2D MIXING MATRIX (ESTUDIO AVANZADO DE PALETAS)
+   ========================================================================== */
+
+.palette-studio-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.palette-studio-color-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.palette-studio-color-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(99, 102, 241, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.pal-card-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+.pal-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pal-card-name {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.pal-card-meta {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+
+.pal-card-hex {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.pal-card-ci {
+  color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.1);
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+.pal-card-temp {
+  color: var(--text-muted);
+}
+
+.pal-card-del-btn {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #F87171;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.pal-card-del-btn:hover {
+  background: #EF4444;
+  color: #FFFFFF;
+  transform: scale(1.1);
+}
+
+/* Metric Cards */
+.pal-studio-metric-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-card-header {
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 2px;
+}
+
+.metric-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+}
+
+.metric-pill-tag {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(6, 182, 212, 0.12);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  margin-top: 4px;
+}
+
+.pal-thermal-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  margin-top: 4px;
+}
+
+/* 2D Mixing Matrix */
+.pal-matrix-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  transition: background var(--transition-fast);
+}
+
+.pal-matrix-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.pal-matrix-title {
+  width: 170px;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.pal-matrix-title strong {
+  color: #FFFFFF;
+}
+
+.pal-matrix-ramp {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  height: 26px;
+}
+
+.pal-matrix-swatch {
+  flex: 1;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+}
+
+.pal-matrix-swatch:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  border-color: #FFFFFF;
+  z-index: 2;
+}
+
+/* Tonal Ramps (Luces & Sombras) */
+.pal-tonal-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pal-tonal-label {
+  width: 140px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.pal-tonal-strip {
+  display: flex;
+  flex: 1;
+  gap: 3px;
+  height: 20px;
+}
+
+.pal-tonal-swatch {
+  flex: 1;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform var(--transition-fast);
+}
+
+.pal-tonal-swatch:hover {
+  transform: translateY(-2px);
+  border-color: #FFFFFF;
+  z-index: 1;
+}
+
+.pal-tonal-swatch.center-tone {
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
+  transform: scale(1.08);
+  z-index: 2;
+}
+
 
 
 

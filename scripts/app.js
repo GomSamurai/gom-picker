@@ -14,6 +14,7 @@ import { MunsellSystem } from './munsellSystem.js';
 import { GamutMaskEngine } from './gamutMask.js';
 import { ChromillaMixer } from './paintMixerChromilla.js';
 import { LimitedPalettes } from './limitedPalettes.js';
+import { PaletteStudioEngine } from './paletteStudio.js';
 import { MasterCatalogManager, MASTER_PALETTES, DEFAULT_CATALOGS } from './masterPalettes.js';
 import { ImageExtractor } from './imageExtractor.js';
 import { AIAssistant } from './aiAssistant.js';
@@ -50,6 +51,7 @@ class GomPickerApp {
     this._isCvdModalOpen = false;
 
     this.swatchManager = new SwatchManager();
+    this.paletteStudio = PaletteStudioEngine;
     this.imageExtractor = null;
     this.colorWheel = null;
     this.hyper4dStudio = null;
@@ -159,6 +161,7 @@ class GomPickerApp {
     safeBind('_bindGamutMaskControls', this._bindGamutMaskControls);
     safeBind('_bindMunsellControls', this._bindMunsellControls);
     safeBind('_bindLimitedPalettesControls', this._bindLimitedPalettesControls);
+    safeBind('_bindPaletteStudioControls', () => this.paletteStudio.init(this));
     safeBind('_bindChromillaControls', this._bindChromillaControls);
     safeBind('_bindFlorentControls', this._bindFlorentControls);
     safeBind('_bindMasterPainters', this._bindMasterPainters);
@@ -187,6 +190,7 @@ class GomPickerApp {
     safeBind('renderSwatchesCollection', this.renderSwatchesCollection);
     safeBind('renderAtmosphereStages', this.renderAtmosphereStages);
     safeBind('renderLimitedPalettes', () => this.renderLimitedPalettes('zorn'));
+    safeBind('renderPaletteStudio', () => this.renderPaletteStudio());
     safeBind('renderChromillaMixer', () => this.renderChromillaMixer(this.fgColor));
     safeBind('renderFlorentFarges', () => this.renderFlorentFarges(this.fgColor));
     safeBind('renderRampStudio', this.renderRampStudio);
@@ -755,6 +759,7 @@ class GomPickerApp {
     this.renderChromillaMixer(currentRgb);
     this.renderFlorentFarges(currentRgb);
     this.renderLimitedPalettes();
+    this.renderPaletteStudio();
     this._bindMasterPainters();
 
     // 10. Sync floating window via BroadcastChannel
@@ -888,6 +893,7 @@ class GomPickerApp {
     const tabBtns = document.querySelectorAll('.nav-tab-btn');
     const centerViews = {
       studio: document.getElementById('viewStudio'),
+      palette_studio: document.getElementById('viewPaletteStudio'),
       hyper4d: document.getElementById('viewHyper4D'),
       gamut_munsell: document.getElementById('viewGamutMunsell'),
       chromilla: document.getElementById('viewChromilla'),
@@ -901,6 +907,7 @@ class GomPickerApp {
 
     const tabMeta = {
       studio: { title: 'Estudio Cromático', sub: 'Rueda Coolorus, Armonías interactivas y Bandas Compañeras', icon: '🎨' },
+      palette_studio: { title: 'Estudio Avanzado de Paletas & Matrices', sub: 'Paletas de Maestros, Bibliotecas y Paleta de Usuario con análisis físico 2D', icon: '🎭' },
       hyper4d: { title: 'Hiperespacio 4D del Color', sub: 'Visualizador, Comparador & Desglose Cuadridimensional SO(4)', icon: '🔮' },
       gamut_munsell: { title: 'Máscaras de Gama & Sistema Munsell', sub: 'Gamut Masking de James Gurney y espacio tridimensional Munsell', icon: '🎯' },
       chromilla: { title: 'Chromilla: Catálogo de Tubos Reales', sub: 'Inventario físico de pigmentos (Óleo, Acrílico, Acuarela)', icon: '🧪' },
@@ -951,7 +958,7 @@ class GomPickerApp {
           return;
         }
 
-        // Center Views (Studio, Gamut Masks, Chromilla, Florent, Atmosphere, Masters, Extractor, WetMixer, Ramps)
+        // Center Views (Studio, Gamut Masks, Palette Studio, Chromilla, Florent, Atmosphere, Masters, Extractor, WetMixer, Ramps)
         tabBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
@@ -971,11 +978,10 @@ class GomPickerApp {
 
         // Trigger fresh tab renders upon switching
         if (tabKey === 'masters') this._bindMasterPainters();
+        if (tabKey === 'palette_studio') this.renderPaletteStudio();
         if (tabKey === 'gamut_munsell') {
           const hsv = this.colorWheel?.currentHsv || { h: 210 };
           this.renderMunsellSliceChart(hsv.h);
-          const sel = document.getElementById('limitedPaletteSelect');
-          this.renderLimitedPalettes(sel ? sel.value : 'zorn');
         }
         if (tabKey === 'chromilla') {
           const curRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
@@ -1017,6 +1023,11 @@ class GomPickerApp {
         }
       });
     });
+
+    this.switchTab = (tabKey) => {
+      const btn = Array.from(tabBtns).find(b => b.dataset.tab === tabKey);
+      if (btn) btn.click();
+    };
 
     // Sidebar collapse/expand toggle button
     const btnToggle = document.getElementById('btnToggleSidebar');
@@ -3975,7 +3986,18 @@ class GomPickerApp {
     }
   }
 
+  renderPaletteStudio() {
+    if (this.paletteStudio) {
+      this.paletteStudio.render();
+    }
+  }
+
   renderLimitedPalettes(paletteId = 'zorn') {
+    if (this.paletteStudio && this.paletteStudio.activeMode === 'master') {
+      this.paletteStudio.activeMasterId = paletteId;
+      const masterSelect = document.getElementById('palStudioMasterSelect');
+      if (masterSelect && masterSelect.value !== paletteId) masterSelect.value = paletteId;
+    }
     const data = LimitedPalettes.generateMixMatrix(paletteId);
     const descEl = document.getElementById('limitedPaletteDesc');
     const tubesList = document.getElementById('limitedPaletteTubesList');
@@ -8565,14 +8587,15 @@ class GomPickerApp {
       { title: 'Alternar Barra Lateral (Colapsar/Expandir)', category: 'Vista', icon: '◀', action: () => document.getElementById('btnToggleSidebar')?.click() },
       { title: 'Abrir Ventana Flotante UXP Independiente', category: 'Herramienta', icon: '🪟', action: () => document.getElementById('btnCompactMode')?.click() },
 
-      // Paletas Históricas
-      { title: 'Cargar Paleta Zorn (Ocre, Bermellón, Negro, Blanco)', category: 'Paleta', icon: '🎨', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('zorn'); } },
-      { title: 'Cargar Paleta Apeles de la Antigua Grecia', category: 'Paleta', icon: '🏛️', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('apelles'); } },
-      { title: 'Cargar Paleta William Bouguereau', category: 'Paleta', icon: '🖼️', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('bouguereau'); } },
-      { title: 'Cargar Paleta Velázquez (Tenebrismo & Retrato)', category: 'Paleta', icon: '🎭', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('velazquez'); } },
-      { title: 'Cargar Paleta Sorolla (Luminismo Mediterráneo)', category: 'Paleta', icon: '🏖️', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('sorolla'); } },
-      { title: 'Cargar Paleta Monet (Impresionismo & Sombras)', category: 'Paleta', icon: '🌸', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('monet'); } },
-      { title: 'Cargar Paleta Rembrandt (Claroscuro Cálido)', category: 'Paleta', icon: '🕯️', action: () => { this.switchTab('gamut_munsell'); this.renderLimitedPalettes('rembrandt'); } }
+      // Paletas Históricas & Estudio de Paletas
+      { title: 'Abrir Estudio Avanzado de Paletas & Matrices (Maestros, Bibliotecas, Usuario)', category: 'Espacio', icon: '🎭', action: () => this.switchTab('palette_studio') },
+      { title: 'Cargar Paleta Zorn (Ocre, Bermellón, Negro, Blanco)', category: 'Paleta', icon: '🎨', action: () => { this.switchTab('palette_studio'); this.paletteStudio.setMode('master'); this.paletteStudio.activeMasterId = 'zorn'; this.paletteStudio.render(); } },
+      { title: 'Cargar Tetracromatismo de Apeles (Antigua Grecia)', category: 'Paleta', icon: '🏛️', action: () => { this.switchTab('palette_studio'); this.paletteStudio.setMode('master'); this.paletteStudio.activeMasterId = 'apelles_tetrachrome'; this.paletteStudio.render(); } },
+      { title: 'Cargar Paleta William Bouguereau & Farges', category: 'Paleta', icon: '🖼️', action: () => { this.switchTab('palette_studio'); this.paletteStudio.setMode('master'); this.paletteStudio.activeMasterId = 'farges_academic_portrait'; this.paletteStudio.render(); } },
+      { title: 'Cargar Paleta Velázquez (Siglo de Oro & Retrato)', category: 'Paleta', icon: '👑', action: () => { this.switchTab('palette_studio'); this.paletteStudio.setMode('master'); this.paletteStudio.activeMasterId = 'velazquez_court'; this.paletteStudio.render(); } },
+      { title: 'Cargar Paleta Sorolla (Luminismo Mediterráneo)', category: 'Paleta', icon: '🏖️', action: () => { this.switchTab('palette_studio'); this.paletteStudio.setMode('master'); this.paletteStudio.activeMasterId = 'sorolla_luminism'; this.paletteStudio.render(); } },
+      { title: 'Cargar Paleta Monet (Impresionismo & Sin Negro)', category: 'Paleta', icon: '🌸', action: () => { this.switchTab('palette_studio'); this.paletteStudio.setMode('master'); this.paletteStudio.activeMasterId = 'monet_impressionist'; this.paletteStudio.render(); } },
+      { title: 'Cargar Paleta Rembrandt (Claroscuro Cálido)', category: 'Paleta', icon: '🕯️', action: () => { this.switchTab('palette_studio'); this.paletteStudio.setMode('master'); this.paletteStudio.activeMasterId = 'rembrandt_chiaroscuro'; this.paletteStudio.render(); } }
     ];
 
     const openPalette = () => {

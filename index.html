@@ -47,6 +47,10 @@
           <span class="tab-icon">🎯</span>
           <span class="tab-label">Máscaras & Munsell</span>
         </button>
+        <button class="nav-tab-btn" data-tab="palette_studio" title="Estudio Avanzado de Paletas & Matrices de Mezcla">
+          <span class="tab-icon">🎭</span>
+          <span class="tab-label">Estudio Paletas</span>
+        </button>
         <button class="nav-tab-btn" data-tab="hyper4d" title="Hiperespacio 4D: Visualizador, Comparador & Estudio Cuadridimensional">
           <span class="tab-icon">🔮</span>
           <span class="tab-label">Hiperespacio 4D</span>
@@ -900,50 +904,223 @@
           </div>
         </div>
 
-        <!-- Limited Palettes Studio -->
+      </div>
+
+      <!-- TAB: ADVANCED PALETTE STUDIO & MIXING MATRICES (ESTUDIO DE PALETAS) -->
+      <div id="viewPaletteStudio" class="tab-view" style="display: none;">
+        
+        <!-- PANEL 1: CONTROL BAR & PALETTE SOURCE SELECTION -->
         <div class="glass-panel">
-          <div class="panel-header">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
             <div class="panel-title">
-              <span>🎨</span> Estudio de Paletas Limitadas de Maestros
+              <span>🎭</span> Estudio Avanzado de Paletas & Matrices de Mezcla
             </div>
-            <select id="limitedPaletteSelect" class="chip-select">
-              <option value="zorn" selected>Paleta Zorn (Anders Zorn - 4 Tubos Canónicos)</option>
-              <option value="primary_triad">Tríada Primaria Clásica (Cyan, Magenta, Amarillo)</option>
-              <option value="renaissance_earth">Paleta Tierra Renacentista (Ocre, Sombra, Almagre)</option>
-              <option value="split_primary">Split-Primary (6 Primarios Cálidos & Fríos)</option>
-              <option value="apelles_tetrachrome">Tetracromatismo de Apeles (Grecia Clásica)</option>
-              <option value="caravaggio_tenebrism">Tenebrismo Caravaggesco (Chiaroscuro Extremo)</option>
-              <option value="velazquez_court">Paleta Regia de Velázquez (Siglo de Oro Español)</option>
-              <option value="rembrandt_chiaroscuro">Claro-Oscuro y Glaseados de Rembrandt</option>
-              <option value="monet_impressionist">Paleta Impresionista de Claude Monet (Sin Negro)</option>
-              <option value="sorolla_luminism">Luminismo Mediterráneo de Joaquín Sorolla</option>
-              <option value="farges_academic_portrait">Paleta Académica de Retrato (Florent Farges)</option>
-              <option value="grisaille_verdaccio">Grisalla y Verdaccio Florentino (Quintoceño)</option>
-              <option value="turner_atmospheric">Atmósferas y Tormentas de J.M.W. Turner</option>
-              <option value="hokusai_ukiyo_e">Grabado Ukiyo-e Tradicional (Katsushika Hokusai)</option>
-              <option value="gurney_triad_mask">Gamut Mask Triádico Armónico (James Gurney)</option>
-              <option value="matisse_fauve">Fauvismo Expresivo Puro (Henri Matisse)</option>
-              <option value="cyberpunk_neo_limited">Sci-Fi Neón Synth (Digital Concept Art)</option>
-            </select>
-          </div>
-
-          <p id="limitedPaletteDesc" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45; margin-bottom: 12px;">
-            La célebre paleta de Anders Zorn utiliza solo 4 tubos (Blanco, Ocre, Rojo Cadmio y Negro Marfil). El negro marfil funciona como un azul frío en mezclas con blanco y ocre, produciendo una gama magistral de tonos de piel y paisajes.
-          </p>
-
-          <div style="margin-bottom: 12px;">
-            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px;">TUBOS FÍSICOS DE LA PALETA:</div>
-            <div id="limitedPaletteTubesList" style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <!-- Tubes pills -->
+            
+            <!-- Suite Action Buttons -->
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <button id="btnPalStudioSaveLibrary" class="tool-action-btn" title="Guardar paleta actual en tus Bibliotecas de Muestras">
+                <span>📦</span> Guardar en Biblioteca
+              </button>
+              <button id="btnPalStudioSendWetMixer" class="tool-action-btn" title="Cargar los colores de la paleta en el lienzo del Wet Mixer">
+                <span>🖌️</span> Cargar en Wet Mixer
+              </button>
+              <button id="btnPalStudioApplyGamutMask" class="tool-action-btn" title="Activar una máscara de gama en la rueda con la envolvente de esta paleta">
+                <span>🎯</span> Crear Gamut Mask
+              </button>
+              <button id="btnPalStudioCopySheet" class="tool-action-btn" title="Copiar informe y receta técnica al portapapeles">
+                <span>📋</span> Copiar Ficha
+              </button>
             </div>
           </div>
 
-          <div>
-            <div style="font-size: 0.75rem; font-weight: 600; margin-bottom: 6px;">Matriz 2D de Mezclas Físicas Posibles:</div>
-            <div id="limitedPaletteMatrixGrid" style="display: flex; flex-direction: column; gap: 8px;">
-              <!-- 2D Pigment mixing matrix -->
+          <!-- Educational Banner -->
+          <div class="pedagogical-banner">
+            <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+              <strong>Laboratorio de Estudio y Análisis Cromático de Paletas:</strong> 
+              Investiga las fórmulas históricas de <strong>grandes maestros</strong>, analiza tus <strong>bibliotecas guardadas</strong> o diseña tu <strong>paleta personalizada de estudio</strong> en vivo. 
+              El motor calcula instantáneamente la matriz 2D de mezclas físicas sustractivas, la huella de gama (Gamut Hull), las rampas de luces/sombras y el balance térmico.
+            </p>
+          </div>
+
+          <!-- Mode Selector Bar (Chips: Maestros, Bibliotecas, Personalizada) -->
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+            <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">ORIGEN DE LA PALETA:</span>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button id="palStudioModeMaster" class="chip-select active-toggle pal-mode-btn" data-mode="master">🏛️ Paletas de Maestros & Estudio</button>
+              <button id="palStudioModeLibrary" class="chip-select pal-mode-btn" data-mode="library">📚 Mis Bibliotecas Guardadas</button>
+              <button id="palStudioModeCustom" class="chip-select pal-mode-btn" data-mode="custom">🎨 Paleta de Usuario (En Vivo)</button>
             </div>
           </div>
+
+          <!-- Sub-Selector Container: Changes based on selected mode -->
+          <div id="palStudioSubControlsContainer" style="margin-bottom: 12px;">
+            <!-- MODE 1: Master Dropdown -->
+            <div id="palStudioMasterControls" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Seleccionar Paleta Histórica:</label>
+              <select id="palStudioMasterSelect" class="chip-select" style="min-width: 340px; font-weight: 600;">
+                <!-- Populated dynamically by paletteStudio.js -->
+              </select>
+            </div>
+
+            <!-- MODE 2: Library Dropdown -->
+            <div id="palStudioLibraryControls" style="display: none; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Seleccionar de Bibliotecas:</label>
+              <select id="palStudioLibrarySelect" class="chip-select" style="min-width: 320px; font-weight: 600;">
+                <!-- Populated dynamically from swatchManager.palettes -->
+              </select>
+              <span id="palStudioLibraryCountTag" style="font-size: 0.72rem; color: var(--text-muted);">0 colores</span>
+            </div>
+
+            <!-- MODE 3: Custom Palette Controls -->
+            <div id="palStudioCustomControls" style="display: none; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                <button id="btnPalCustomAddFg" class="tool-action-btn active-toggle" title="Añadir color frontal (FG) actual a la paleta">
+                  <span>➕</span> Añadir Color Activo
+                </button>
+                <button id="btnPalCustomAddBg" class="tool-action-btn" title="Añadir color de fondo (BG) a la paleta">
+                  <span>➕</span> Añadir Fondo (BG)
+                </button>
+                <div style="display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-subtle);">
+                  <input type="color" id="palCustomColorPicker" value="#6366F1" style="width: 24px; height: 24px; border: none; background: transparent; cursor: pointer; padding: 0;">
+                  <input type="text" id="palCustomHexInput" value="#6366F1" placeholder="#HEX" style="width: 70px; background: transparent; border: none; color: #fff; font-family: var(--font-mono); font-size: 0.76rem; text-transform: uppercase;">
+                  <button id="btnPalCustomAddHex" class="chip-select" style="padding: 2px 8px; font-size: 0.7rem;">+ Añadir</button>
+                </div>
+                <select id="palCustomHarmonicPreset" class="chip-select" title="Generar armonía automática para la paleta">
+                  <option value="" disabled selected>🎲 Armonía Automática...</option>
+                  <option value="triad">Tríada Equilátera (3 colores)</option>
+                  <option value="split">Split-Complementaria (3 colores)</option>
+                  <option value="tetrad">Tétrada Rectangular (4 colores)</option>
+                  <option value="analogous">Matices Análogos (4 colores)</option>
+                  <option value="earth_warm">Variación Tonal Cálida (4 colores)</option>
+                </select>
+                <button id="btnPalCustomClear" class="tool-action-btn danger" style="padding: 4px 8px; font-size: 0.72rem;" title="Vaciar todos los colores de la paleta personalizada">
+                  <span>🗑️</span> Vaciar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Palette Info Header & Chips Strip -->
+          <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px; margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+              <div>
+                <div id="palStudioTitle" style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF;">Paleta Zorn (Anders Zorn - 4 Tubos Canónicos)</div>
+                <div id="palStudioEra" style="font-size: 0.72rem; color: var(--accent-amber); font-weight: 600; margin-top: 2px;">Siglo XIX / Realismo Sueco & Retrato</div>
+              </div>
+              <div id="palStudioChipsCount" class="chromilla-count-badge">4 Colores</div>
+            </div>
+
+            <p id="palStudioDesc" style="font-size: 0.77rem; color: var(--text-secondary); line-height: 1.45; margin-bottom: 12px;">
+              La célebre paleta de Anders Zorn utiliza solo 4 tubos (Blanco, Ocre, Rojo Cadmio y Negro Marfil)...
+            </p>
+
+            <!-- Palette Color Chips (Interactive) -->
+            <div>
+              <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">
+                COLORES DE LA PALETA (Click para activar en la rueda | En modo usuario, '✕' para borrar):
+              </div>
+              <div id="palStudioColorsContainer" class="palette-studio-chips-grid">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+
+          <!-- PANEL 2: CHROMATIC FOOTPRINT & GAMUT DIAGNOSTICS -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-bottom: 14px;">
+            
+            <!-- Card 1: Tonal Range & Contrast -->
+            <div class="pal-studio-metric-card">
+              <div class="metric-card-header">
+                <span>📊</span> Rango Tonal & Contraste
+              </div>
+              <div id="palMetricTonal" class="metric-card-body">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- Card 2: Chroma & Saturation Range -->
+            <div class="pal-studio-metric-card">
+              <div class="metric-card-header">
+                <span>🌈</span> Rango de Croma & Vivacidad
+              </div>
+              <div id="palMetricChroma" class="metric-card-body">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- Card 3: Thermal Balance (Warm/Cool/Neutral) -->
+            <div class="pal-studio-metric-card">
+              <div class="metric-card-header">
+                <span>🌡️</span> Balance Térmico
+              </div>
+              <div id="palMetricThermal" class="metric-card-body">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- Card 4: Gamut Span & Wheel Coverage -->
+            <div class="pal-studio-metric-card">
+              <div class="metric-card-header">
+                <span>📐</span> Cobertura de Gama (Gamut Span)
+              </div>
+              <div id="palMetricSpan" class="metric-card-body">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Easel Workshop Advice Banner -->
+          <div id="palStudioAdviceBox" class="chromilla-advice-box" style="margin-bottom: 14px;">
+            <div style="font-size: 0.78rem; font-weight: 700; color: #A5B4FC; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+              <span>💡</span> Diagnóstico de Taller & Consejos de Caballete:
+            </div>
+            <div id="palStudioAdviceText" style="font-size: 0.74rem; color: var(--text-secondary); line-height: 1.5;">
+              Cargando análisis de paleta...
+            </div>
+          </div>
+
+          <!-- PANEL 3: 2D PHYSICAL SUBTRACTIVE MIXING MATRIX -->
+          <div style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+              <div style="font-size: 0.85rem; font-weight: 700; color: #FFFFFF; display: flex; align-items: center; gap: 6px;">
+                <span>🎨</span> Matriz 2D de Mezclas Físicas Sustractivas (Pairwise Mixing Matrix):
+              </div>
+              <span style="font-size: 0.72rem; color: var(--text-muted);">
+                5 pasos sustractivos de pigmento • Click en cualquier muestra para cargarla
+              </span>
+            </div>
+
+            <div id="palStudioMatrixGrid" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- PANEL 4: HIGH-KEY TINTS & LOW-KEY SHADES (LUCES & SOMBRAS) -->
+          <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px; margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+              <div style="font-size: 0.8rem; font-weight: 700; color: #FFFFFF;">
+                🌓 Modulación Tonal: Escala de Luces (Tintes) & Sombras (Shades)
+              </div>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Comportamiento tonal de cada color con Blanco / Tierra Sombra</span>
+            </div>
+            <div id="palStudioTonalRampsContainer" style="display: flex; flex-direction: column; gap: 6px;">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- PANEL 5: GAMUT HULL RADAR CANVAS -->
+          <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <div style="font-size: 0.8rem; font-weight: 700; color: #FFFFFF;">
+                🎯 Huella en la Rueda Cromática (Gamut Envelope / James Gurney Hull)
+              </div>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Polígono delimitador de la saturación y matices de la paleta</span>
+            </div>
+            <div style="display: flex; justify-content: center; align-items: center; padding: 8px;">
+              <canvas id="palStudioGamutCanvas" width="280" height="280" style="width: 280px; height: 280px; border-radius: 50%; background: rgba(0,0,0,0.5); border: 1px solid var(--border-subtle); box-shadow: 0 4px 20px rgba(0,0,0,0.4);"></canvas>
+            </div>
+          </div>
+
         </div>
 
       </div>
