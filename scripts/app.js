@@ -39,10 +39,12 @@ import { PaletteOptimizer } from './paletteOptimizer.js';
 class GomPickerApp {
   constructor() {
     this.activeWell = 'fg'; // 'fg' | 'bg'
-    this.fgColor = { r: 99, g: 102, b: 241, hex: '#6366F1' };
-    this.bgColor = { r: 244, g: 63, b: 94, hex: '#F43F5E' };
-    this.baseFgColor = { r: 99, g: 102, b: 241, hex: '#6366F1' };
-    this.baseBgColor = { r: 244, g: 63, b: 94, hex: '#F43F5E' };
+    this.fgColor = { r: 0, g: 0, b: 0, hex: '#000000' };
+    this.bgColor = { r: 255, g: 255, b: 255, hex: '#FFFFFF' };
+    this.baseFgColor = { r: 0, g: 0, b: 0, hex: '#000000' };
+    this.baseBgColor = { r: 255, g: 255, b: 255, hex: '#FFFFFF' };
+    this.savedWheelMode = 'triangle';
+    this.savedTab = null;
     this.activeSpace = 'rgb'; // 'rgb' | 'cmyk' | 'hsl'
     this.lastGamutCheck = null;
 
@@ -121,16 +123,24 @@ class GomPickerApp {
     // 3. Initialize Floating Swatch Tooltip Engine (Hover info + Pinned card)
     this.tooltipEngine = new TooltipEngine(this);
 
-    // 4. Initialize Core Canvases First (Color Wheel & Image Extractor)
+    // 4. Restore Saved Session FIRST (colors, activeWell, wheelMode)
+    this._restoreSavedSession();
+
+    // 5. Initialize Core Canvases (Color Wheel & Image Extractor)
     try {
       const wheelCanvas = document.getElementById('colorWheelCanvas');
-      const initialHsv = ColorMath.rgbToHsv(this.fgColor.r, this.fgColor.g, this.fgColor.b);
+      const activeColor = this.activeWell === 'bg' ? this.bgColor : this.fgColor;
+      const initialHsv = ColorMath.rgbToHsv(activeColor.r, activeColor.g, activeColor.b);
       this.colorWheel = new ColorWheel(wheelCanvas, {
-        mode: 'triangle',
+        mode: this.savedWheelMode || 'triangle',
         harmonyRule: 'triadic',
         onChange: (colorData) => this.handleWheelColorChange(colorData)
       });
-      this.colorWheel.setColor(initialHsv, true);
+      if (this.savedWheelMode) {
+        const sel = document.getElementById('wheelModeSelect');
+        if (sel) sel.value = this.savedWheelMode;
+      }
+      this.colorWheel.setColor(initialHsv, false);
     } catch (err) {
       console.error('[GOM Picker Pro] Error initializing ColorWheel:', err);
     }
@@ -142,7 +152,7 @@ class GomPickerApp {
       console.error('[GOM Picker Pro] Error initializing ImageExtractor:', err);
     }
 
-    // 5. Bind UI Controls & Event Listeners
+    // 6. Bind UI Controls & Event Listeners
     const safeBind = (name, fn) => {
       try {
         fn.call(this);
@@ -182,9 +192,26 @@ class GomPickerApp {
     safeBind('_bindProfileBackupControls', this._bindProfileBackupControls);
     this.hyper4dStudio = new Hyper4DStudio(this);
     safeBind('hyper4dInit', () => this.hyper4dStudio.init());
-    safeBind('_restoreSavedSession', this._restoreSavedSession);
+    
+    // Auto-save on page unload
+    window.addEventListener('beforeunload', () => this._saveSession());
 
-    // 6. Initial Renderings and Trigger Sync
+    // 7. Initial Renderings and Full State Sync
+    // Explicitly sync physical swatches on screen with current FG/BG colors
+    const fg = document.getElementById('fgWell');
+    const bg = document.getElementById('bgWell');
+    if (fg) {
+      fg.style.backgroundColor = this.fgColor.hex;
+      if (this.activeWell === 'fg') fg.classList.add('active'); else fg.classList.remove('active');
+    }
+    if (bg) {
+      bg.style.backgroundColor = this.bgColor.hex;
+      if (this.activeWell === 'bg') bg.classList.add('active'); else bg.classList.remove('active');
+    }
+
+    const curActive = this.activeWell === 'bg' ? this.bgColor : this.fgColor;
+    this.setColorDirectly(curActive, false);
+
     safeBind('renderHistoryRibbon', this.renderHistoryRibbon);
     safeBind('renderQuickPalette', this.renderQuickPalette);
     safeBind('renderSwatchesCollection', this.renderSwatchesCollection);
@@ -199,6 +226,10 @@ class GomPickerApp {
     safeBind('updateWcagBadge', this.updateWcagBadge);
     safeBind('updateLiveAccentTheme', () => this.updateLiveAccentTheme(this.fgColor.hex, this.fgColor));
     safeBind('initialHistoryPush', () => this.pushColorHistory(true));
+
+    if (this.savedTab && this.savedTab !== 'studio') {
+      setTimeout(() => this.switchTab(this.savedTab), 60);
+    }
 
     console.log('[GOM Picker Pro] Inicializado con éxito. Todos los sistemas operativos.');
   }
@@ -382,6 +413,7 @@ class GomPickerApp {
       const activeColor = well === 'fg' ? this.fgColor : this.bgColor;
       this.hyper4dStudio.updateActiveColor(activeColor);
     }
+    this._saveSession();
   }
 
   _bindHeroColorAndCompanionBands() {
@@ -499,6 +531,10 @@ class GomPickerApp {
     this.fgColor = { ...this.bgColor };
     this.bgColor = temp;
 
+    const tempBase = { ...this.baseFgColor };
+    this.baseFgColor = { ...this.baseBgColor };
+    this.baseBgColor = tempBase;
+
     const fg = document.getElementById('fgWell');
     const bg = document.getElementById('bgWell');
     if (fg) fg.style.backgroundColor = this.fgColor.hex;
@@ -507,6 +543,17 @@ class GomPickerApp {
     const currentRgb = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
     this.setColorDirectly(currentRgb);
     this.renderPigmentBlender();
+    this._saveSession();
+    if (this.broadcastChannel) {
+      this.broadcastChannel.postMessage({
+        type: 'MAIN_COLOR_UPDATE',
+        rgb: currentRgb,
+        hex: currentRgb.hex,
+        activeWell: this.activeWell,
+        fgColor: this.fgColor,
+        bgColor: this.bgColor
+      });
+    }
     this.showToast('Colores frontal y fondo intercambiados (Tecla X)');
   }
 
@@ -8461,6 +8508,7 @@ class GomPickerApp {
     if (bg) { bg.style.backgroundColor = '#FFFFFF'; bg.classList.remove('active'); }
     this.setColorDirectly(this.fgColor);
     this.pushColorHistory(true);
+    this._saveSession();
     this.showToast('Colores restablecidos a Blanco y Negro por defecto (D)', 'info');
   }
 
@@ -8489,6 +8537,8 @@ class GomPickerApp {
       const session = {
         fg: this.fgColor,
         bg: this.bgColor,
+        baseFg: this.baseFgColor,
+        baseBg: this.baseBgColor,
         activeWell: this.activeWell,
         tab: activeTabBtn ? activeTabBtn.dataset.tab : 'studio',
         wheelMode: document.getElementById('wheelModeSelect')?.value || 'triangle'
@@ -8500,27 +8550,31 @@ class GomPickerApp {
   _restoreSavedSession() {
     try {
       const raw = localStorage.getItem('gom_picker_session_v1');
-      if (!raw) return;
+      if (!raw) return false;
       const data = JSON.parse(raw);
       if (data.fg && data.fg.r !== undefined) {
-        this.fgColor = data.fg;
-        this.baseFgColor = { ...data.fg };
+        const hex = data.fg.hex || ColorMath.rgbToHex(data.fg.r, data.fg.g, data.fg.b);
+        this.fgColor = { r: data.fg.r, g: data.fg.g, b: data.fg.b, hex };
+        this.baseFgColor = data.baseFg ? { ...data.baseFg } : { ...this.fgColor };
       }
       if (data.bg && data.bg.r !== undefined) {
-        this.bgColor = data.bg;
-        this.baseBgColor = { ...data.bg };
+        const hex = data.bg.hex || ColorMath.rgbToHex(data.bg.r, data.bg.g, data.bg.b);
+        this.bgColor = { r: data.bg.r, g: data.bg.g, b: data.bg.b, hex };
+        this.baseBgColor = data.baseBg ? { ...data.baseBg } : { ...this.bgColor };
       }
-      if (data.activeWell) this.activeWell = data.activeWell;
-      if (data.wheelMode && this.colorWheel) {
-        const sel = document.getElementById('wheelModeSelect');
-        if (sel) sel.value = data.wheelMode;
-        this.colorWheel.setMode(data.wheelMode);
+      if (data.activeWell === 'fg' || data.activeWell === 'bg') {
+        this.activeWell = data.activeWell;
+      }
+      if (data.wheelMode) {
+        this.savedWheelMode = data.wheelMode;
       }
       if (data.tab && data.tab !== 'studio') {
-        const btn = document.querySelector(`.nav-tab-btn[data-tab="${data.tab}"]`);
-        if (btn) btn.click();
+        this.savedTab = data.tab;
       }
-    } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   switchTab(tabKey) {

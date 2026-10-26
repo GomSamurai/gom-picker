@@ -18,8 +18,8 @@ import { GamutMaskEngine } from './gamutMask.js';
 class GomPopupApp {
   constructor() {
     this.activeWell = 'fg';
-    this.fgColor = { r: 99, g: 102, b: 241, hex: '#6366F1' };
-    this.bgColor = { r: 244, g: 63, b: 94, hex: '#F43F5E' };
+    this.fgColor = { r: 0, g: 0, b: 0, hex: '#000000' };
+    this.bgColor = { r: 255, g: 255, b: 255, hex: '#FFFFFF' };
     this.activeSpace = 'rgb';
     this.density = localStorage.getItem('gom_mini_density') || 'studio';
     this.mixMode = 'ryb';
@@ -40,16 +40,36 @@ class GomPopupApp {
       this.syncChannel.onmessage = (e) => this._handleBroadcastMessage(e.data);
     }
 
-    // 2. Setup localStorage sync fallback
+    // 2. Restore session from localStorage if available
+    try {
+      const raw = localStorage.getItem('gom_picker_session_v1');
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data.fg && data.fg.r !== undefined) {
+          const hex = data.fg.hex || ColorMath.rgbToHex(data.fg.r, data.fg.g, data.fg.b);
+          this.fgColor = { r: data.fg.r, g: data.fg.g, b: data.fg.b, hex };
+        }
+        if (data.bg && data.bg.r !== undefined) {
+          const hex = data.bg.hex || ColorMath.rgbToHex(data.bg.r, data.bg.g, data.bg.b);
+          this.bgColor = { r: data.bg.r, g: data.bg.g, b: data.bg.b, hex };
+        }
+        if (data.activeWell === 'fg' || data.activeWell === 'bg') {
+          this.activeWell = data.activeWell;
+        }
+      }
+    } catch (_) {}
+
+    // 3. Setup localStorage sync fallback
     window.addEventListener('storage', (e) => {
       if (e.key === 'gom_picker_palettes' || e.key === 'gom_picker_history') {
         this.renderHistoryAndPalette();
       }
     });
 
-    // 3. Initialize Responsive Color Wheel
+    // 4. Initialize Responsive Color Wheel
     const canvas = document.getElementById('colorWheelCanvasMini');
-    const initialHsv = ColorMath.rgbToHsv(this.fgColor.r, this.fgColor.g, this.fgColor.b);
+    const curActive = this.activeWell === 'bg' ? this.bgColor : this.fgColor;
+    const initialHsv = ColorMath.rgbToHsv(curActive.r, curActive.g, curActive.b);
 
     this.colorWheel = new ColorWheel(canvas, {
       mode: 'triangle',
@@ -200,15 +220,15 @@ class GomPopupApp {
   }
 
   setDefaultColors() {
-    this.fgColor = { r: 255, g: 255, b: 255, hex: '#FFFFFF' };
-    this.bgColor = { r: 0, g: 0, b: 0, hex: '#000000' };
+    this.fgColor = { r: 0, g: 0, b: 0, hex: '#000000' };
+    this.bgColor = { r: 255, g: 255, b: 255, hex: '#FFFFFF' };
 
-    document.getElementById('fgWellMini').style.backgroundColor = '#FFFFFF';
-    document.getElementById('bgWellMini').style.backgroundColor = '#000000';
+    document.getElementById('fgWellMini').style.backgroundColor = '#000000';
+    document.getElementById('bgWellMini').style.backgroundColor = '#FFFFFF';
 
     const cur = this.activeWell === 'fg' ? this.fgColor : this.bgColor;
     this.colorWheel.setColor(ColorMath.rgbToHsv(cur.r, cur.g, cur.b), true);
-    this.showToast('⚪⚫ Colores restablecidos a Blanco y Negro');
+    this.showToast('⚫⚪ Colores restablecidos a Blanco y Negro');
   }
 
   // --- EYEDROPPER / PIPETTE ---
