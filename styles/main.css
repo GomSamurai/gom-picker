@@ -8054,6 +8054,102 @@ body.value-check-mode {
   z-index: 2;
 }
 
+/* ==========================================================================
+   SMART COLOR NAMER & SWATCH CUSTOM NAMING
+   ========================================================================== */
+.swatch-pill.has-custom-name {
+  border-color: rgba(99, 102, 241, 0.45) !important;
+  box-shadow: 0 0 4px rgba(99, 102, 241, 0.25);
+}
+
+.swatch-custom-name-badge {
+  font-size: 0.62rem;
+  color: #A5B4FC;
+  font-weight: 600;
+  max-width: 85px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.swatch-name-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 16, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000000;
+  padding: 16px;
+  animation: fadeIn 0.18s ease-out;
+}
+
+.swatch-name-modal-card {
+  background: #151922;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(99, 102, 241, 0.2);
+  border-radius: 14px;
+  max-width: 520px;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: scaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-preset-chip {
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #94A3B8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.ai-preset-chip:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ai-preset-chip.active {
+  background: rgba(99, 102, 241, 0.22);
+  color: #A5B4FC;
+  border-color: rgba(99, 102, 241, 0.55);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
+}
+
+.ai-suggestion-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+  transition: all 0.14s ease;
+  text-align: left;
+}
+
+.ai-suggestion-chip:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateX(3px);
+}
+
+.ai-suggestion-chip:active {
+  transform: scale(0.98);
+}
+
+
 
 
 

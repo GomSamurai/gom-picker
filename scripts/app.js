@@ -35,6 +35,7 @@ import { ProfileBackup } from './profileBackup.js';
 import { Hyper4DStudio } from './hyper4d.js?v=3.2';
 import { PaletteImporterEngine } from './paletteImporter.js';
 import { PaletteOptimizer } from './paletteOptimizer.js';
+import { SmartColorNamer } from './smartColorNamer.js';
 
 class GomPickerApp {
   constructor() {
@@ -1456,15 +1457,17 @@ class GomPickerApp {
       return;
     }
 
-    activePal.colors.forEach((hex, idx) => {
-      const pill = this._createSwatchPillDom(activePal, hex, idx, false);
+    activePal.colors.forEach((col, idx) => {
+      const pill = this._createSwatchPillDom(activePal, col, idx, false);
       container.appendChild(pill);
     });
   }
 
-  _createSwatchPillDom(pal, hex, idx, isBuiltIn = false) {
+  _createSwatchPillDom(pal, colItem, idx, isBuiltIn = false) {
     const isAtmo = AtmosphereEngine.state.enabled;
-    const baseRgb = ColorMath.hexToRgb(hex);
+    const rawHex = typeof colItem === 'string' ? colItem : (colItem?.hex || '#6366F1');
+    const swatchName = (typeof colItem === 'object' && colItem?.name) ? colItem.name.trim() : '';
+    const baseRgb = ColorMath.hexToRgb(rawHex);
     const dispRgb = isAtmo ? AtmosphereEngine.transformColor(baseRgb) : baseRgb;
     const dispHex = ColorMath.rgbToHex(dispRgb.r, dispRgb.g, dispRgb.b);
 
@@ -1474,9 +1477,10 @@ class GomPickerApp {
     pill.dataset.swatchHex = dispHex;
     pill.dataset.paletteId = pal.id;
     pill.dataset.index = idx;
-    pill.dataset.swatchLabel = isAtmo ? `${pal.name} (Atmo: ${dispHex})` : `${pal.name}: ${dispHex}`;
+    pill.dataset.swatchName = swatchName;
+    pill.dataset.swatchLabel = swatchName ? `${swatchName} (${dispHex})` : (isAtmo ? `${pal.name} (Atmo: ${dispHex})` : `${pal.name}: ${dispHex}`);
     pill.draggable = true;
-    pill.title = `${dispHex} • Click: seleccionar | Arrastra: ordenar | Click derecho: opciones`;
+    pill.title = `${swatchName ? `[${swatchName}]\n` : ''}${dispHex} • Doble click: renombrar | Click: seleccionar | Click derecho: opciones`;
 
     // 1. Delete button badge (for user palettes)
     if (!isBuiltIn) {
@@ -1493,7 +1497,7 @@ class GomPickerApp {
         if (res) {
           this.renderQuickPalette();
           this.renderSwatchesCollection();
-          this.showToast(`Color ${hex} eliminado de "${pal.name}"`, 'info', 7500, {
+          this.showToast(`Color ${rawHex} eliminado de "${pal.name}"`, 'info', 7500, {
             text: '↩️ Deshacer',
             onClick: () => {
               const und = this.swatchManager.undoLastDelete();
@@ -1514,7 +1518,8 @@ class GomPickerApp {
       e.dataTransfer.setData('application/gom-swatch', JSON.stringify({
         paletteId: pal.id,
         index: idx,
-        hex: hex
+        hex: rawHex,
+        name: swatchName
       }));
       e.dataTransfer.effectAllowed = 'move';
       pill.classList.add('is-dragging');
@@ -1554,11 +1559,11 @@ class GomPickerApp {
       pill.classList.remove('drag-insert-before', 'drag-insert-after');
 
       const rawSwatchData = e.dataTransfer.getData('application/gom-swatch');
-      const rawHex = e.dataTransfer.getData('text/plain');
+      const rawHexData = e.dataTransfer.getData('text/plain');
 
       if (rawSwatchData) {
         try {
-          const { paletteId: sourcePalId, index: sourceIdx, hex: sourceHex } = JSON.parse(rawSwatchData);
+          const { paletteId: sourcePalId, index: sourceIdx, hex: sourceHex, name: sourceName } = JSON.parse(rawSwatchData);
           if (sourcePalId === pal.id) {
             // Reordering within the same palette
             let targetIdx = isInsertBefore ? idx : idx + 1;
@@ -1570,7 +1575,8 @@ class GomPickerApp {
           } else {
             // Dragged from another palette
             const targetIdx = isInsertBefore ? idx : idx + 1;
-            this.swatchManager.addColorToPalette(pal.id, sourceHex, targetIdx);
+            const itemToStore = sourceName ? { hex: sourceHex, name: sourceName } : sourceHex;
+            this.swatchManager.addColorToPalette(pal.id, itemToStore, targetIdx);
             this.renderQuickPalette();
             this.renderSwatchesCollection();
             this.showToast(`Color ${sourceHex} copiado a '${pal.name}'`);
@@ -1579,26 +1585,49 @@ class GomPickerApp {
         } catch (err) {}
       }
 
-      if (rawHex && rawHex.startsWith('#')) {
+      if (rawHexData && rawHexData.startsWith('#')) {
         const targetIdx = isInsertBefore ? idx : idx + 1;
-        this.swatchManager.addColorToPalette(pal.id, rawHex.toUpperCase(), targetIdx);
+        this.swatchManager.addColorToPalette(pal.id, rawHexData.toUpperCase(), targetIdx);
         this.renderQuickPalette();
         this.renderSwatchesCollection();
-        this.showToast(`Color ${rawHex} añadido a '${pal.name}'`);
+        this.showToast(`Color ${rawHexData} añadido a '${pal.name}'`);
       }
     });
 
     // 3. Selection
     pill.addEventListener('click', () => {
       this.setColorDirectly(baseRgb);
-      this.showToast(`Muestra seleccionada: ${dispHex}`);
+      this.showToast(`Muestra seleccionada: ${swatchName ? `${swatchName} (${dispHex})` : dispHex}`);
+    });
+
+    // 3.5 Double-click for instant renaming
+    pill.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.openRenameSwatchDialog({
+        hex: rawHex,
+        name: swatchName,
+        palette: pal,
+        index: idx,
+        isBuiltIn
+      });
     });
 
     // 4. Right-click context menu
     pill.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      this.showSwatchContextMenu(e, pal, idx, hex, isBuiltIn);
+      this.openUniversalSwatchContextMenu(e, {
+        hex: dispHex,
+        rgb: dispRgb,
+        label: pill.dataset.swatchLabel,
+        name: swatchName,
+        paletteId: pal.id,
+        palette: pal,
+        index: idx,
+        isBuiltIn: isBuiltIn,
+        element: pill
+      });
     });
 
     return pill;
@@ -1747,10 +1776,18 @@ class GomPickerApp {
       }
     }
 
+    let name = el.dataset?.swatchName || '';
+    if (!name && palette && index >= 0 && palette.colors && palette.colors[index]) {
+      const col = palette.colors[index];
+      if (typeof col === 'object' && col?.name) name = col.name.trim();
+    }
+    if (name) label = name;
+
     return {
       hex,
       rgb,
       label,
+      name,
       paletteId,
       palette,
       index,
@@ -1992,6 +2029,100 @@ class GomPickerApp {
     if (palette && !isBuiltIn && index >= 0) {
       items.push({ divider: true });
       items.push({
+        icon: '✏️',
+        label: 'Renombrar muestra...',
+        badge: (swatchData.name || '').trim() ? 'Personalizado' : '',
+        action: () => {
+          this.openRenameSwatchDialog({
+            hex,
+            name: swatchData.name || label,
+            palette,
+            index,
+            isBuiltIn
+          });
+        }
+      });
+
+      items.push({
+        icon: '🤖',
+        label: 'Renombrar con IA (Presets)...',
+        badge: 'Smart IA',
+        hasSubmenu: true,
+        submenuItems: [
+          {
+            label: '🎨 Pigmento Óleo Artista',
+            badge: SmartColorNamer.suggestName(hex, 'oil_pigment'),
+            action: () => {
+              this.applyAiRenameToSwatch(palette, index, hex, 'oil_pigment');
+            }
+          },
+          {
+            label: '🖌️ Acuarela Fina & Botánica',
+            badge: SmartColorNamer.suggestName(hex, 'watercolor'),
+            action: () => {
+              this.applyAiRenameToSwatch(palette, index, hex, 'watercolor');
+            }
+          },
+          {
+            label: '💻 Diseño Gráfico & UI / Web',
+            badge: SmartColorNamer.suggestName(hex, 'graphic_ui'),
+            action: () => {
+              this.applyAiRenameToSwatch(palette, index, hex, 'graphic_ui');
+            }
+          },
+          {
+            label: '🎯 Nomenclatura Pantone',
+            badge: SmartColorNamer.suggestName(hex, 'pantone'),
+            action: () => {
+              this.applyAiRenameToSwatch(palette, index, hex, 'pantone');
+            }
+          },
+          {
+            label: '🖍️ Marcador Copic Sketch',
+            badge: SmartColorNamer.suggestName(hex, 'copic'),
+            action: () => {
+              this.applyAiRenameToSwatch(palette, index, hex, 'copic');
+            }
+          },
+          {
+            label: '🏭 Fabricante de Marca',
+            badge: SmartColorNamer.suggestName(hex, 'brand_tube'),
+            action: () => {
+              this.applyAiRenameToSwatch(palette, index, hex, 'brand_tube');
+            }
+          },
+          {
+            label: '✨ Poético & Cinematográfico',
+            badge: SmartColorNamer.suggestName(hex, 'poetic'),
+            action: () => {
+              this.applyAiRenameToSwatch(palette, index, hex, 'poetic');
+            }
+          },
+          {
+            label: '🧪 Código Científico Munsell',
+            badge: SmartColorNamer.suggestName(hex, 'munsell'),
+            action: () => {
+              this.applyAiRenameToSwatch(palette, index, hex, 'munsell');
+            }
+          },
+          {
+            label: '⚡ Asistente Interactivo IA (Ver todas...)',
+            badge: 'Modal ✨',
+            action: () => {
+              this.openRenameSwatchDialog({
+                hex,
+                name: swatchData.name || label,
+                palette,
+                index,
+                isBuiltIn,
+                focusAi: true
+              });
+            }
+          }
+        ]
+      });
+
+      items.push({
         icon: '📑',
         label: 'Duplicar muestra en paleta',
         action: () => {
@@ -2034,6 +2165,93 @@ class GomPickerApp {
             });
           }
         }
+      });
+    } else {
+      // Swatch not in user palette (History, Wheel, Matrix, etc.)
+      items.push({ divider: true });
+      items.push({
+        icon: '🤖',
+        label: 'Identificar Nombre con IA...',
+        badge: 'Smart IA',
+        hasSubmenu: true,
+        submenuItems: [
+          {
+            label: '🎨 Pigmento Óleo Artista',
+            badge: SmartColorNamer.suggestName(hex, 'oil_pigment'),
+            action: () => {
+              const n = SmartColorNamer.suggestName(hex, 'oil_pigment');
+              this.copyToClipboard(n);
+              this.showToast(`Nombre copiado: ${n}`, 'success');
+            }
+          },
+          {
+            label: '🖌️ Acuarela Fina',
+            badge: SmartColorNamer.suggestName(hex, 'watercolor'),
+            action: () => {
+              const n = SmartColorNamer.suggestName(hex, 'watercolor');
+              this.copyToClipboard(n);
+              this.showToast(`Nombre copiado: ${n}`, 'success');
+            }
+          },
+          {
+            label: '💻 Diseño Gráfico / UI',
+            badge: SmartColorNamer.suggestName(hex, 'graphic_ui'),
+            action: () => {
+              const n = SmartColorNamer.suggestName(hex, 'graphic_ui');
+              this.copyToClipboard(n);
+              this.showToast(`Nombre copiado: ${n}`, 'success');
+            }
+          },
+          {
+            label: '🎯 Pantone Más Cercano',
+            badge: SmartColorNamer.suggestName(hex, 'pantone'),
+            action: () => {
+              const n = SmartColorNamer.suggestName(hex, 'pantone');
+              this.copyToClipboard(n);
+              this.showToast(`Nombre copiado: ${n}`, 'success');
+            }
+          },
+          {
+            label: '🖍️ Copic Sketch Más Cercano',
+            badge: SmartColorNamer.suggestName(hex, 'copic'),
+            action: () => {
+              const n = SmartColorNamer.suggestName(hex, 'copic');
+              this.copyToClipboard(n);
+              this.showToast(`Nombre copiado: ${n}`, 'success');
+            }
+          },
+          {
+            label: '🏭 Fabricante de Marca',
+            badge: SmartColorNamer.suggestName(hex, 'brand_tube'),
+            action: () => {
+              const n = SmartColorNamer.suggestName(hex, 'brand_tube');
+              this.copyToClipboard(n);
+              this.showToast(`Nombre copiado: ${n}`, 'success');
+            }
+          },
+          {
+            label: '✨ Poético & Atmósfera',
+            badge: SmartColorNamer.suggestName(hex, 'poetic'),
+            action: () => {
+              const n = SmartColorNamer.suggestName(hex, 'poetic');
+              this.copyToClipboard(n);
+              this.showToast(`Nombre copiado: ${n}`, 'success');
+            }
+          },
+          {
+            label: '🔍 Ver Ficha Completa de Nombres IA...',
+            action: () => {
+              this.openRenameSwatchDialog({
+                hex,
+                name: label,
+                palette: null,
+                index: -1,
+                isBuiltIn: true,
+                readonly: true
+              });
+            }
+          }
+        ]
       });
     }
 
@@ -2206,6 +2424,34 @@ class GomPickerApp {
       element: e.currentTarget
     };
     this.openUniversalSwatchContextMenu(e, swatchData);
+  }
+
+  openRenameSwatchDialog({ hex, name, palette, index, isBuiltIn, readonly = false, focusAi = false }) {
+    SmartColorNamer.openRenameDialog({
+      swatchData: { hex, name, palette, index, isBuiltIn },
+      focusAi,
+      onSave: (newName) => {
+        if (palette && !isBuiltIn && index >= 0) {
+          this.swatchManager.renameColorInPalette(palette.id, index, newName);
+          this.renderSwatchesCollection();
+          this.renderQuickPalette();
+          this.showToast(newName ? `Muestra renombrada a "${newName}"` : 'Nombre de muestra restablecido', 'success');
+        } else {
+          this.copyToClipboard(newName);
+          this.showToast(`Nombre copiado: ${newName}`, 'success');
+        }
+      }
+    });
+  }
+
+  applyAiRenameToSwatch(palette, index, hex, presetId) {
+    if (!palette || index < 0) return;
+    const aiName = SmartColorNamer.suggestName(hex, presetId);
+    this.swatchManager.renameColorInPalette(palette.id, index, aiName);
+    this.renderSwatchesCollection();
+    this.renderQuickPalette();
+    const preset = SmartColorNamer.PRESETS.find(p => p.id === presetId);
+    this.showToast(`✨ Muestra renombrada [${preset?.name || 'IA'}]: "${aiName}"`, 'success');
   }
 
   showPaletteSortPopover(anchorBtn, pal) {
@@ -8044,6 +8290,33 @@ class GomPickerApp {
       });
       toolbar.appendChild(btnHarmonize);
 
+      // 4.6 AI Batch Palette Renamer
+      const btnAiRename = document.createElement('button');
+      btnAiRename.className = 'palette-tool-btn btn-active-highlight';
+      btnAiRename.innerHTML = '<span>🤖</span> IA Nombres';
+      btnAiRename.title = 'Renombrar todas las muestras de esta biblioteca automáticamente con IA (Óleo, Acuarela, UI, Pantone, Copic, etc.)';
+      btnAiRename.addEventListener('click', () => {
+        if (!pal.colors || pal.colors.length === 0) {
+          this.showToast('La biblioteca está vacía. Añade muestras primero.', 'warn');
+          return;
+        }
+        SmartColorNamer.openBatchPaletteRenameDialog({
+          palette: pal,
+          onSave: (presetId) => {
+            const preset = SmartColorNamer.PRESETS.find(p => p.id === presetId);
+            pal.colors.forEach((c, idx) => {
+              const h = typeof c === 'string' ? c : c.hex;
+              const newName = SmartColorNamer.suggestName(h, presetId);
+              this.swatchManager.renameColorInPalette(pal.id, idx, newName);
+            });
+            this.renderSwatchesCollection();
+            this.renderQuickPalette();
+            this.showToast(`✨ Muestras renombradas como "${preset?.name || 'IA'}" en '${pal.name}'`, 'success');
+          }
+        });
+      });
+      toolbar.appendChild(btnAiRename);
+
       // 5. Invert colors
       const btnInvert = document.createElement('button');
       btnInvert.className = 'palette-tool-btn';
@@ -8165,8 +8438,7 @@ class GomPickerApp {
       swatchesFlow.appendChild(emptyNotice);
     } else {
       pal.colors.forEach((col, idx) => {
-        const hex = typeof col === 'string' ? col : col.hex;
-        const pill = this._createSwatchPillDom(pal, hex, idx, isBuiltIn);
+        const pill = this._createSwatchPillDom(pal, col, idx, isBuiltIn);
         swatchesFlow.appendChild(pill);
       });
     }
