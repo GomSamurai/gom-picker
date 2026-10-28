@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "GOM Color Picker Pro — Extensión de Artista",
+  "short_name": "GOM Picker",
+  "version": "1.0.0",
+  "description": "El Color Picker definitivo para Chrome y navegadores Chromium: Pipeta web EyeDropper, armonías armónicas en vivo, fórmulas de pigmentos reales y conversiones multiespacio.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "clipboardWrite",
+    "contextMenus"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "GOM Color Picker Pro",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "Abrir panel flotante GOM Color Picker"
+    },
+    "pick_color": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+E",
+        "mac": "Command+Shift+E"
+      },
+      "description": "Activar pipeta de color en la página"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -1,0 +1,71 @@
+================================================================================
+           GOM COLOR PICKER PRO — SUITE DE COLOR Y ARTE DIGITAL v4.0
+================================================================================
+                         Creado por Fran Gómez
+              La herramienta definitiva de color para artistas,
+                  ilustradores, diseñadores y coloristas.
+================================================================================
+
+¡Bienvenido a la instalación de GOM Color Picker Pro!
+
+Esta suite ha sido diseñada desde los fundamentos de la física de la luz y 
+la tradición de los talleres clásicos de pintura para ofrecerte el entorno 
+de trabajo más completo, potente e intuitivo existente.
+
+--------------------------------------------------------------------------------
+RESUMEN DE CAPACIDADES Y MÓDULOS DE LA SUITE:
+--------------------------------------------------------------------------------
+
+1. RUEDA CROMÁTICA MULTIESPACIO
+   • 5 modos geométricos: Triángulo armónico Coolorus, Cuadrado Photoshop, 
+     Rueda de Pigmentos Florent Farges, Rueda Tradicional RYB y Perceptual OKLCH.
+   • Bandas de valor tonal relativo, saturación y contraste perceptual WCAG 2.1.
+   • Selector de armonías vivas: Tríadas, complementarios, análogos y tétradas.
+
+2. MODIFICADOR DINÁMICO DE LUZ Y ATMÓSFERA
+   • Simulación física de sombras: Penumbra, Oclusión ambiental, Luz ambiental 
+     difusa y Luz de rebote (Fill Light).
+   • Parámetros ópticos avanzados: Dispersión de Rayleigh, tinte atmosférico 
+     global y degradados direccionales.
+   • Corrimiento térmico según la ley de Sorolla (luces cálidas con sombras 
+     frías o viceversa).
+
+3. TALLER DE PINTURA CHROMILLA & CATÁLOGO REAL DE ARTISTA
+   • Catálogo auténtico con más de 120 tubos reales de artista de 10 marcas 
+     de prestigio mundial: Winsor & Newton, Sennelier, Golden, Old Holland, 
+     Daniel Smith, Schmincke, Michael Harding, Rembrandt, Holbein y Gamblin.
+   • Códigos Color Index genuinos (PW6, PY35, PR108, PV19, PB29, PBr7, PBk9, etc.), 
+     con datos de poder colorante (1-10), series y opacidad física.
+   • Motor de mezclas sustractivo Kubelka-Munk reactivo: calcula las recetas 
+     exactas de pintura utilizando ÚNICAMENTE los tubos que el usuario posee 
+     en su caja de pinturas.
+   • Escala de blanqueo a 5 pasos (+0%, +25%, +50%, +75%, +90%) y consejos de 
+     corrección en caballete.
+
+4. HIPERESPACIO 4D & VISUALIZADOR CUADRIDIMENSIONAL
+   • Exploración cromática en cuatro dimensiones con rotaciones matemáticas SO(4) 
+     mediante 6 rotores ortogonales planos (XY, XZ, XW, YZ, YW, ZW).
+   • Proyecciones estereográficas y ortogonales de polítopos (Tesseract, 16-Cell, 
+     24-Cell, 120-Cell y 600-Cell).
+   • Análisis de distancias hiperdimensionales y armonías 4D.
+
+5. ESTUDIO DE PALETAS, MATRICES & EXTRACTOR K-MEANS
+   • Matrices completas de mezcla entre colores.
+   • Distribución compositiva 60-30-10 para diseño editorial y concept art.
+   • Extractor de paletas canónicas por agrupamiento K-Means desde imágenes.
+
+6. LIENZO DE MEZCLA FÍSICA & ESPÁTULA DIGITAL
+   • Espátula digital para mezclar pigmentos con simulación de viscosidad de óleo.
+
+7. EXTENSIÓN PARA GOOGLE CHROME, COMET Y NAVEGADORES CHROMIUM
+   • Pipeta web nativa (EyeDropper API) para muestrear cualquier color de pantalla 
+     con un clic (Ctrl+Shift+E).
+   • Rueda interactiva, conversor multiespacio y fórmulas de taller en el navegador.
+
+8. EXPORTACIÓN UNIVERSAL Y PRIVACIDAD
+   • Exporta a Adobe Swatch Exchange (.ASE), GIMP/Krita (.GPL), CSS, JSON, PDF y PNG.
+   • 100% Offline: No requiere internet, sin telemetría ni recopilación de datos.
+
+================================================================================
+Presione "Siguiente" para continuar con la instalación en su equipo.
+================================================================================

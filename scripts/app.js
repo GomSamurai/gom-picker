@@ -191,6 +191,7 @@ class GomPickerApp {
     safeBind('_bindRampStudioControls', this._bindRampStudioControls);
     safeBind('_bindCvdControls', this._bindCvdControls);
     safeBind('_bindProfileBackupControls', this._bindProfileBackupControls);
+    safeBind('_bindExtensionModal', this._bindExtensionModal);
     this.hyper4dStudio = new Hyper4DStudio(this);
     safeBind('hyper4dInit', () => this.hyper4dStudio.init());
     
@@ -9660,6 +9661,50 @@ class GomPickerApp {
         fileInput.value = '';
       });
     }
+  }
+
+  // --- EXTENSION COMPANION MODAL (CHROME, COMET, CHROMIUM) ---
+
+  _bindExtensionModal() {
+    const btnOpenTop = document.getElementById('btnOpenExtensionModal');
+    const btnOpenSide = document.getElementById('btnOpenExtensionModalSidebar');
+    const modal = document.getElementById('extensionModal');
+    const btnClose = document.getElementById('btnCloseExtensionModal');
+    const btnCopyUrl = document.getElementById('btnCopyExtensionUrl');
+
+    const open = () => {
+      if (modal) modal.style.display = 'flex';
+    };
+
+    const close = () => {
+      if (modal) modal.style.display = 'none';
+    };
+
+    if (btnOpenTop) btnOpenTop.addEventListener('click', open);
+    if (btnOpenSide) btnOpenSide.addEventListener('click', open);
+    if (btnClose) btnClose.addEventListener('click', close);
+
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+      });
+    }
+
+    if (btnCopyUrl) {
+      btnCopyUrl.addEventListener('click', () => {
+        navigator.clipboard.writeText('chrome://extensions').then(() => {
+          this.showToast('📋 "chrome://extensions" copiado al portapapeles');
+        }).catch(() => {
+          this.showToast('chrome://extensions');
+        });
+      });
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
+        close();
+      }
+    });
   }
 
   showToast(message, type = 'info', duration = 2800, action = null) {

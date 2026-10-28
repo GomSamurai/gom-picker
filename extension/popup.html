@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GOM Color Picker Pro</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <img src="icons/icon32.png" alt="GOM" class="brand-icon">
+        <div class="brand-text">
+          <div class="brand-title">GOM COLOR PICKER</div>
+          <div class="brand-subtitle">Extensión Pro • Chrome & Comet</div>
+        </div>
+      </div>
+      <button id="btnOpenFullSuite" class="btn-ghost-sm" title="Abrir la Suite Completa en el navegador">
+        🚀 Suite Completa
+      </button>
+    </header>
+
+    <!-- Eyedropper Master Button -->
+    <div class="action-strip">
+      <button id="btnPickColor" class="btn-primary-eyedropper" title="Muestrear cualquier píxel de la pantalla o página web (Atajo: Ctrl+Shift+E o tecla I)">
+        <span class="eyedropper-icon">💉</span>
+        <span class="eyedropper-label">Muestrear de la Web (Pipeta)</span>
+        <span class="eyedropper-shortcut">Ctrl+Shift+E</span>
+      </button>
+    </div>
+
+    <!-- Active Swatch & Quick Format Chips -->
+    <div class="swatch-section">
+      <div class="dual-swatch-box">
+        <div id="swatchCurrent" class="swatch-main" title="Color Activo"></div>
+        <div id="swatchPrevious" class="swatch-prev" title="Color Anterior (clic para restaurar)"></div>
+      </div>
+      <div class="formats-grid">
+        <div class="format-card" data-copy="hex">
+          <span class="format-lbl">HEX</span>
+          <span id="txtHex" class="format-val">#6366F1</span>
+          <button class="copy-btn" title="Copiar HEX">📋</button>
+        </div>
+        <div class="format-card" data-copy="rgb">
+          <span class="format-lbl">RGB</span>
+          <span id="txtRgb" class="format-val">99, 102, 241</span>
+          <button class="copy-btn" title="Copiar RGB">📋</button>
+        </div>
+        <div class="format-card" data-copy="hsl">
+          <span class="format-lbl">HSL</span>
+          <span id="txtHsl" class="format-val">238°, 84%, 67%</span>
+          <button class="copy-btn" title="Copiar HSL">📋</button>
+        </div>
+        <div class="format-card" data-copy="cmyk">
+          <span class="format-lbl">CMYK</span>
+          <span id="txtCmyk" class="format-val">59%, 58%, 0%, 5%</span>
+          <button class="copy-btn" title="Copiar CMYK">📋</button>
+        </div>
+        <div class="format-card" data-copy="oklch">
+          <span class="format-lbl">OKLCH</span>
+          <span id="txtOklch" class="format-val">0.59, 0.22, 275°</span>
+          <button class="copy-btn" title="Copiar OKLCH">📋</button>
+        </div>
+        <div class="format-card" data-copy="munsell">
+          <span class="format-lbl">MUNSELL</span>
+          <span id="txtMunsell" class="format-val">7.5PB 4/12</span>
+          <button class="copy-btn" title="Copiar Munsell">📋</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive Color Wheel & Triangle -->
+    <div class="wheel-section">
+      <div class="wheel-container">
+        <canvas id="colorWheelCanvas" width="220" height="220"></canvas>
+      </div>
+    </div>
+
+    <!-- Live Harmonies Generator -->
+    <div class="card-section">
+      <div class="section-header">
+        <span class="section-title">ARMONÍAS CROMÁTICAS</span>
+        <select id="selHarmonyRule" class="select-mini">
+          <option value="complementary">Complementario</option>
+          <option value="triadic" selected>Tríada Equilibrada</option>
+          <option value="analogous">Análogos (Vecinos)</option>
+          <option value="split">Split-Complementario</option>
+          <option value="tetradic">Tétrada / Rectangular</option>
+          <option value="monochromatic">Monocromático</option>
+        </select>
+      </div>
+      <div id="harmoniesRow" class="swatch-strip">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- Light & Shadow Ramp (Sorolla Tonal Steps) -->
+    <div class="card-section">
+      <div class="section-header">
+        <span class="section-title">RAMPA DE LUZ Y SOMBRA (SOROLLA)</span>
+        <span id="txtColorTemp" class="badge-tag">Frío</span>
+      </div>
+      <div id="lightShadowRow" class="swatch-strip tonal-ramp">
+        <!-- Rendered dynamically: HighLight, Midtone, Local, FormShadow, Occlusion -->
+      </div>
+    </div>
+
+    <!-- Real Artist Pigment Recipe -->
+    <div class="card-section pigment-card">
+      <div class="section-header">
+        <span class="section-title">FÓRMULA DE PINTURA (FARGES)</span>
+        <span id="txtInherentValue" class="badge-value">Valor 5/9</span>
+      </div>
+      <div class="pigment-details">
+        <div id="txtPigmentFormula" class="pigment-title">Azul Ultramar (PB29) + Blanco Titanio (PW6)</div>
+        <div id="txtPigmentNotes" class="pigment-advice">Tono frío vibrante. Mezcla limpia con opacidad media.</div>
+      </div>
+    </div>
+
+    <!-- Palette & History -->
+    <div class="card-section">
+      <div class="section-header">
+        <div class="tab-toggle">
+          <button id="tabHistory" class="tab-btn active">🕒 RECIENTES (<span id="countHistory">0</span>)</button>
+          <button id="tabPalette" class="tab-btn">🎨 MI PALETA (<span id="countPalette">0</span>)</button>
+        </div>
+        <div class="tab-actions">
+          <button id="btnPinColor" class="btn-micro" title="Añadir color activo a Mi Paleta">+ Paleta</button>
+          <button id="btnExportPalette" class="btn-micro" title="Exportar Paleta (.ASE / .JSON / .CSS)">Exportar</button>
+          <button id="btnClearCurrentTab" class="btn-micro" title="Limpiar lista">✕</button>
+        </div>
+      </div>
+      <div id="swatchCollectionRow" class="swatches-collection-grid">
+        <!-- Swatches rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- Quick Toast Notification -->
+    <div id="toastNotification" class="toast-popup">Copiado al portapapeles</div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

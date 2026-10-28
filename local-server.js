@@ -31,7 +31,9 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon',
   '.ase': 'application/octet-stream',
   '.gpl': 'text/plain; charset=UTF-8',
-  '.txt': 'text/plain; charset=UTF-8'
+  '.txt': 'text/plain; charset=UTF-8',
+  '.zip': 'application/zip',
+  '.exe': 'application/octet-stream'
 };
 
 function startServer(port) {

@@ -114,6 +114,10 @@
           <span>🪟</span>
           <span class="btn-tool-text">Panel Flotante</span>
         </button>
+        <button id="btnOpenExtensionModalSidebar" class="tool-action-btn sidebar-tool-btn" title="Descargar Extensión para Chrome, Comet y Chromium">
+          <span>🧩</span>
+          <span class="btn-tool-text">Extensión Chrome</span>
+        </button>
       </div>
 
       <div class="sidebar-status-box">
@@ -162,6 +166,10 @@
         <button id="btnToggleSwatchPopups" class="tool-action-btn btn-toggle-swatch-popups active-toggle" title="Activar/Desactivar popups informativos sobre las muestras">
           <span>💬</span>
           <span class="btn-tool-text">Popups: ON</span>
+        </button>
+        <button id="btnOpenExtensionModal" class="tool-action-btn" title="Descargar e instalar la Extensión para Chrome, Comet y navegadores Chromium">
+          <span>🧩</span>
+          <span class="btn-tool-text">Extensión Chrome</span>
         </button>
         <div class="topbar-live-preview">
           <span class="topbar-preview-label">Activo:</span>
@@ -4409,6 +4417,90 @@
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       EXTENSION COMPANION MODAL (CHROME, COMET, CHROMIUM)
+       ========================================================================== -->
+  <div id="extensionModal" class="master-modal-backdrop" style="display: none;">
+    <div class="master-modal-container compact" style="max-width: 620px;">
+      <div class="master-modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="master-modal-badge" style="background: rgba(99, 102, 241, 0.25); color: #A5B4FC;">🧩 Extensión Oficial</span>
+          <span style="font-size: 0.95rem; font-weight: 700; color: #FFFFFF;">GOM Color Picker para Chrome & Comet</span>
+        </div>
+        <button id="btnCloseExtensionModal" class="modal-close-btn" title="Cerrar modal (Esc)">✕</button>
+      </div>
+      <div class="master-modal-body" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
+        
+        <!-- Summary Card -->
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <strong style="color: #38BDF8; font-size: 0.82rem;">⚡ Muestreo y Armonías en Cualquier Pestaña Web</strong>
+            <span style="font-family: var(--font-mono); font-size: 0.65rem; background: rgba(56, 189, 248, 0.15); color: #38BDF8; padding: 2px 6px; border-radius: 4px;">Manifest V3</span>
+          </div>
+          <p style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
+            Lleva el poder de <strong>GOM Color Picker Pro</strong> a tu navegador. Muestrea cualquier píxel de pantalla con la <strong>Pipeta Web Nativa (EyeDropper)</strong>, genera tríadas y complementarios en vivo, convierte a HEX/RGB/CMYK/OKLCH/Munsell en 1 clic y consulta fórmulas de pintura tradicionales directamente desde la barra de herramientas.
+          </p>
+        </div>
+
+        <!-- Feature Grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 8px 10px;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: #FFF; margin-bottom: 2px;">💉 Pipeta Web Instantánea</div>
+            <div style="font-size: 0.68rem; color: var(--text-muted);">Muestrea colores con el atajo global <code style="color: #C7D2FE;">Ctrl+Shift+E</code> o tecla <code style="color: #C7D2FE;">I</code>.</div>
+          </div>
+          <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 8px 10px;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: #FFF; margin-bottom: 2px;">🎡 Rueda Cromática 360°</div>
+            <div style="font-size: 0.68rem; color: var(--text-muted);">Ajuste interactivo de Tono, Saturación y Valor en tiempo real.</div>
+          </div>
+          <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 8px 10px;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: #FFF; margin-bottom: 2px;">📋 Copia Multiespacio en 1 Clic</div>
+            <div style="font-size: 0.68rem; color: var(--text-muted);">HEX, RGB, HSL, CMYK imprenta, OKLCH uniforme y Munsell.</div>
+          </div>
+          <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 8px 10px;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: #FFF; margin-bottom: 2px;">🧪 Recetas Físicas de Pintura</div>
+            <div style="font-size: 0.68rem; color: var(--text-muted);">Fórmulas de tubos de atelier con valores inherentes de 1 a 9.</div>
+          </div>
+        </div>
+
+        <!-- Primary Download Action Banner -->
+        <div style="display: flex; flex-direction: column; gap: 10px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(56, 189, 248, 0.1)); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 8px; padding: 14px; text-align: center;">
+          <div style="font-size: 0.85rem; font-weight: 700; color: #FFFFFF;">Descargas Oficiales de la Suite & Extensión</div>
+          <div style="font-size: 0.7rem; color: var(--text-muted);">Elige tu formato preferido para trabajar en tu equipo o navegador:</div>
+          <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
+            <a id="btnDownloadExtensionZip" href="downloads/GOM_Color_Picker_Chrome_Extension.zip" download="GOM_Color_Picker_Chrome_Extension.zip" class="tool-action-btn" style="padding: 8px 14px; font-size: 0.78rem; font-weight: 700; background: linear-gradient(135deg, #4F46E5, #6366F1); color: #FFF; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(79,70,229,0.35);" title="Descargar extensión descomprimida para Chrome, Comet, Edge, Brave">
+              <span>🧩</span>
+              <span>Extensión Chrome (.ZIP)</span>
+            </a>
+            <a id="btnDownloadInstallerExe" href="downloads/GOM_Color_Picker_Pro_v4.0_Setup.exe" download="GOM_Color_Picker_Pro_v4.0_Setup.exe" class="tool-action-btn" style="padding: 8px 14px; font-size: 0.78rem; font-weight: 700; background: linear-gradient(135deg, #059669, #10B981); color: #FFF; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(16,185,129,0.35);" title="Descargar instalador oficial para Windows con icono, accesos directos y desinstalador">
+              <span>💻</span>
+              <span>Instalador Windows (.EXE)</span>
+            </a>
+            <a id="btnDownloadPortableZip" href="downloads/GOM_Color_Picker_Pro_v4.0_Portable.zip" download="GOM_Color_Picker_Pro_v4.0_Portable.zip" class="tool-action-btn" style="padding: 8px 14px; font-size: 0.78rem; font-weight: 700; background: linear-gradient(135deg, #D97706, #F59E0B); color: #FFF; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(245,158,11,0.35);" title="Descargar versión portable sin instalación para USB o cualquier carpeta">
+              <span>🧳</span>
+              <span>Versión Portable (.ZIP)</span>
+            </a>
+            <button id="btnCopyExtensionUrl" type="button" class="tool-action-btn" style="padding: 8px 12px; font-size: 0.72rem; border-radius: 6px;" title="Copiar ruta de extensiones del navegador">
+              <span>📋</span>
+              <span>Copiar chrome://extensions</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Installation Guide in 4 Steps -->
+        <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 10px 12px;">
+          <strong style="font-size: 0.72rem; color: #FBBF24; display: block; margin-bottom: 6px;">📖 Instalación Rápida en 4 Pasos:</strong>
+          <ol style="margin: 0; padding-left: 18px; font-size: 0.7rem; color: var(--text-muted); line-height: 1.6;">
+            <li>Descarga el archivo <strong>.ZIP</strong> con el botón superior y descomprímelo en una carpeta.</li>
+            <li>En tu navegador (Chrome, Comet, Edge...), accede a <code style="color: #38BDF8;">chrome://extensions</code>.</li>
+            <li>Activa la casilla <strong>"Modo de desarrollador"</strong> (esquina superior derecha).</li>
+            <li>Haz clic en <strong>"Cargar descomprimida"</strong> y selecciona la carpeta de la extensión. ¡Listo!</li>
+          </ol>
+        </div>
+
       </div>
     </div>
   </div>
