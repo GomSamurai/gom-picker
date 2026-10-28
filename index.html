@@ -2519,12 +2519,39 @@
             <!-- Toolbar Controls -->
             <div class="hyper4d-controls-strip">
               <div class="hyper4d-ctrl-item">
-                <label for="hyper4dModelSelect">Geometría 4D:</label>
+                <label for="hyper4dModelSelect">Geometría / Espacio 4D:</label>
                 <select id="hyper4dModelSelect" class="hyper4d-select">
                   <option value="munsell">🌳 Árbol Munsell 4D (Asimétrico Real)</option>
-                  <option value="tesseract">🧊 Hipercubo Tesseract 4D (Rotación 6 Planos)</option>
-                  <option value="cielab">👁️ Espacio Perceptual CIELAB 4D</option>
+                  <option value="quantum_cloud">🌌 Nube Cuántica de Probabilidad 4D (Wavefunction)</option>
+                  <option value="tesseract">🧊 Hipercubo Tesseract 4D (Rotación 6 Planos SO(4))</option>
+                  <option value="hyperslice">🔪 Hiper-Corte Tomográfico 4D (Cross-Section)</option>
+                  <option value="manifold">🌐 Manifold Isosuperficie 4D (Malla de Gamut)</option>
+                  <option value="vector_field">⚡ Campo Vectorial & Flujo Cromático 4D</option>
+                  <option value="pigment_tetrahedron">🧪 Tetraedro de Mezcla Física 4D</option>
+                  <option value="cielab">👁️ Espacio Perceptual CIELAB / OKLab 4D</option>
                   <option value="hsl_cone">⏳ Doble Cono HSL 4D</option>
+                </select>
+              </div>
+
+              <div class="hyper4d-ctrl-item">
+                <label for="hyper4dDensitySelect">Densidad / Nube:</label>
+                <select id="hyper4dDensitySelect" class="hyper4d-select">
+                  <option value="low">150 (Esquemático)</option>
+                  <option value="standard" selected>450 (Estándar)</option>
+                  <option value="high">1,200 (Alta Resolución)</option>
+                  <option value="ultra">2,500 (Nube Densa Cuántica)</option>
+                  <option value="quantum">5,000 (Hiper-Detalle Ultra)</option>
+                </select>
+              </div>
+
+              <div class="hyper4d-ctrl-item">
+                <label for="hyper4dRenderStyleSelect">Estilo 4D:</label>
+                <select id="hyper4dRenderStyleSelect" class="hyper4d-select">
+                  <option value="quantum_glow" selected>✨ Partículas Cuánticas & Glow</option>
+                  <option value="manifold_mesh">🌐 Malla & Isosuperficie</option>
+                  <option value="tesseract_cells">🧊 Células Hiperdimensionales</option>
+                  <option value="vector_stream">⚡ Campo Vectorial & Líneas</option>
+                  <option value="hologram_wire">💎 Holograma & Alambre</option>
                 </select>
               </div>
 
@@ -2562,17 +2589,99 @@
             </div>
             <div class="hyper4d-deploy-pills" id="hyper4dDeployPills">
               <button class="hyper4d-deploy-pill active" data-deploy="all" title="Ver todo el sólido con muestra activa y sus relaciones">🌐 Todo el Sólido</button>
+              <button class="hyper4d-deploy-pill" data-deploy="quantum" title="Desplegar campo cuántico de probabilidades cromáticas en 4D">🌌 Nube de Probabilidad</button>
+              <button class="hyper4d-deploy-pill" data-deploy="tesseract" title="Hipercubo Tesseract SO(4) con 8 células cúbicas y rotación de 6 planos">🧊 Tesseract SO(4)</button>
+              <button class="hyper4d-deploy-pill" data-deploy="slice" title="Tomografía cromática: corte transversal hiperdimensional en W">🔪 Hiper-Corte 4D</button>
+              <button class="hyper4d-deploy-pill" data-deploy="flow" title="Campo de flujo vectorial y líneas de corriente cromática">⚡ Campo de Flujo</button>
               <button class="hyper4d-deploy-pill" data-deploy="harmonies" title="Desplegar poliedros de armonías en 4D (tríadas, análogos, complementarios)">✨ Armonías 4D</button>
               <button class="hyper4d-deploy-pill" data-deploy="palette" title="Desplegar constelación y Gamut Hull de la paleta activa">📚 Paleta & Gamut</button>
               <button class="hyper4d-deploy-pill" data-deploy="ramp" title="Desplegar spline 4D continua de degradados y rampas tonales">🌈 Rampa Tonal 4D</button>
               <button class="hyper4d-deploy-pill" data-deploy="gurney" title="Estudio de Luz, Sombra y Terminador SSS de James Gurney">💡 Estudio Luz / SSS</button>
               <button class="hyper4d-deploy-pill" data-deploy="farges" title="Curva Bow no lineal y mezcla sustractiva de Florent Farges">🧪 Curva Bow Farges</button>
               <button class="hyper4d-deploy-pill" data-deploy="compare" title="Polígono comparativo multimuestras y baricentro 4D">⚖️ Comparador 4D</button>
-              <button class="hyper4d-deploy-pill" data-deploy="tesseract" title="Hipercubo Tesseract SO(4) en rotación continua">🧊 Tesseract SO(4)</button>
             </div>
           </div>
 
           <!-- Sub-barras Contextuales de Despliegue -->
+          <div id="hyper4dQuantumSubBar" class="hyper4d-context-subbar" style="display: none;">
+            <span style="font-size: 0.72rem; color: #C084FC; font-weight: 700;">🌌 Nube Cuántica de Probabilidad:</span>
+            <label for="hyper4dQuantumSourceSelect" style="font-size: 0.69rem; color: var(--text-muted);">Origen:</label>
+            <select id="hyper4dQuantumSourceSelect" class="hyper4d-select-mini">
+              <option value="all">Universo Integral (Muestra + Paleta + Armonías)</option>
+              <option value="active_harmony">Muestra Activa & Atracción Armónica</option>
+              <option value="thermal_field">Campo de Deriva Térmica (Luz W / Sombra)</option>
+              <option value="pigment_space">Espacio de Mezcla Sustractiva de Artista</option>
+            </select>
+            <label for="hyper4dQuantumVarianceSlider" style="font-size: 0.69rem; color: var(--text-muted); margin-left: 6px;">Varianza (σ):</label>
+            <input type="range" id="hyper4dQuantumVarianceSlider" class="hyper4d-slider" min="10" max="80" value="35" step="1" style="width: 80px;" title="Dispersión de la nube cuántica de probabilidad">
+            <span id="hyper4dQuantumVarianceVal" style="font-size: 0.68rem; color: #C084FC;">35</span>
+            <span style="font-size: 0.68rem; color: var(--text-muted); margin-left: auto;">Función de onda de color P(C): muestra densidades de probabilidad y estados cuánticos.</span>
+          </div>
+
+          <div id="hyper4dTesseractSubBar" class="hyper4d-context-subbar" style="display: none;">
+            <span style="font-size: 0.72rem; color: #38BDF8; font-weight: 700;">🧊 Hipercubo Tesseract SO(4):</span>
+            <span style="font-size: 0.69rem; color: var(--text-muted);">Planos Rotación:</span>
+            <div style="display: flex; gap: 3px;" id="hyper4dTessPlanesGroup">
+              <button class="hyper4d-select-mini tess-plane-btn" data-plane="xy" title="Rotar en plano XY">XY</button>
+              <button class="hyper4d-select-mini tess-plane-btn" data-plane="xz" title="Rotar en plano XZ">XZ</button>
+              <button class="hyper4d-select-mini tess-plane-btn" data-plane="yz" title="Rotar en plano YZ">YZ</button>
+              <button class="hyper4d-select-mini tess-plane-btn active" data-plane="xw" title="Rotar en plano hiperdimensional XW" style="background: rgba(56, 189, 248, 0.3); border-color: #38BDF8;">XW</button>
+              <button class="hyper4d-select-mini tess-plane-btn active" data-plane="yw" title="Rotar en plano hiperdimensional YW" style="background: rgba(56, 189, 248, 0.3); border-color: #38BDF8;">YW</button>
+              <button class="hyper4d-select-mini tess-plane-btn" data-plane="zw" title="Rotar en plano hiperdimensional ZW">ZW</button>
+            </div>
+            <label for="hyper4dTessCellSelect" style="font-size: 0.69rem; color: var(--text-muted); margin-left: 6px;">Célula Cúbica:</label>
+            <select id="hyper4dTessCellSelect" class="hyper4d-select-mini">
+              <option value="all">8 Células Cúbicas (Completo)</option>
+              <option value="w_plus">+W (Célula Cálida / Luz Solar)</option>
+              <option value="w_minus">-W (Célula Fría / Glaze)</option>
+              <option value="x_plus">+X (Célula Roja / Matiz Cálido)</option>
+              <option value="x_minus">-X (Célula Cian / Sombra)</option>
+              <option value="y_plus">+Y (Célula Alta Claridad / Blanco)</option>
+              <option value="y_minus">-Y (Célula Baja Claridad / Negro)</option>
+              <option value="z_plus">+Z (Célula Verde)</option>
+              <option value="z_minus">-Z (Célula Magenta / Púrpura)</option>
+            </select>
+            <label class="hyper4d-layer-check" style="font-size: 0.68rem; margin-left: 4px;" title="Mostrar caras poligonales translúcidas iridiscentes">
+              <input type="checkbox" id="chkHyper4DTessFaces" checked>
+              <span>Caras</span>
+            </label>
+            <label class="hyper4d-layer-check" style="font-size: 0.68rem;" title="Mostrar volumen de partículas cromáticas dentro del tesseract">
+              <input type="checkbox" id="chkHyper4DTessInnerCloud" checked>
+              <span>Volumen Interior</span>
+            </label>
+          </div>
+
+          <div id="hyper4dSliceSubBar" class="hyper4d-context-subbar" style="display: none;">
+            <span style="font-size: 0.72rem; color: #F43F5E; font-weight: 700;">🔪 Hiper-Corte Tomográfico 4D:</span>
+            <label for="hyper4dSliceAxisSelect" style="font-size: 0.69rem; color: var(--text-muted);">Eje de Corte:</label>
+            <select id="hyper4dSliceAxisSelect" class="hyper4d-select-mini">
+              <option value="w">Eje W (4ª Dimensión / Temperatura Térmica)</option>
+              <option value="y">Eje Y (Luminancia / Valor Munsell)</option>
+              <option value="x">Eje X (Tono Cálido vs Frío / Croma)</option>
+            </select>
+            <label for="hyper4dSlicePosSlider" style="font-size: 0.69rem; color: var(--text-muted); margin-left: 6px;">Posición:</label>
+            <input type="range" id="hyper4dSlicePosSlider" class="hyper4d-slider" min="-100" max="100" value="0" step="1" style="width: 80px;" title="Posición del plano de corte tomográfico">
+            <span id="hyper4dSlicePosVal" style="font-size: 0.68rem; color: #F43F5E;">0</span>
+            <label for="hyper4dSliceThickSlider" style="font-size: 0.69rem; color: var(--text-muted); margin-left: 6px;">Grosor:</label>
+            <input type="range" id="hyper4dSliceThickSlider" class="hyper4d-slider" min="10" max="60" value="28" step="1" style="width: 60px;" title="Grosor de la rebanada hiperdimensional">
+            <label class="hyper4d-layer-check" style="font-size: 0.68rem; margin-left: 4px;" title="Ocultar todo lo que esté fuera del corte para aislar la rebanada">
+              <input type="checkbox" id="chkHyper4DIsolateSlice">
+              <span>Aislar Corte</span>
+            </label>
+          </div>
+
+          <div id="hyper4dFlowSubBar" class="hyper4d-context-subbar" style="display: none;">
+            <span style="font-size: 0.72rem; color: #FBBF24; font-weight: 700;">⚡ Campo Vectorial & Corrientes Cromáticas:</span>
+            <label for="hyper4dFlowTypeSelect" style="font-size: 0.69rem; color: var(--text-muted);">Vector:</label>
+            <select id="hyper4dFlowTypeSelect" class="hyper4d-select-mini">
+              <option value="thermal">Deriva Térmica (Luz Cálida ☀️ ↔ Sombra Fría 🌙)</option>
+              <option value="subtractive">Arrastre Sustractivo (Curva Bow Farges & Pigmentos)</option>
+              <option value="luminance">Gradiente de Claridad (Cenital N10/ ↔ Nador N0/)</option>
+              <option value="chroma">Expansión Espectral de Croma (Gris ↔ Saturación Pura)</option>
+            </select>
+            <span style="font-size: 0.68rem; color: var(--text-muted); margin-left: auto;">Líneas de corriente animadas que revelan el transporte de energía y color en 4D.</span>
+          </div>
+
           <div id="hyper4dHarmonySubBar" class="hyper4d-context-subbar" style="display: none;">
             <span style="font-size: 0.72rem; color: #C7D2FE; font-weight: 700;">📐 Regla Armónica en 4D:</span>
             <select id="hyper4dHarmonyRuleSelect" class="hyper4d-select-mini">
@@ -2721,6 +2830,8 @@
               <!-- Subpestañas del Inspector -->
               <div class="hyper4d-subtabs-nav">
                 <button class="hyper4d-subtab-btn active" data-subtab="inspect">🔍 Desglose & Farges</button>
+                <button class="hyper4d-subtab-btn" data-subtab="quantum">🌌 Probabilidad 4D</button>
+                <button class="hyper4d-subtab-btn" data-subtab="tesseract">🧊 Tesseract SO(4)</button>
                 <button class="hyper4d-subtab-btn" data-subtab="composition">📐 Composición & Gurney</button>
                 <button class="hyper4d-subtab-btn" data-subtab="compare">⚖️ Comparador Pro</button>
                 <button class="hyper4d-subtab-btn" data-subtab="palette">🌌 Constelación</button>
@@ -3028,6 +3139,62 @@
                     <button class="chat-color-chip" data-hex="#F5D77F"><span class="chat-chip-swatch" style="background-color: #F5D77F;"></span>#F5D77F</button>
                     <button class="chat-color-chip" data-hex="#856B96"><span class="chat-chip-swatch" style="background-color: #856B96;"></span>#856B96</button>
                     <button class="chat-color-chip" data-hex="#284E7A"><span class="chat-chip-swatch" style="background-color: #284E7A;"></span>#284E7A</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Panel 6: Nube Cuántica de Probabilidad 4D -->
+              <div id="hyper4dPanelQuantum" class="hyper4d-tab-content" style="display: none;">
+                <div class="hyper4d-section-desc">
+                  La Nube Cuántica modela el color como una función de onda continua P(C) en 4 dimensiones. Revela la probabilidad probabilística de que un tono emerja en función de la muestra activa, la temperatura de luz W, la armonía y las mezclas de pigmentos.
+                </div>
+
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">🌌 Métricas del Campo Cuántico:</div>
+                  <div id="hyper4dQuantumMetricsBox" class="hyper4d-stats-box">
+                    <!-- Dinámico -->
+                  </div>
+                </div>
+
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">🧭 Regiones de Máxima Probabilidad:</div>
+                  <div id="hyper4dQuantumZonesBox" style="display: flex; flex-direction: column; gap: 6px;">
+                    <!-- Dinámico -->
+                  </div>
+                </div>
+
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">💡 Didáctica: El Color como Probabilidad en 4D:</div>
+                  <p style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.45; margin: 0;">
+                    En la física óptica y la pintura al natural, el color nunca es un punto estático: una manzana roja bajo luz cálida (W &gt; 0) genera una nube de dispersión que abarca altas luces cálidas, semitonos saturados, terminadores con dispersión subcutánea (SSS), y sombras frías inducidas por contraste simultáneo. La nube 4D te permite navegar esta nebulosa y elegir muestras coherentes con la física de la luz.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Panel 7: Hipercubo Tesseract SO(4) & Geometría 4D -->
+              <div id="hyper4dPanelTesseract" class="hyper4d-tab-content" style="display: none;">
+                <div class="hyper4d-section-desc">
+                  El Tesseract es el análogo cuadridimensional del cubo (polítopo regular {4,3,3}). Posee 16 vértices, 32 aristas, 24 caras cuadradas y 8 células cúbicas tridimensionales que rotan en el grupo de Lie SO(4) a través de 6 planos ortogonales.
+                </div>
+
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">🧊 Las 8 Células Cúbicas del Tesseract:</div>
+                  <div id="hyper4dTesseractCellsGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <!-- Generado dinámicamente -->
+                  </div>
+                </div>
+
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">🌀 Estado de Rotación en los 6 Planos SO(4):</div>
+                  <div id="hyper4dTesseractPlanesStatus" style="font-size: 0.71rem; line-height: 1.5; color: var(--text-muted);">
+                    <!-- Dinámico -->
+                  </div>
+                </div>
+
+                <div class="hyper4d-card-section">
+                  <div class="hyper4d-section-title">📐 Coordenadas de los 16 Vértices 4D (±1, ±1, ±1, ±1):</div>
+                  <div id="hyper4dTesseractVerticesTable" style="max-height: 220px; overflow-y: auto; overflow-x: auto;">
+                    <!-- Tabla dinámica -->
                   </div>
                 </div>
               </div>

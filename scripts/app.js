@@ -32,7 +32,7 @@ import { CVDSimulator } from './cvdSimulator.js';
 import { RampStudio } from './rampStudio.js';
 import { SwatchSheetExporter } from './swatchSheetExporter.js';
 import { ProfileBackup } from './profileBackup.js';
-import { Hyper4DStudio } from './hyper4d.js?v=3.2';
+import { Hyper4DStudio } from './hyper4d.js?v=4.0';
 import { PaletteImporterEngine } from './paletteImporter.js';
 import { PaletteOptimizer } from './paletteOptimizer.js';
 import { SmartColorNamer } from './smartColorNamer.js';

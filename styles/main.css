@@ -5890,6 +5890,37 @@ body.value-check-mode {
   color: #FFFFFF;
 }
 
+.tess-plane-btn {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 3px 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: #94A3B8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tess-plane-btn:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #FFFFFF;
+}
+
+.tess-plane-btn.active {
+  background: rgba(56, 189, 248, 0.28) !important;
+  border-color: #38BDF8 !important;
+  color: #38BDF8 !important;
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.35);
+}
+
+.tess-cell-btn:hover {
+  background: rgba(56, 189, 248, 0.12) !important;
+  border-color: rgba(56, 189, 248, 0.35) !important;
+}
+
 .hyper4d-stage-layout {
   --hyper4d-sidebar-w: 380px;
   --hyper4d-canvas-h: 620px;

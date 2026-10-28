@@ -49,13 +49,32 @@ export class Hyper4DStudio {
       invertY: localStorage.getItem('gom_hyper4d_invert_y') === 'true'
     };
 
-    // Estado Hiperdimensional 4D (SO(4))
+    // Estado Hiperdimensional 4D (SO(4)) con los 6 planos ortogonales
     this.dimension4D = {
       wValue: 0,            // -100 a +100
       wMode: 'thermal',     // 'thermal' (Kelvin) | 'subtractive' (Glaze/Tint) | 'tesseract' (Hiper-rotación) | 'diurnal' (Ciclo solar)
+      angleXY: 0,           // Ángulo de rotación en plano XY
+      angleXZ: 0,           // Ángulo de rotación en plano XZ
+      angleYZ: 0,           // Ángulo de rotación en plano YZ
       angleXW: 0,           // Ángulo de rotación hiperdimensional en plano XW
-      angleYW: 0,           // Ángulo de rotación en plano YW
-      angleZW: 0,           // Ángulo de rotación en plano ZW
+      angleYW: 0,           // Ángulo de rotación hiperdimensional en plano YW
+      angleZW: 0,           // Ángulo de rotación hiperdimensional en plano ZW
+      planesActive: {
+        xy: false,
+        xz: false,
+        yz: false,
+        xw: true,
+        yw: true,
+        zw: false
+      },
+      planeSpeeds: {
+        xy: 0.005,
+        xz: 0.006,
+        yz: 0.004,
+        xw: 0.012,
+        yw: 0.009,
+        zw: 0.007
+      },
       isAnimatingW: false,
       animSpeed: 0.015,
       animDirection: 1,
@@ -63,10 +82,11 @@ export class Hyper4DStudio {
     };
 
     // Modelo de Geometría Base de Fondo
-    this.activeModel = 'munsell'; // 'munsell' | 'tesseract' | 'cielab' | 'hsl_cone'
+    // 'munsell' | 'quantum_cloud' | 'tesseract' | 'hyperslice' | 'manifold' | 'vector_field' | 'pigment_tetrahedron' | 'cielab' | 'hsl_cone'
+    this.activeModel = 'munsell';
 
-    // NUEVO SISTEMA REVOLUCIONARIO: Modo de Despliegue Espacial Activo
-    // 'all' | 'harmonies' | 'palette' | 'ramp' | 'gurney' | 'farges' | 'compare' | 'tesseract'
+    // Modo de Despliegue Espacial Activo
+    // 'all' | 'quantum' | 'tesseract' | 'slice' | 'flow' | 'harmonies' | 'palette' | 'ramp' | 'gurney' | 'farges' | 'compare'
     this.activeDeployment = 'all';
 
     // Sub-opciones de Despliegue
@@ -90,7 +110,22 @@ export class Hyper4DStudio {
       antiCollisionLabels: true,
       particleStars: true,
       isFullscreen: false,
-      isSidebarHidden: false
+      isSidebarHidden: false,
+      // NUEVOS CONTROLES DE DENSIDAD, RENDERIZADO Y NUBE CUÁNTICA
+      pointDensity: 'standard', // 'low' (150) | 'standard' (450) | 'high' (1200) | 'ultra' (2500) | 'quantum' (5000)
+      renderStyle: 'quantum_glow', // 'quantum_glow' | 'manifold_mesh' | 'tesseract_cells' | 'vector_stream' | 'hologram_wire'
+      particleSizeScale: 1.0,
+      glowIntensity: 1.0,
+      quantumVariance: 35,
+      quantumSource: 'all', // 'all' | 'active_harmony' | 'thermal_field' | 'pigment_space'
+      sliceAxis: 'w', // 'w' | 'y' | 'x'
+      slicePos: 0, // -100 a +100
+      sliceThickness: 28, // 10 a 60
+      isolateSlice: false,
+      flowType: 'thermal', // 'thermal' | 'subtractive' | 'luminance' | 'chroma'
+      tesseractActiveCell: 'all', // 'all' | 'w_plus' | 'w_minus' | 'x_plus' | 'x_minus' | 'y_plus' | 'y_minus' | 'z_plus' | 'z_minus'
+      tesseractShowFaces: true,
+      tesseractShowInnerCloud: true
     };
 
     // Muestras en el Comparador Dinámico (Multimuestras A, B, C, D...)
@@ -247,13 +282,45 @@ export class Hyper4DStudio {
   // --- MATEMÁTICAS HIPERDIMENSIONALES 4D (SO(4)) ---
 
   /**
-   * Aplica rotación ortogonal en 4 dimensiones en los planos XW, YW y ZW.
-   * En 4D, un punto (x, y, z, w) puede rotar simultáneamente alrededor de hiper-planos.
+   * Aplica rotación ortogonal cuadridimensional completa en el grupo de Lie SO(4).
+   * En 4D existen exactamente 6 planos ortogonales independientes:
+   * 3 planos espaciales clásicos (XY, XZ, YZ) y 3 planos hiperdimensionales (XW, YW, ZW).
    */
-  rotatePoint4D(pt, axw, ayw, azw) {
+  rotatePoint4D(pt, axw = 0, ayw = 0, azw = 0, axy = 0, axz = 0, ayz = 0) {
     let { x, y, z, w } = pt;
+    if (w === undefined || w === null) w = 0;
 
-    // Rotación en plano XW
+    // 1. Rotación espacial en plano XY
+    if (axy !== 0) {
+      const cos = Math.cos(axy);
+      const sin = Math.sin(axy);
+      const nx = x * cos - y * sin;
+      const ny = x * sin + y * cos;
+      x = nx;
+      y = ny;
+    }
+
+    // 2. Rotación espacial en plano XZ
+    if (axz !== 0) {
+      const cos = Math.cos(axz);
+      const sin = Math.sin(axz);
+      const nx = x * cos - z * sin;
+      const nz = x * sin + z * cos;
+      x = nx;
+      z = nz;
+    }
+
+    // 3. Rotación espacial en plano YZ
+    if (ayz !== 0) {
+      const cos = Math.cos(ayz);
+      const sin = Math.sin(ayz);
+      const ny = y * cos - z * sin;
+      const nz = y * sin + z * cos;
+      y = ny;
+      z = nz;
+    }
+
+    // 4. Rotación hiperdimensional en plano XW
     if (axw !== 0) {
       const cos = Math.cos(axw);
       const sin = Math.sin(axw);
@@ -263,7 +330,7 @@ export class Hyper4DStudio {
       w = nw;
     }
 
-    // Rotación en plano YW
+    // 5. Rotación hiperdimensional en plano YW
     if (ayw !== 0) {
       const cos = Math.cos(ayw);
       const sin = Math.sin(ayw);
@@ -273,7 +340,7 @@ export class Hyper4DStudio {
       w = nw;
     }
 
-    // Rotación en plano ZW
+    // 6. Rotación hiperdimensional en plano ZW
     if (azw !== 0) {
       const cos = Math.cos(azw);
       const sin = Math.sin(azw);
@@ -382,22 +449,36 @@ export class Hyper4DStudio {
   // --- GENERACIÓN DE GEOMETRÍAS Y NUBES DE COLOR EN 4D ---
 
   /**
-   * Genera el sólido asimétrico real del Sistema Munsell en 4D.
-   * Reproduce la asimetría física (los amarillos suben a alto valor y croma; los azules a valor bajo).
+   * Obtiene factores de paso y resolución según la densidad de puntos seleccionada por el usuario.
+   */
+  _getDensityStepMultiplier() {
+    const d = this.options.pointDensity;
+    if (d === 'low') return { munsellVal: 2, munsellChr: 4, labL: 20, labAB: 30, hslH: 36, hslL: 2, quantumN: 200 };
+    if (d === 'high') return { munsellVal: 0.6, munsellChr: 1.6, labL: 8, labAB: 12, hslH: 10, hslL: 0.5, quantumN: 1300 };
+    if (d === 'ultra') return { munsellVal: 0.35, munsellChr: 1, labL: 5, labAB: 8, hslH: 6, hslL: 0.33, quantumN: 2600 };
+    if (d === 'quantum') return { munsellVal: 0.25, munsellChr: 0.75, labL: 3.5, labAB: 5.5, hslH: 4, hslL: 0.25, quantumN: 4800 };
+    // 'standard' por defecto
+    return { munsellVal: 1, munsellChr: 2.2, labL: 12, labAB: 18, hslH: 18, hslL: 1, quantumN: 550 };
+  }
+
+  /**
+   * Genera el sólido asimétrico real del Sistema Munsell en 4D con densidad adaptativa.
    */
   getMunsellGeometry() {
-    if (this._geometryCache['munsell']) return this._geometryCache['munsell'];
+    const cacheKey = `munsell_${this.options.pointDensity}_${this.options.particleSizeScale}`;
+    if (this._geometryCache[cacheKey]) return this._geometryCache[cacheKey];
 
     const nodes = [];
     const hues = MunsellSystem.HUES;
+    const { munsellVal, munsellChr } = this._getDensityStepMultiplier();
 
     // Eje Central Acromático (Columna de Grises Neutrales N 1/ a N 9/)
-    for (let val = 1; val <= 9; val++) {
+    for (let val = 1; val <= 9; val += munsellVal) {
       const lum = Math.pow(val / 10, 2);
       const grayVal = ColorMath.clamp255(lum * 255);
       const hex = ColorMath.rgbToHex(grayVal, grayVal, grayVal);
       nodes.push({
-        id: `munsell_neutral_${val}`,
+        id: `munsell_neutral_${val.toFixed(1)}`,
         type: 'axis_neutral',
         x: 0,
         y: (val - 5) * 34,
@@ -405,11 +486,11 @@ export class Hyper4DStudio {
         w: 0,
         hex,
         rgb: { r: grayVal, g: grayVal, b: grayVal },
-        name: `N ${val}/ (Gris)`,
-        munsell: `N ${val}/`,
+        name: `N ${val.toFixed(1)}/ (Gris Neutral)`,
+        munsell: `N ${val.toFixed(1)}/`,
         value: val,
         chroma: 0,
-        size: 5
+        size: Math.max(2.5, 5 * this.options.particleSizeScale)
       });
     }
 
@@ -418,7 +499,7 @@ export class Hyper4DStudio {
       const rad = (hue.angle * Math.PI) / 180;
       const isWarm = (hue.angle >= 10 && hue.angle <= 90) || hue.angle >= 330;
 
-      for (let val = 2; val <= 9; val++) {
+      for (let val = 2; val <= 9; val += munsellVal) {
         let maxChromaForHue = 10;
         if (hue.name.includes('Y')) {
           maxChromaForHue = val >= 7 ? 14 : 6;
@@ -428,7 +509,7 @@ export class Hyper4DStudio {
           maxChromaForHue = val <= 4 ? 12 : 8;
         }
 
-        for (let chr = 2; chr <= maxChromaForHue; chr += 3) {
+        for (let chr = 2; chr <= maxChromaForHue; chr += munsellChr) {
           const radius = chr * 15;
           const x = radius * Math.cos(rad);
           const z = radius * Math.sin(rad);
@@ -441,101 +522,598 @@ export class Hyper4DStudio {
           const hex = ColorMath.rgbToHex(rgb.r, rgb.g, rgb.b);
 
           nodes.push({
-            id: `munsell_${hue.name}_${val}_${chr}`,
+            id: `munsell_${hue.name}_${val.toFixed(1)}_${chr.toFixed(1)}`,
             type: 'munsell_chip',
             x, y, z, w,
             hex,
             rgb,
-            name: `${hue.name} ${val}/${chr}`,
-            munsell: `${hue.name} ${val}/${chr}`,
+            name: `${hue.name} ${val.toFixed(1)}/${chr.toFixed(1)}`,
+            munsell: `${hue.name} ${val.toFixed(1)}/${chr.toFixed(1)}`,
             family: hue.label,
             value: val,
             chroma: chr,
-            size: 3.8
+            size: Math.max(1.8, 3.8 * this.options.particleSizeScale)
           });
         }
       }
     });
 
-    this._geometryCache['munsell'] = nodes;
+    this._geometryCache[cacheKey] = nodes;
     return nodes;
   }
 
   /**
-   * Genera los 16 vértices y las 32 aristas del Hipercubo Tesseract 4D en SO(4).
+   * Genera el Hipercubo Tesseract 4D en SO(4) con 16 vértices, 32 aristas,
+   * 24 caras cuadradas translúcidas y nube volumétrica de partículas interiores.
    */
   getTesseractGeometry() {
-    const nodes = [];
-    const edges = [];
-    const size = 95;
+    const cacheKey = `tess_${this.options.tesseractShowInnerCloud}_${this.options.pointDensity}_${this.options.tesseractActiveCell}_${this.options.particleSizeScale}`;
+    if (this._geometryCache[cacheKey]) return this._geometryCache[cacheKey];
 
-    let idx = 0;
-    for (let x of [-1, 1]) {
-      for (let y of [-1, 1]) {
-        for (let z of [-1, 1]) {
-          for (let w of [-1, 1]) {
+    const nodes = [];
+    const lines = [];
+    const faces = [];
+    const size = 110;
+
+    // 1. 16 Vértices fundamentales de Schläfli {4,3,3}
+    const coords1D = [-1, 1];
+    let vIdx = 0;
+    const vertexMap = {};
+
+    for (let x of coords1D) {
+      for (let y of coords1D) {
+        for (let z of coords1D) {
+          for (let w of coords1D) {
             const r = Math.round((x + 1) * 127.5);
             const g = Math.round((y + 1) * 127.5);
             const b = Math.round((z + 1) * 127.5);
             const hex = ColorMath.rgbToHex(r, g, b);
+            const key = `${x}_${y}_${z}_${w}`;
 
-            nodes.push({
-              id: `tesseract_v_${idx}`,
+            // Determinar si este vértice pertenece a la célula cúbica activa seleccionada
+            let isCellHighlighted = true;
+            const activeCell = this.options.tesseractActiveCell;
+            if (activeCell === 'w_plus') isCellHighlighted = w > 0;
+            else if (activeCell === 'w_minus') isCellHighlighted = w < 0;
+            else if (activeCell === 'x_plus') isCellHighlighted = x > 0;
+            else if (activeCell === 'x_minus') isCellHighlighted = x < 0;
+            else if (activeCell === 'y_plus') isCellHighlighted = y > 0;
+            else if (activeCell === 'y_minus') isCellHighlighted = y < 0;
+            else if (activeCell === 'z_plus') isCellHighlighted = z > 0;
+            else if (activeCell === 'z_minus') isCellHighlighted = z < 0;
+
+            const node = {
+              id: `tess_v_${vIdx}`,
+              key,
               type: 'tesseract_node',
               x: x * size,
               y: y * size,
               z: z * size,
               w: w * size,
+              vx: x, vy: y, vz: z, vw: w,
               hex,
               rgb: { r, g, b },
               coords4D: `[${x > 0 ? '+1' : '-1'}, ${y > 0 ? '+1' : '-1'}, ${z > 0 ? '+1' : '-1'}, ${w > 0 ? '+1' : '-1'}]`,
-              name: `Vértice Tesseract #${idx + 1}`,
-              size: 5.5
-            });
-            idx++;
+              name: `Vértice Tesseract V${vIdx + 1} (${hex})`,
+              size: isCellHighlighted ? Math.max(3.5, 6.8 * this.options.particleSizeScale) : 3.0,
+              isPrimary: isCellHighlighted && activeCell !== 'all',
+              _ghost: !isCellHighlighted
+            };
+            nodes.push(node);
+            vertexMap[key] = node;
+            vIdx++;
           }
         }
       }
     }
 
-    for (let i = 0; i < 16; i++) {
-      for (let j = i + 1; j < 16; j++) {
+    // 2. 32 Aristas Hiperdimensionales
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
         const p1 = nodes[i];
         const p2 = nodes[j];
         let diffs = 0;
-        if (Math.abs(p1.x - p2.x) > 1) diffs++;
-        if (Math.abs(p1.y - p2.y) > 1) diffs++;
-        if (Math.abs(p1.z - p2.z) > 1) diffs++;
-        if (Math.abs(p1.w - p2.w) > 1) diffs++;
+        if (p1.vx !== p2.vx) diffs++;
+        if (p1.vy !== p2.vy) diffs++;
+        if (p1.vz !== p2.vz) diffs++;
+        if (p1.vw !== p2.vw) diffs++;
 
         if (diffs === 1) {
-          edges.push({ from: p1.id, to: p2.id });
+          const isHyperEdge = p1.vw !== p2.vw;
+          const isEdgeHighlighted = !p1._ghost && !p2._ghost;
+          lines.push({
+            from: p1,
+            to: p2,
+            color: isEdgeHighlighted
+              ? (isHyperEdge ? 'rgba(56, 189, 248, 0.85)' : 'rgba(192, 132, 252, 0.7)')
+              : 'rgba(255, 255, 255, 0.12)',
+            width: isEdgeHighlighted ? (isHyperEdge ? 2.5 : 1.8) : 0.8,
+            isHyperEdge
+          });
         }
       }
     }
 
-    return { nodes, edges };
+    // 3. 24 Caras Cuadradas Translúcidas Iridescentes
+    if (this.options.tesseractShowFaces) {
+      const dimensions = ['x', 'y', 'z', 'w'];
+      for (let d1 = 0; d1 < 4; d1++) {
+        for (let d2 = d1 + 1; d2 < 4; d2++) {
+          const varDims = [dimensions[d1], dimensions[d2]];
+          const fixedDims = dimensions.filter(d => !varDims.includes(d));
+
+          for (let f1 of coords1D) {
+            for (let f2 of coords1D) {
+              const makeKey = (v1, v2) => {
+                const coord = {};
+                coord[varDims[0]] = v1;
+                coord[varDims[1]] = v2;
+                coord[fixedDims[0]] = f1;
+                coord[fixedDims[1]] = f2;
+                return `${coord.x}_${coord.y}_${coord.z}_${coord.w}`;
+              };
+
+              const p1 = vertexMap[makeKey(-1, -1)];
+              const p2 = vertexMap[makeKey(1, -1)];
+              const p3 = vertexMap[makeKey(1, 1)];
+              const p4 = vertexMap[makeKey(-1, 1)];
+
+              if (p1 && p2 && p3 && p4) {
+                const isFaceHighlighted = !p1._ghost && !p2._ghost && !p3._ghost && !p4._ghost;
+                const hue = (d1 * 60 + d2 * 45 + (f1 > 0 ? 30 : 0)) % 360;
+                faces.push({
+                  p1, p2, p3, p4,
+                  fillColor: isFaceHighlighted ? `hsla(${hue}, 85%, 65%, 0.14)` : 'rgba(255,255,255,0.02)',
+                  strokeColor: isFaceHighlighted ? `hsla(${hue}, 90%, 75%, 0.4)` : 'rgba(255,255,255,0.06)'
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 4. Volumen Interior 4D (Nube Cromática dentro del Tesseract)
+    if (this.options.tesseractShowInnerCloud) {
+      const steps = this.options.pointDensity === 'low' ? [-0.5, 0.5] : [-0.6, 0, 0.6];
+      let inIdx = 0;
+      for (let ix of steps) {
+        for (let iy of steps) {
+          for (let iz of steps) {
+            for (let iw of steps) {
+              const r = Math.round((ix + 1) * 127.5);
+              const g = Math.round((iy + 1) * 127.5);
+              const b = Math.round((iz + 1) * 127.5);
+              const hex = ColorMath.rgbToHex(r, g, b);
+
+              nodes.push({
+                id: `tess_inner_${inIdx++}`,
+                type: 'tesseract_inner',
+                x: ix * size,
+                y: iy * size,
+                z: iz * size,
+                w: iw * size,
+                hex,
+                rgb: { r, g, b },
+                name: `Célula Interior (${hex})`,
+                size: Math.max(1.5, 2.8 * this.options.particleSizeScale),
+                _ghost: true
+              });
+            }
+          }
+        }
+      }
+    }
+
+    const result = { nodes, lines, faces };
+    this._geometryCache[cacheKey] = result;
+    return result;
   }
 
   /**
-   * Genera el sólido de percepción visual CIELAB / OKLab 4D.
+   * Genera la Nube Cuántica de Probabilidad Cromática P(C) en 4D.
+   * Modela el color como un campo de probabilidad gaussiano / función de onda con
+   * partículas de resplandor cuántico y filamentos entrelazados.
    */
-  getCieLabGeometry() {
-    if (this._geometryCache['cielab']) return this._geometryCache['cielab'];
+  getQuantumCloudGeometry() {
+    const cacheKey = `quantum_${this.options.pointDensity}_${this.options.quantumSource}_${this.options.quantumVariance}_${this.dimension4D.wValue}_${this.options.particleSizeScale}`;
+    if (this._geometryCache[cacheKey]) return this._geometryCache[cacheKey];
 
     const nodes = [];
-    const stepL = 16;
-    const stepA = 24;
+    const lines = [];
+    const { quantumN } = this._getDensityStepMultiplier();
+    const curRgb = this.activeColor || { r: 99, g: 102, b: 241 };
+    const baseCoords = this._getColor4DCoords(curRgb);
+    const variance = this.options.quantumVariance || 35;
 
-    for (let L = 16; L <= 92; L += stepL) {
-      for (let a = -70; a <= 70; a += stepA) {
-        for (let b = -70; b <= 70; b += stepA) {
+    // Atractores de densidad de probabilidad
+    const attractors = [
+      { coords: baseCoords, weight: 1.0, type: 'core', name: 'Núcleo Activo', hex: ColorMath.rgbToHex(curRgb.r, curRgb.g, curRgb.b) }
+    ];
+
+    if (this.options.quantumSource === 'all' || this.options.quantumSource === 'active_harmony') {
+      const hsv = ColorMath.rgbToHsv(curRgb.r, curRgb.g, curRgb.b);
+      const compRgb = ColorMath.hsvToRgb((hsv.h + 180) % 360, hsv.s, hsv.v);
+      attractors.push({ coords: this._getColor4DCoords(compRgb), weight: 0.7, type: 'complement', name: 'Atractor Complementario', hex: ColorMath.rgbToHex(compRgb.r, compRgb.g, compRgb.b) });
+
+      const triad1Rgb = ColorMath.hsvToRgb((hsv.h + 120) % 360, hsv.s, hsv.v);
+      attractors.push({ coords: this._getColor4DCoords(triad1Rgb), weight: 0.6, type: 'triad', name: 'Atractor Tríada I', hex: ColorMath.rgbToHex(triad1Rgb.r, triad1Rgb.g, triad1Rgb.b) });
+
+      const triad2Rgb = ColorMath.hsvToRgb((hsv.h + 240) % 360, hsv.s, hsv.v);
+      attractors.push({ coords: this._getColor4DCoords(triad2Rgb), weight: 0.6, type: 'triad', name: 'Atractor Tríada II', hex: ColorMath.rgbToHex(triad2Rgb.r, triad2Rgb.g, triad2Rgb.b) });
+    }
+
+    if ((this.options.quantumSource === 'all' || this.options.quantumSource === 'pigment_space') && this.app?.swatchManager) {
+      const activePal = this.app.swatchManager.getActivePalette?.() || this.app.swatchManager.palettes?.[0];
+      if (activePal && activePal.colors) {
+        activePal.colors.slice(0, 5).forEach((col) => {
+          const hex = typeof col === 'string' ? col : col.hex;
+          const rgb = ColorMath.hexToRgb(hex);
+          if (rgb) {
+            attractors.push({ coords: this._getColor4DCoords(rgb), weight: 0.65, type: 'palette_tube', name: `Tubo de Paleta: ${hex}`, hex });
+          }
+        });
+      }
+    }
+
+    // Generador determinista rápido para consistencia entre frames
+    let seed = 42;
+    const random = () => {
+      seed = (seed * 16807) % 2147483647;
+      return (seed - 1) / 2147483646;
+    };
+    const randNorm = () => {
+      const u = Math.max(0.0001, random());
+      const v = random();
+      return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    };
+
+    for (let i = 0; i < quantumN; i++) {
+      const at = attractors[Math.floor(random() * attractors.length)];
+      const sigma = variance * (0.65 + random() * 0.7);
+
+      const dx = randNorm() * sigma;
+      const dy = randNorm() * sigma;
+      const dz = randNorm() * sigma;
+      const dw = randNorm() * (sigma * 0.7);
+
+      const x = at.coords.x + dx;
+      const y = at.coords.y + dy;
+      const z = at.coords.z + dz;
+      const w = at.coords.w + dw;
+
+      let maxProb = 0;
+      attractors.forEach(a => {
+        const d4 = Math.hypot(x - a.coords.x, y - a.coords.y, z - a.coords.z, w - a.coords.w);
+        const p = a.weight * Math.exp(-(d4 * d4) / (2 * variance * variance));
+        if (p > maxProb) maxProb = p;
+      });
+
+      const angle = (Math.atan2(z, x) * 180 / Math.PI + 360) % 360;
+      const chromaRadius = Math.hypot(x, z);
+      const sat = ColorMath.clamp(chromaRadius / 150, 0.05, 1);
+      const val = ColorMath.clamp((y + 170) / 340, 0.05, 1);
+      const rgb = ColorMath.hsvToRgb(angle, sat, val);
+      const hex = ColorMath.rgbToHex(rgb.r, rgb.g, rgb.b);
+
+      const node = {
+        id: `quantum_pt_${i}`,
+        type: 'quantum_particle',
+        x, y, z, w,
+        hex,
+        rgb,
+        probability: maxProb,
+        name: `Estado Cuántico P=${(maxProb * 100).toFixed(1)}% (${hex})`,
+        size: Math.max(1.8, 5.5 * maxProb * this.options.particleSizeScale),
+        glow: maxProb * this.options.glowIntensity,
+        isPrimary: i === 0
+      };
+      nodes.push(node);
+
+      if (maxProb > 0.65 && i % 9 === 0 && nodes.length > 5) {
+        const prev = nodes[nodes.length - Math.floor(random() * 4) - 2];
+        if (prev && prev.probability > 0.5) {
+          const dist = Math.hypot(x - prev.x, y - prev.y, z - prev.z);
+          if (dist < 60) {
+            lines.push({
+              from: prev,
+              to: node,
+              color: `rgba(192, 132, 252, ${(maxProb * 0.45).toFixed(2)})`,
+              width: 1.2,
+              dash: [2, 3]
+            });
+          }
+        }
+      }
+    }
+
+    const result = { nodes, lines };
+    this._geometryCache[cacheKey] = result;
+    return result;
+  }
+
+  /**
+   * Genera el Hiper-Corte Tomográfico 4D (Cross-Section Slice en plano W, Y o X).
+   */
+  getHyperSliceGeometry() {
+    const cacheKey = `slice_${this.options.sliceAxis}_${this.options.slicePos}_${this.options.sliceThickness}_${this.options.pointDensity}_${this.options.particleSizeScale}`;
+    if (this._geometryCache[cacheKey]) return this._geometryCache[cacheKey];
+
+    const nodes = [];
+    const lines = [];
+    const faces = [];
+    const axis = this.options.sliceAxis || 'w';
+    const pos = this.options.slicePos || 0;
+    const thickness = this.options.sliceThickness || 28;
+    const baseCloud = this.getMunsellGeometry();
+
+    // Marco del plano tomográfico de corte
+    const planeSize = 220;
+    if (axis === 'w') {
+      const p1 = { id: 'sp1', x: -planeSize, y: -160, z: -planeSize, w: pos };
+      const p2 = { id: 'sp2', x: planeSize, y: -160, z: -planeSize, w: pos };
+      const p3 = { id: 'sp3', x: planeSize, y: 160, z: planeSize, w: pos };
+      const p4 = { id: 'sp4', x: -planeSize, y: 160, z: planeSize, w: pos };
+      faces.push({ p1, p2, p3, p4, fillColor: 'rgba(244, 63, 94, 0.08)', strokeColor: 'rgba(244, 63, 94, 0.55)' });
+      lines.push({ from: p1, to: p2, color: 'rgba(244, 63, 94, 0.7)', width: 1.5 });
+      lines.push({ from: p2, to: p3, color: 'rgba(244, 63, 94, 0.7)', width: 1.5 });
+      lines.push({ from: p3, to: p4, color: 'rgba(244, 63, 94, 0.7)', width: 1.5 });
+      lines.push({ from: p4, to: p1, color: 'rgba(244, 63, 94, 0.7)', width: 1.5 });
+    }
+
+    baseCloud.forEach(node => {
+      let coordVal = 0;
+      if (axis === 'w') coordVal = node.w || 0;
+      else if (axis === 'y') coordVal = (node.y / 34 + 5) * 20 - 100;
+      else coordVal = (node.x / 180) * 100;
+
+      const dist = Math.abs(coordVal - pos);
+      if (dist <= thickness) {
+        const factor = 1 - (dist / thickness);
+        nodes.push({
+          ...node,
+          id: `slice_in_${node.id}`,
+          size: (node.size || 4) * (1 + factor * 0.7) * this.options.particleSizeScale,
+          _inSlice: true,
+          _ghost: false
+        });
+      } else if (!this.options.isolateSlice) {
+        nodes.push({
+          ...node,
+          id: `slice_out_${node.id}`,
+          size: Math.max(1.4, (node.size || 3) * 0.5 * this.options.particleSizeScale),
+          _ghost: true
+        });
+      }
+    });
+
+    const result = { nodes, lines, faces };
+    this._geometryCache[cacheKey] = result;
+    return result;
+  }
+
+  /**
+   * Genera el Manifold Isosuperficie & Gamut Hull 4D (Malla continua de Gamut).
+   */
+  getManifoldGeometry() {
+    const cacheKey = `manifold_${this.options.pointDensity}`;
+    if (this._geometryCache[cacheKey]) return this._geometryCache[cacheKey];
+
+    const nodes = [];
+    const lines = [];
+    const faces = [];
+    const hues = MunsellSystem.HUES;
+    const ringCount = 8;
+
+    const ringNodes = [];
+    for (let r = 0; r < ringCount; r++) {
+      const val = 1.5 + (r / (ringCount - 1)) * 7.5;
+      const y = (val - 5) * 34;
+      const ringRow = [];
+
+      hues.forEach((hue, hIdx) => {
+        const rad = (hue.angle * Math.PI) / 180;
+        let maxChr = 10;
+        if (hue.name.includes('Y')) maxChr = val >= 7 ? 14 : 7;
+        else if (hue.name.includes('R')) maxChr = val >= 4 && val <= 6 ? 14 : 8;
+        else if (hue.name.includes('B')) maxChr = val <= 4 ? 12 : 7;
+
+        const radius = maxChr * 15;
+        const x = radius * Math.cos(rad);
+        const z = radius * Math.sin(rad);
+        const w = ((hue.angle >= 10 && hue.angle <= 90) ? 28 : -28) * (maxChr / 14);
+
+        const sat = ColorMath.clamp((maxChr / 14) * (5 / Math.max(1, val)), 0, 1);
+        const v = ColorMath.clamp(val / 10 + (sat * 0.1), 0, 1);
+        const rgb = ColorMath.hsvToRgb(hue.angle, sat, v);
+        const hex = ColorMath.rgbToHex(rgb.r, rgb.g, rgb.b);
+
+        const node = {
+          id: `mani_${r}_${hIdx}`,
+          type: 'manifold_vertex',
+          x, y, z, w,
+          hex,
+          rgb,
+          name: `Límite Gamut: ${hue.label} V${val.toFixed(1)}/C${maxChr}`,
+          size: 3.2
+        };
+        nodes.push(node);
+        ringRow.push(node);
+      });
+      ringNodes.push(ringRow);
+    }
+
+    // Triangulación y caras cuadradas del mallado
+    for (let r = 0; r < ringCount - 1; r++) {
+      const row1 = ringNodes[r];
+      const row2 = ringNodes[r + 1];
+      const count = row1.length;
+
+      for (let i = 0; i < count; i++) {
+        const next = (i + 1) % count;
+        const p1 = row1[i];
+        const p2 = row1[next];
+        const p3 = row2[next];
+        const p4 = row2[i];
+
+        faces.push({
+          p1, p2, p3, p4,
+          fillColor: `${p1.hex}25`,
+          strokeColor: 'rgba(255, 255, 255, 0.22)'
+        });
+        lines.push({ from: p1, to: p2, color: 'rgba(255,255,255,0.25)', width: 1 });
+        lines.push({ from: p1, to: p4, color: 'rgba(255,255,255,0.25)', width: 1 });
+      }
+    }
+
+    const result = { nodes, lines, faces };
+    this._geometryCache[cacheKey] = result;
+    return result;
+  }
+
+  /**
+   * Genera el Campo Vectorial 4D & Líneas de Flujo Cromático (Streamlines).
+   */
+  getVectorFieldGeometry() {
+    if (this._geometryCache['vector_field']) return this._geometryCache['vector_field'];
+    const nodes = [];
+    const lines = [];
+    const streamCount = 18;
+
+    for (let s = 0; s < streamCount; s++) {
+      const hue = (s * (360 / streamCount));
+      const rad = (hue * Math.PI) / 180;
+      const streamNodes = [];
+
+      for (let step = 0; step < 7; step++) {
+        const progress = step / 6;
+        const val = 1.5 + progress * 7.5;
+        const chr = 2 + Math.sin(progress * Math.PI) * 11;
+        const radius = chr * 15;
+        const x = radius * Math.cos(rad);
+        const z = radius * Math.sin(rad);
+        const y = (val - 5) * 34;
+        const w = (hue < 90 || hue > 300 ? 25 : -25) * (chr / 12);
+
+        const rgb = ColorMath.hsvToRgb(hue, ColorMath.clamp(chr / 12, 0, 1), ColorMath.clamp(val / 9, 0, 1));
+        const hex = ColorMath.rgbToHex(rgb.r, rgb.g, rgb.b);
+
+        const node = {
+          id: `vec_stream_${s}_${step}`,
+          type: 'stream_node',
+          x, y, z, w,
+          hex,
+          rgb,
+          name: `Corriente Cromática H:${Math.round(hue)}°`,
+          size: 2.8
+        };
+        nodes.push(node);
+        streamNodes.push(node);
+      }
+
+      for (let i = 0; i < streamNodes.length - 1; i++) {
+        lines.push({
+          from: streamNodes[i],
+          to: streamNodes[i + 1],
+          color: `${streamNodes[i].hex}99`,
+          width: 1.8,
+          dash: [4, 3]
+        });
+      }
+    }
+
+    const result = { nodes, lines };
+    this._geometryCache['vector_field'] = result;
+    return result;
+  }
+
+  /**
+   * Genera el Tetraedro de Mezcla Física Sustractiva 4D.
+   */
+  getPigmentTetrahedronGeometry() {
+    const cacheKey = `pigment_tet_${this.options.pointDensity}`;
+    if (this._geometryCache[cacheKey]) return this._geometryCache[cacheKey];
+
+    const nodes = [];
+    const lines = [];
+    const faces = [];
+
+    const tubes = [
+      { name: 'Blanco Titanio (PW6)', hex: '#FFFFFF', rgb: { r: 255, g: 255, b: 255 } },
+      { name: 'Negro Marfil (PBk9)', hex: '#1C1917', rgb: { r: 28, g: 25, b: 23 } },
+      { name: 'Amarillo Cadmio (PY35)', hex: '#FFF200', rgb: { r: 255, g: 242, b: 0 } },
+      { name: 'Rojo Cadmio (PR108)', hex: '#DC2626', rgb: { r: 220, g: 38, b: 38 } },
+      { name: 'Azul Ultramar (PB29)', hex: '#1E3A8A', rgb: { r: 30, g: 58, b: 138 } }
+    ];
+
+    const tubeNodes = tubes.map((t, idx) => {
+      const coords = this._getColor4DCoords(t.rgb);
+      return {
+        id: `pigment_vertex_${idx}`,
+        type: 'pigment_vertex',
+        ...coords,
+        hex: t.hex,
+        rgb: t.rgb,
+        name: t.name,
+        size: 7.5,
+        isPrimary: true
+      };
+    });
+    nodes.push(...tubeNodes);
+
+    for (let i = 0; i < tubeNodes.length; i++) {
+      for (let j = i + 1; j < tubeNodes.length; j++) {
+        lines.push({
+          from: tubeNodes[i],
+          to: tubeNodes[j],
+          color: 'rgba(251, 191, 36, 0.65)',
+          width: 2.2
+        });
+
+        for (let s = 1; s <= 4; s++) {
+          const t = s / 5;
+          const r = Math.round(tubeNodes[i].rgb.r * (1 - t) + tubeNodes[j].rgb.r * t);
+          const g = Math.round(tubeNodes[i].rgb.g * (1 - t) + tubeNodes[j].rgb.g * t);
+          const b = Math.round(tubeNodes[i].rgb.b * (1 - t) + tubeNodes[j].rgb.b * t);
+          const hex = ColorMath.rgbToHex(r, g, b);
+          const mixCoords = this._getColor4DCoords({ r, g, b });
+          nodes.push({
+            id: `pigment_mix_${i}_${j}_${s}`,
+            type: 'pigment_blend',
+            ...mixCoords,
+            hex,
+            rgb: { r, g, b },
+            name: `Mezcla Física: ${hex}`,
+            size: 3.5
+          });
+        }
+      }
+    }
+
+    const result = { nodes, lines, faces };
+    this._geometryCache[cacheKey] = result;
+    return result;
+  }
+
+  /**
+   * Genera el sólido de percepción visual CIELAB / OKLab 4D con densidad adaptativa.
+   */
+  getCieLabGeometry() {
+    const cacheKey = `cielab_${this.options.pointDensity}_${this.options.particleSizeScale}`;
+    if (this._geometryCache[cacheKey]) return this._geometryCache[cacheKey];
+
+    const nodes = [];
+    const { labL, labAB } = this._getDensityStepMultiplier();
+
+    for (let L = 16; L <= 92; L += labL) {
+      for (let a = -70; a <= 70; a += labAB) {
+        for (let b = -70; b <= 70; b += labAB) {
           const rgb = this._labToRgb(L, a, b);
           if (rgb.inside) {
             const hex = ColorMath.rgbToHex(rgb.r, rgb.g, rgb.b);
             const w = (a * 0.45) - (b * 0.25);
             nodes.push({
-              id: `lab_${L}_${a}_${b}`,
+              id: `lab_${L.toFixed(0)}_${a.toFixed(0)}_${b.toFixed(0)}`,
               type: 'cielab_node',
               x: a * 1.9,
               y: (L - 50) * 3.4,
@@ -543,31 +1121,34 @@ export class Hyper4DStudio {
               w,
               hex,
               rgb,
-              name: `L*${L} a*${a} b*${b}`,
-              size: 3.5
+              name: `L*${L.toFixed(0)} a*${a.toFixed(0)} b*${b.toFixed(0)}`,
+              size: Math.max(1.8, 3.5 * this.options.particleSizeScale)
             });
           }
         }
       }
     }
 
-    this._geometryCache['cielab'] = nodes;
+    this._geometryCache[cacheKey] = nodes;
     return nodes;
   }
 
   /**
-   * Genera el doble cono HSL en 4D.
+   * Genera el doble cono HSL en 4D con densidad adaptativa.
    */
   getHslConeGeometry() {
-    if (this._geometryCache['hsl_cone']) return this._geometryCache['hsl_cone'];
+    const cacheKey = `hsl_${this.options.pointDensity}_${this.options.particleSizeScale}`;
+    if (this._geometryCache[cacheKey]) return this._geometryCache[cacheKey];
 
     const nodes = [];
-    for (let lStep = 1; lStep <= 9; lStep++) {
+    const { hslH, hslL } = this._getDensityStepMultiplier();
+
+    for (let lStep = 1; lStep <= 9; lStep += hslL) {
       const l = lStep / 10;
       const radiusFactor = 1 - Math.abs(2 * l - 1);
 
-      for (let h = 0; h < 360; h += 24) {
-        for (let sStep = 2; sStep <= 4; sStep++) {
+      for (let h = 0; h < 360; h += hslH) {
+        for (let sStep = 1; sStep <= 4; sStep++) {
           const s = sStep / 4;
           const radius = radiusFactor * s * 145;
           const rad = (h * Math.PI) / 180;
@@ -580,19 +1161,19 @@ export class Hyper4DStudio {
           const hex = ColorMath.rgbToHex(rgb.r, rgb.g, rgb.b);
 
           nodes.push({
-            id: `hsl_${h}_${sStep}_${lStep}`,
+            id: `hsl_${Math.round(h)}_${sStep}_${lStep.toFixed(1)}`,
             type: 'hsl_node',
             x, y, z, w,
             hex,
             rgb,
-            name: `H:${h}° S:${Math.round(s * 100)}% L:${Math.round(l * 100)}%`,
-            size: 3.4
+            name: `H:${Math.round(h)}° S:${Math.round(s * 100)}% L:${Math.round(l * 100)}%`,
+            size: Math.max(1.8, 3.4 * this.options.particleSizeScale)
           });
         }
       }
     }
 
-    this._geometryCache['hsl_cone'] = nodes;
+    this._geometryCache[cacheKey] = nodes;
     return nodes;
   }
 
@@ -1429,6 +2010,18 @@ export class Hyper4DStudio {
       this.camera.rotY = this.camera.targetRotY;
     }
 
+    // Auto-rotación en los 6 planos ortogonales SO(4) para Tesseract
+    if (this.activeModel === 'tesseract' || this.activeDeployment === 'tesseract') {
+      const pAct = this.dimension4D.planesActive;
+      const pSp = this.dimension4D.planeSpeeds;
+      if (pAct.xy) this.dimension4D.angleXY += pSp.xy;
+      if (pAct.xz) this.dimension4D.angleXZ += pSp.xz;
+      if (pAct.yz) this.dimension4D.angleYZ += pSp.yz;
+      if (pAct.xw) this.dimension4D.angleXW += pSp.xw;
+      if (pAct.yw) this.dimension4D.angleYW += pSp.yw;
+      if (pAct.zw) this.dimension4D.angleZW += pSp.zw;
+    }
+
     // Animación continua de la 4ª Dimensión W
     if (this.dimension4D.isAnimatingW) {
       if (this.dimension4D.wMode === 'tesseract') {
@@ -1475,30 +2068,48 @@ export class Hyper4DStudio {
     const linesToDraw = [];
     const facesToDraw = [];
 
-    // Nube de Modelo Base (si no estamos en modo exclusivo de tesseract)
-    const isExclusiveMode = this.activeDeployment === 'tesseract';
-    if (this.options.showSolidCloud && !isExclusiveMode) {
-      let baseNodes = [];
-      if (this.activeModel === 'munsell') {
-        baseNodes = this.getMunsellGeometry();
+    // Nube de Modelo Base según la Geometría / Espacio 4D activo
+    if (this.options.showSolidCloud) {
+      if (this.activeDeployment === 'tesseract' || this.activeModel === 'tesseract') {
+        const tess = this.getTesseractGeometry();
+        elementsToDraw.push(...tess.nodes);
+        linesToDraw.push(...tess.lines);
+        facesToDraw.push(...tess.faces);
+      } else if (this.activeDeployment === 'quantum' || this.activeModel === 'quantum_cloud') {
+        const qCloud = this.getQuantumCloudGeometry();
+        elementsToDraw.push(...qCloud.nodes);
+        if (qCloud.lines) linesToDraw.push(...qCloud.lines);
+      } else if (this.activeDeployment === 'slice' || this.activeModel === 'hyperslice') {
+        const sliceData = this.getHyperSliceGeometry();
+        elementsToDraw.push(...sliceData.nodes);
+        if (sliceData.lines) linesToDraw.push(...sliceData.lines);
+        if (sliceData.faces) facesToDraw.push(...sliceData.faces);
+      } else if (this.activeModel === 'manifold') {
+        const maniData = this.getManifoldGeometry();
+        elementsToDraw.push(...maniData.nodes);
+        if (maniData.lines) linesToDraw.push(...maniData.lines);
+        if (maniData.faces) facesToDraw.push(...maniData.faces);
+      } else if (this.activeDeployment === 'flow' || this.activeModel === 'vector_field') {
+        const vecData = this.getVectorFieldGeometry();
+        elementsToDraw.push(...vecData.nodes);
+        if (vecData.lines) linesToDraw.push(...vecData.lines);
+      } else if (this.activeModel === 'pigment_tetrahedron') {
+        const pigmData = this.getPigmentTetrahedronGeometry();
+        elementsToDraw.push(...pigmData.nodes);
+        if (pigmData.lines) linesToDraw.push(...pigmData.lines);
+        if (pigmData.faces) facesToDraw.push(...pigmData.faces);
       } else if (this.activeModel === 'cielab') {
-        baseNodes = this.getCieLabGeometry();
+        elementsToDraw.push(...this.getCieLabGeometry());
       } else if (this.activeModel === 'hsl_cone') {
-        baseNodes = this.getHslConeGeometry();
+        elementsToDraw.push(...this.getHslConeGeometry());
+      } else {
+        // Munsell por defecto
+        elementsToDraw.push(...this.getMunsellGeometry());
       }
-      if (this.activeDeployment !== 'all') {
-        // En modos específicos de despliegue, atenuar como polvo estelar de referencia galáctica
-        baseNodes.forEach(bn => { bn._ghost = true; });
+
+      if (this.activeDeployment !== 'all' && this.activeDeployment !== 'tesseract' && this.activeDeployment !== 'quantum' && this.activeDeployment !== 'slice') {
+        elementsToDraw.forEach(bn => { bn._ghost = true; });
       }
-      elementsToDraw.push(...baseNodes);
-    } else if (this.activeDeployment === 'tesseract' || (this.options.showSolidCloud && this.activeModel === 'tesseract')) {
-      const tess = this.getTesseractGeometry();
-      elementsToDraw.push(...tess.nodes);
-      tess.edges.forEach(e => {
-        const n1 = tess.nodes.find(n => n.id === e.from);
-        const n2 = tess.nodes.find(n => n.id === e.to);
-        if (n1 && n2) linesToDraw.push({ from: n1, to: n2, color: 'rgba(99, 102, 241, 0.45)', width: 1.8 });
-      });
     }
 
     // Muestra Activa y sus Desgloses según el Modo de Despliegue
@@ -1530,8 +2141,11 @@ export class Hyper4DStudio {
 
     // 6. PROYECCIÓN 4D -> 3D -> 2D
     const projectedNodes = [];
+    const isTess = this.activeDeployment === 'tesseract' || this.activeModel === 'tesseract';
     elementsToDraw.forEach(node => {
-      const r4 = this.rotatePoint4D(node, this.dimension4D.angleXW, this.dimension4D.angleYW, this.dimension4D.angleZW);
+      const r4 = isTess
+        ? this.rotatePoint4D(node, this.dimension4D.angleXW, this.dimension4D.angleYW, this.dimension4D.angleZW, this.dimension4D.angleXY, this.dimension4D.angleXZ, this.dimension4D.angleYZ)
+        : this.rotatePoint4D(node, this.dimension4D.angleXW, this.dimension4D.angleYW, this.dimension4D.angleZW);
       const p3 = this.project4DTo3D(r4);
       const p2 = this.project3DTo2D(p3);
 
@@ -1555,16 +2169,18 @@ export class Hyper4DStudio {
       const p1 = projectedNodes.find(pn => pn.node.id === face.p1.id);
       const p2 = projectedNodes.find(pn => pn.node.id === face.p2.id);
       const p3 = projectedNodes.find(pn => pn.node.id === face.p3.id);
+      const p4 = face.p4 ? projectedNodes.find(pn => pn.node.id === face.p4.id) : null;
       if (p1 && p2 && p3) {
         this.ctx.beginPath();
         this.ctx.moveTo(p1.x, p1.y);
         this.ctx.lineTo(p2.x, p2.y);
         this.ctx.lineTo(p3.x, p3.y);
+        if (p4) this.ctx.lineTo(p4.x, p4.y);
         this.ctx.closePath();
         this.ctx.fillStyle = face.fillColor || 'rgba(99, 102, 241, 0.15)';
         this.ctx.fill();
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-        this.ctx.lineWidth = 1;
+        this.ctx.strokeStyle = face.strokeColor || 'rgba(255, 255, 255, 0.2)';
+        this.ctx.lineWidth = face.lineWidth || 1;
         this.ctx.stroke();
       }
     });
@@ -1612,8 +2228,8 @@ export class Hyper4DStudio {
       // Factor de niebla de profundidad (0 = más lejano, 1 = más cercano)
       const depthFactor = Math.max(0, Math.min(1, (depth - minDepth) / (maxDepth - minDepth)));
 
-      // Renderizado de esfera 3D Phong (o polvo galáctico atenuado si es ghost)
-      this._drawSphere(x, y, radius, node.hex, depthFactor, isHovered, isPrimary, isGhost);
+      // Renderizado de esfera 3D Phong (o quantum bloom / polvo galáctico)
+      this._drawSphere(x, y, radius, node.hex, depthFactor, isHovered, isPrimary, isGhost, node);
 
       // Recopilar rótulos para el motor anti-colisión
       if (this.options.showLabels && !isGhost) {
@@ -1627,7 +2243,8 @@ export class Hyper4DStudio {
             node.type === 'farges_stop' ||
             (node.type === 'bow_curve_pt' && node.isPrimary) ||
             (node.type === 'ramp_node' && node.isPrimary) ||
-            (node.type === 'palette_swatch' && this.activeDeployment === 'palette')
+            (node.type === 'palette_swatch' && this.activeDeployment === 'palette') ||
+            (node.type === 'tesseract_node' && isHovered)
           ));
 
         if (isMilestone) {
@@ -1637,7 +2254,7 @@ export class Hyper4DStudio {
             y,
             radius,
             name: node.name || node.hex,
-            sub: node.munsell || node.role || node.hex,
+            sub: node.munsell || node.coords4D || node.role || node.hex,
             isPrimary: isPrimary || node.type === 'active_center',
             isHovered
           });
@@ -1660,10 +2277,32 @@ export class Hyper4DStudio {
    * Dibuja una esfera volumétrica 3D Phong con brillo especular,
    * reflejo ambiental, oclusión en limbo y niebla atmosférica.
    */
-  _drawSphere(x, y, radius, hex, depthFactor, isHovered, isPrimary, isGhost = false) {
+  _drawSphere(x, y, radius, hex, depthFactor, isHovered, isPrimary, isGhost = false, node = null) {
     if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius) || radius <= 0) return;
     const ctx = this.ctx;
     const rad = Math.max(1.8, radius);
+
+    // Renderizado especial de Partícula Cuántica de Probabilidad
+    if (node && node.type === 'quantum_particle') {
+      const prob = node.probability || 0.5;
+      const glowR = Math.max(3.5, rad * (1.6 + prob * 2.2));
+      const g = ctx.createRadialGradient(x, y, rad * 0.1, x, y, glowR);
+      g.addColorStop(0, hex);
+      g.addColorStop(0.35, hex + '99');
+      g.addColorStop(0.7, hex + '25');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, glowR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Núcleo brillante concentrado
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(1.2, rad * 0.4), 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
 
     // Si es nodo fantasma de fondo, renderizado ultraligero y sutil como polvo estelar
     if (isGhost) {
@@ -2240,6 +2879,150 @@ export class Hyper4DStudio {
     if (modelSelect) {
       modelSelect.addEventListener('change', (e) => {
         this.activeModel = e.target.value;
+        this._geometryCache = {};
+        this._updateSubBarsVisibility();
+        if (this.activeModel === 'tesseract') {
+          this.renderTesseractInspector();
+          this._switchInspectorTab('tesseract');
+        } else if (this.activeModel === 'quantum_cloud') {
+          this.renderQuantumInspector();
+          this._switchInspectorTab('quantum');
+        }
+        setTimeout(() => this.frameAll(), 80);
+      });
+    }
+
+    // Selector de Densidad de Muestras / Nube
+    const densitySelect = document.getElementById('hyper4dDensitySelect');
+    if (densitySelect) {
+      densitySelect.value = this.options.pointDensity;
+      densitySelect.addEventListener('change', (e) => {
+        this.options.pointDensity = e.target.value;
+        this._geometryCache = {};
+        if (this.app?.showToast) {
+          const names = {
+            low: 'Densidad Esquemática (~150 pts)',
+            standard: 'Densidad Estándar (~450 pts)',
+            high: 'Alta Resolución (~1,200 pts)',
+            ultra: 'Nube Densa Cuántica (~2,500 pts)',
+            quantum: 'Hiper-Detalle Ultra (~5,000 pts)'
+          };
+          this.app.showToast(names[this.options.pointDensity] || 'Densidad actualizada', 'info');
+        }
+      });
+    }
+
+    // Selector de Estilo 4D
+    const renderStyleSelect = document.getElementById('hyper4dRenderStyleSelect');
+    if (renderStyleSelect) {
+      renderStyleSelect.value = this.options.renderStyle;
+      renderStyleSelect.addEventListener('change', (e) => {
+        this.options.renderStyle = e.target.value;
+      });
+    }
+
+    // Sub-bar Nube Cuántica de Probabilidad
+    const qSourceSelect = document.getElementById('hyper4dQuantumSourceSelect');
+    if (qSourceSelect) {
+      qSourceSelect.addEventListener('change', (e) => {
+        this.options.quantumSource = e.target.value;
+        this._geometryCache = {};
+        this.renderQuantumInspector();
+      });
+    }
+
+    const qVarianceSlider = document.getElementById('hyper4dQuantumVarianceSlider');
+    const qVarianceVal = document.getElementById('hyper4dQuantumVarianceVal');
+    if (qVarianceSlider) {
+      qVarianceSlider.addEventListener('input', (e) => {
+        this.options.quantumVariance = parseFloat(e.target.value);
+        if (qVarianceVal) qVarianceVal.textContent = e.target.value;
+        this._geometryCache = {};
+        this.renderQuantumInspector();
+      });
+    }
+
+    // Sub-bar Tesseract SO(4) & 6 Planos
+    const tessPlanesGroup = document.getElementById('hyper4dTessPlanesGroup');
+    if (tessPlanesGroup) {
+      tessPlanesGroup.querySelectorAll('.tess-plane-btn').forEach(btn => {
+        const plane = btn.dataset.plane;
+        btn.addEventListener('click', () => {
+          this.dimension4D.planesActive[plane] = !this.dimension4D.planesActive[plane];
+          btn.classList.toggle('active', this.dimension4D.planesActive[plane]);
+          btn.style.background = this.dimension4D.planesActive[plane] ? 'rgba(56, 189, 248, 0.3)' : '';
+          btn.style.borderColor = this.dimension4D.planesActive[plane] ? '#38BDF8' : '';
+          this.renderTesseractInspector();
+        });
+      });
+    }
+
+    const tessCellSelect = document.getElementById('hyper4dTessCellSelect');
+    if (tessCellSelect) {
+      tessCellSelect.addEventListener('change', (e) => {
+        this.options.tesseractActiveCell = e.target.value;
+        this._geometryCache = {};
+        this.renderTesseractInspector();
+      });
+    }
+
+    const chkTessFaces = document.getElementById('chkHyper4DTessFaces');
+    if (chkTessFaces) {
+      chkTessFaces.addEventListener('change', (e) => {
+        this.options.tesseractShowFaces = e.target.checked;
+        this._geometryCache = {};
+      });
+    }
+
+    const chkTessInner = document.getElementById('chkHyper4DTessInnerCloud');
+    if (chkTessInner) {
+      chkTessInner.addEventListener('change', (e) => {
+        this.options.tesseractShowInnerCloud = e.target.checked;
+        this._geometryCache = {};
+      });
+    }
+
+    // Sub-bar Hiper-Corte Tomográfico 4D
+    const sliceAxisSelect = document.getElementById('hyper4dSliceAxisSelect');
+    if (sliceAxisSelect) {
+      sliceAxisSelect.addEventListener('change', (e) => {
+        this.options.sliceAxis = e.target.value;
+        this._geometryCache = {};
+      });
+    }
+
+    const slicePosSlider = document.getElementById('hyper4dSlicePosSlider');
+    const slicePosVal = document.getElementById('hyper4dSlicePosVal');
+    if (slicePosSlider) {
+      slicePosSlider.addEventListener('input', (e) => {
+        this.options.slicePos = parseFloat(e.target.value);
+        if (slicePosVal) slicePosVal.textContent = e.target.value;
+        this._geometryCache = {};
+      });
+    }
+
+    const sliceThickSlider = document.getElementById('hyper4dSliceThickSlider');
+    if (sliceThickSlider) {
+      sliceThickSlider.addEventListener('input', (e) => {
+        this.options.sliceThickness = parseFloat(e.target.value);
+        this._geometryCache = {};
+      });
+    }
+
+    const chkIsolateSlice = document.getElementById('chkHyper4DIsolateSlice');
+    if (chkIsolateSlice) {
+      chkIsolateSlice.addEventListener('change', (e) => {
+        this.options.isolateSlice = e.target.checked;
+        this._geometryCache = {};
+      });
+    }
+
+    // Sub-bar Campo Vectorial & Flujo
+    const flowTypeSelect = document.getElementById('hyper4dFlowTypeSelect');
+    if (flowTypeSelect) {
+      flowTypeSelect.addEventListener('change', (e) => {
+        this.options.flowType = e.target.value;
+        this._geometryCache = {};
       });
     }
 
@@ -2474,6 +3257,8 @@ export class Hyper4DStudio {
     const subTabs = document.querySelectorAll('.hyper4d-subtab-btn');
     const subPanels = {
       inspect: document.getElementById('hyper4dPanelInspect'),
+      quantum: document.getElementById('hyper4dPanelQuantum'),
+      tesseract: document.getElementById('hyper4dPanelTesseract'),
       composition: document.getElementById('hyper4dPanelComposition'),
       compare: document.getElementById('hyper4dPanelCompare'),
       palette: document.getElementById('hyper4dPanelPalette'),
@@ -2487,6 +3272,8 @@ export class Hyper4DStudio {
         Object.keys(subPanels).forEach(k => {
           if (subPanels[k]) subPanels[k].style.display = k === target ? 'block' : 'none';
         });
+        if (target === 'quantum') this.renderQuantumInspector();
+        if (target === 'tesseract') this.renderTesseractInspector();
       });
     });
 
@@ -2510,48 +3297,289 @@ export class Hyper4DStudio {
     }
   }
 
+  _switchInspectorTab(tabKey) {
+    const subTabs = document.querySelectorAll('.hyper4d-subtab-btn');
+    const subPanels = {
+      inspect: document.getElementById('hyper4dPanelInspect'),
+      quantum: document.getElementById('hyper4dPanelQuantum'),
+      tesseract: document.getElementById('hyper4dPanelTesseract'),
+      composition: document.getElementById('hyper4dPanelComposition'),
+      compare: document.getElementById('hyper4dPanelCompare'),
+      palette: document.getElementById('hyper4dPanelPalette'),
+      masters: document.getElementById('hyper4dPanelMasters')
+    };
+    subTabs.forEach(t => t.classList.toggle('active', t.dataset.subtab === tabKey));
+    Object.keys(subPanels).forEach(k => {
+      if (subPanels[k]) subPanels[k].style.display = k === tabKey ? 'block' : 'none';
+    });
+  }
+
+  _updateSubBarsVisibility() {
+    const mode = this.activeDeployment;
+    const model = this.activeModel;
+
+    const showQuantum = mode === 'quantum' || model === 'quantum_cloud';
+    const showTess = mode === 'tesseract' || model === 'tesseract';
+    const showSlice = mode === 'slice' || model === 'hyperslice';
+    const showFlow = mode === 'flow' || model === 'vector_field';
+    const showHarm = mode === 'harmonies';
+    const showRamp = mode === 'ramp';
+    const showFarges = mode === 'farges';
+
+    const qBar = document.getElementById('hyper4dQuantumSubBar');
+    if (qBar) qBar.style.display = showQuantum ? 'flex' : 'none';
+
+    const tBar = document.getElementById('hyper4dTesseractSubBar');
+    if (tBar) tBar.style.display = showTess ? 'flex' : 'none';
+
+    const sBar = document.getElementById('hyper4dSliceSubBar');
+    if (sBar) sBar.style.display = showSlice ? 'flex' : 'none';
+
+    const flBar = document.getElementById('hyper4dFlowSubBar');
+    if (flBar) flBar.style.display = showFlow ? 'flex' : 'none';
+
+    const hBar = document.getElementById('hyper4dHarmonySubBar');
+    if (hBar) hBar.style.display = showHarm ? 'flex' : 'none';
+
+    const rBar = document.getElementById('hyper4dRampSubBar');
+    if (rBar) rBar.style.display = showRamp ? 'flex' : 'none';
+
+    const fBar = document.getElementById('hyper4dFargesSubBar');
+    if (fBar) {
+      fBar.style.display = showFarges ? 'flex' : 'none';
+      if (showFarges) this._updateFargesSubBar();
+    }
+  }
+
   setDeploymentMode(modeKey) {
     this.activeDeployment = modeKey;
+    this._geometryCache = {};
 
     document.querySelectorAll('.hyper4d-deploy-pill').forEach(p => {
       p.classList.toggle('active', p.dataset.deploy === modeKey);
     });
 
-    // Mostrar sub-controles contextuales
-    const harmonySubBar = document.getElementById('hyper4dHarmonySubBar');
-    if (harmonySubBar) {
-      harmonySubBar.style.display = modeKey === 'harmonies' ? 'flex' : 'none';
-    }
+    this._updateSubBarsVisibility();
 
-    const rampSubBar = document.getElementById('hyper4dRampSubBar');
-    if (rampSubBar) {
-      rampSubBar.style.display = modeKey === 'ramp' ? 'flex' : 'none';
-    }
-
-    const fargesSubBar = document.getElementById('hyper4dFargesSubBar');
-    if (fargesSubBar) {
-      fargesSubBar.style.display = modeKey === 'farges' ? 'flex' : 'none';
-      if (modeKey === 'farges') {
-        this._updateFargesSubBar();
-      }
+    if (modeKey === 'quantum') {
+      this.renderQuantumInspector();
+      this._switchInspectorTab('quantum');
+    } else if (modeKey === 'tesseract') {
+      this.renderTesseractInspector();
+      this._switchInspectorTab('tesseract');
     }
 
     if (this.app?.showToast) {
       const labels = {
         all: 'Modo Sólido Integral 4D',
+        quantum: 'Nube Cuántica de Probabilidad Cromática 4D',
+        tesseract: 'Hipercubo Tesseract SO(4) & 8 Células Cúbicas',
+        slice: 'Tomografía Cuadridimensional & Hiper-Corte',
+        flow: 'Campo Vectorial & Corrientes Cromáticas 4D',
         harmonies: 'Despliegue de Poliedros de Armonías 4D',
         palette: 'Constelación y Gamut Hull de Paleta',
         ramp: 'Spline 4D Continua de Rampas Tonales',
         gurney: 'Estudio de Luz, Sombra y SSS de James Gurney',
         farges: 'Curva Bow y Mezcla Sustractiva de Farges',
-        compare: 'Comparador Multimuestras y Baricentro 4D',
-        tesseract: 'Hipercubo Tesseract SO(4)'
+        compare: 'Comparador Multimuestras y Baricentro 4D'
       };
       this.app.showToast(labels[modeKey] || 'Modo de Despliegue 4D activado', 'info');
     }
 
-    // Auto-encuadre dinámico para la nueva geometría desplegada
     setTimeout(() => this.frameAll(), 80);
+  }
+
+  renderTesseractInspector() {
+    // 1. Células Cúbicas del Tesseract
+    const cellsGrid = document.getElementById('hyper4dTesseractCellsGrid');
+    if (cellsGrid) {
+      const cells = [
+        { id: 'all', name: 'Todas las Células (8)', desc: 'Hipervolumen 4D completo', color: '#38BDF8' },
+        { id: 'w_plus', name: '+W Célula Cálida', desc: 'w = +1 (Luz Solar)', color: '#F59E0B' },
+        { id: 'w_minus', name: '-W Célula Fría', desc: 'w = -1 (Veladura / Glaze)', color: '#6366F1' },
+        { id: 'x_plus', name: '+X Célula Roja', desc: 'x = +1 (Matiz Cálido)', color: '#EF4444' },
+        { id: 'x_minus', name: '-X Célula Cian', desc: 'x = -1 (Sombra Fría)', color: '#06B6D4' },
+        { id: 'y_plus', name: '+Y Célula Alta', desc: 'y = +1 (Luminancia / Blanco)', color: '#FCD34D' },
+        { id: 'y_minus', name: '-Y Célula Baja', desc: 'y = -1 (Profundidad / Negro)', color: '#4B5563' },
+        { id: 'z_plus', name: '+Z Célula Verde', desc: 'z = +1 (Espectro medio)', color: '#10B981' },
+        { id: 'z_minus', name: '-Z Célula Magenta', desc: 'z = -1 (Extraespectral)', color: '#EC4899' }
+      ];
+
+      cellsGrid.innerHTML = cells.map(c => {
+        const isActive = this.options.tesseractActiveCell === c.id;
+        return `
+          <button type="button" class="tool-action-btn tess-cell-btn ${isActive ? 'active' : ''}" data-cell="${c.id}"
+            style="display: flex; flex-direction: column; align-items: flex-start; padding: 6px 8px; border-radius: 6px; text-align: left; background: ${isActive ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isActive ? '#38BDF8' : 'rgba(255,255,255,0.08)'}; cursor: pointer;">
+            <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${c.color};"></span>
+              <strong style="font-size: 0.72rem; color: #FFFFFF;">${c.name}</strong>
+            </div>
+            <span style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">${c.desc}</span>
+          </button>
+        `;
+      }).join('');
+
+      cellsGrid.querySelectorAll('.tess-cell-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.options.tesseractActiveCell = btn.dataset.cell;
+          const tessSelect = document.getElementById('hyper4dTessCellSelect');
+          if (tessSelect) tessSelect.value = btn.dataset.cell;
+          this._geometryCache = {};
+          this.renderTesseractInspector();
+        });
+      });
+    }
+
+    // 2. Estado de Rotación de los 6 Planos SO(4)
+    const planesStatus = document.getElementById('hyper4dTesseractPlanesStatus');
+    if (planesStatus) {
+      const pAct = this.dimension4D.planesActive;
+      const planesInfo = [
+        { key: 'xy', name: 'Plano XY (Espacial)', angle: this.dimension4D.angleXY, active: pAct.xy },
+        { key: 'xz', name: 'Plano XZ (Espacial)', angle: this.dimension4D.angleXZ, active: pAct.xz },
+        { key: 'yz', name: 'Plano YZ (Espacial)', angle: this.dimension4D.angleYZ, active: pAct.yz },
+        { key: 'xw', name: 'Plano XW (Hiper-Eje)', angle: this.dimension4D.angleXW, active: pAct.xw },
+        { key: 'yw', name: 'Plano YW (Hiper-Eje)', angle: this.dimension4D.angleYW, active: pAct.yw },
+        { key: 'zw', name: 'Plano ZW (Hiper-Eje)', angle: this.dimension4D.angleZW, active: pAct.zw }
+      ];
+
+      planesStatus.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 6px;">
+          ${planesInfo.map(p => {
+            const deg = ((p.angle * 180 / Math.PI) % 360 + 360) % 360;
+            return `
+              <div style="display: flex; justify-content: space-between; padding: 3px 6px; background: rgba(0,0,0,0.3); border-radius: 4px; border: 1px solid ${p.active ? 'rgba(56,189,248,0.4)' : 'rgba(255,255,255,0.05)'};">
+                <span style="color: ${p.active ? '#38BDF8' : 'var(--text-muted)'}; font-weight: 600;">${p.name.split(' ')[1]}:</span>
+                <span style="font-family: var(--font-mono); color: ${p.active ? '#FCD34D' : '#64748B'};">${deg.toFixed(1)}°</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <div style="font-size: 0.68rem; color: var(--text-muted);">
+          Polítopo {4,3,3} con 16 vértices, 32 aristas, 24 caras cuadradas y 8 células cúbicas en rotación SO(4).
+        </div>
+      `;
+    }
+
+    // 3. Tabla de Coordenadas de los 16 Vértices
+    const verticesTable = document.getElementById('hyper4dTesseractVerticesTable');
+    if (verticesTable) {
+      const tessData = this.getTesseractGeometry();
+      const rows = tessData.nodes.filter(n => n.type === 'tesseract_node').map((n, idx) => {
+        return `
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.69rem;">
+            <td style="padding: 4px 6px; font-weight: 700; color: #38BDF8;">V${idx + 1}</td>
+            <td style="padding: 4px 6px; font-family: var(--font-mono); color: #FCD34D;">${n.coords4D}</td>
+            <td style="padding: 4px 6px; text-align: center;">
+              <span style="display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: ${n.hex}; vertical-align: middle; border: 1px solid rgba(255,255,255,0.2);"></span>
+            </td>
+            <td style="padding: 4px 6px; font-family: var(--font-mono); color: #FFF;">${n.hex}</td>
+            <td style="padding: 4px 6px; color: var(--text-muted); font-size: 0.65rem;">rgb(${n.rgb.r}, ${n.rgb.g}, ${n.rgb.b})</td>
+          </tr>
+        `;
+      }).join('');
+
+      verticesTable.innerHTML = `
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+          <thead>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.15); color: var(--text-muted); font-size: 0.68rem;">
+              <th style="padding: 4px 6px;">Vértice</th>
+              <th style="padding: 4px 6px;">SO(4) (x,y,z,w)</th>
+              <th style="padding: 4px 6px; text-align: center;">Muestra</th>
+              <th style="padding: 4px 6px;">HEX</th>
+              <th style="padding: 4px 6px;">RGB</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+  }
+
+  renderQuantumInspector() {
+    const curRgb = this.activeColor || { r: 99, g: 102, b: 241 };
+    const hex = ColorMath.rgbToHex(curRgb.r, curRgb.g, curRgb.b);
+    const hsv = ColorMath.rgbToHsv(curRgb.r, curRgb.g, curRgb.b);
+    const variance = this.options.quantumVariance || 35;
+
+    // Métricas del Campo Cuántico
+    const metricsBox = document.getElementById('hyper4dQuantumMetricsBox');
+    if (metricsBox) {
+      const entropy = (Math.log(variance + 1) * 1.4).toFixed(2);
+      const coherence = Math.max(0.4, (1 - variance / 100) * 0.95).toFixed(2);
+      const densityName = { low: '150 Partículas', standard: '450 Partículas', high: '1,200 Partículas', ultra: '2,500 Partículas', quantum: '5,000 Partículas' }[this.options.pointDensity] || '450';
+
+      metricsBox.innerHTML = `
+        <div class="hyper4d-stat-row">
+          <span>Función de Onda Ψ(C) Central:</span>
+          <strong style="color: #38BDF8;">1.000 (Máximo en ${hex})</strong>
+        </div>
+        <div class="hyper4d-stat-row">
+          <span>Radio de Incertidumbre (σ):</span>
+          <strong style="color: #C084FC;">${variance} unidades 4D</strong>
+        </div>
+        <div class="hyper4d-stat-row">
+          <span>Densidad del Campo Cuántico:</span>
+          <strong style="color: #FCD34D;">${densityName}</strong>
+        </div>
+        <div class="hyper4d-stat-row">
+          <span>Coherencia Armónica Cuántica:</span>
+          <strong style="color: #10B981;">${(coherence * 100).toFixed(0)}% (Estable)</strong>
+        </div>
+        <div class="hyper4d-stat-row">
+          <span>Entropía del Volumen 4D:</span>
+          <strong style="color: #EC4899;">${entropy} nats</strong>
+        </div>
+      `;
+    }
+
+    // Regiones de Máxima Probabilidad
+    const zonesBox = document.getElementById('hyper4dQuantumZonesBox');
+    if (zonesBox) {
+      const compHue = (hsv.h + 180) % 360;
+      const compRgb = ColorMath.hsvToRgb(compHue, hsv.s, hsv.v);
+      const compHex = ColorMath.rgbToHex(compRgb.r, compRgb.g, compRgb.b);
+      const warmRgb = ColorMath.hsvToRgb((hsv.h + 20) % 360, Math.min(1, hsv.s * 1.2), Math.min(1, hsv.v * 1.1));
+      const warmHex = ColorMath.rgbToHex(warmRgb.r, warmRgb.g, warmRgb.b);
+      const coolRgb = ColorMath.hsvToRgb((hsv.h + 200) % 360, Math.max(0.2, hsv.s * 0.8), Math.max(0.1, hsv.v * 0.5));
+      const coolHex = ColorMath.rgbToHex(coolRgb.r, coolRgb.g, coolRgb.b);
+
+      zonesBox.innerHTML = `
+        <div style="padding: 6px 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+            <strong style="font-size: 0.72rem; color: #FFFFFF;">Núcleo Espectral (P &gt; 90%)</strong>
+            <span style="font-size: 0.68rem; color: #38BDF8;">P = 100%</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 0.69rem; color: var(--text-muted);">
+            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: ${hex};"></span>
+            <span>Muestra central ${hex}. Máxima resonancia de materia y pigmento.</span>
+          </div>
+        </div>
+
+        <div style="padding: 6px 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+            <strong style="font-size: 0.72rem; color: #FFFFFF;">Corrimiento Térmico W (P ≈ 75%)</strong>
+            <span style="font-size: 0.68rem; color: #F59E0B;">Luz ☀️ ↔ Sombra 🌙</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 0.69rem; color: var(--text-muted);">
+            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: ${warmHex};"></span>
+            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: ${coolHex};"></span>
+            <span>Transición continua entre luz cálida y sombra ambiental fría de Sorolla.</span>
+          </div>
+        </div>
+
+        <div style="padding: 6px 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+            <strong style="font-size: 0.72rem; color: #FFFFFF;">Atractor Armónico Complementario</strong>
+            <span style="font-size: 0.68rem; color: #C084FC;">P ≈ 68%</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 0.69rem; color: var(--text-muted);">
+            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: ${compHex};"></span>
+            <span>Eje de máximo contraste simultáneo y equilibrio óptico ${compHex}.</span>
+          </div>
+        </div>
+      `;
+    }
   }
 
   // --- CONTROL DEL MODO PANTALLA COMPLETA INMERSIVA ---
@@ -3225,6 +4253,10 @@ export class Hyper4DStudio {
 
     // 9. Actualizar datos del Comparador
     this._updateComparisonPanel();
+
+    // 10. Actualizar Inspectores Cuántico y Tesseract 4D
+    this.renderQuantumInspector();
+    this.renderTesseractInspector();
 
     // 10. Reporte de Cobertura de Paleta
     const coverageReport = document.getElementById('hyper4dPaletteCoverageReport');
