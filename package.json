@@ -2,7 +2,7 @@
   "name": "gom-picker",
   "version": "1.0.0",
   "description": "The Definitive Color Picker & Harmony Suite for Adobe Photoshop and Digital Artists",
-  "main": "index.html",
+  "main": "electron-main.cjs",
   "type": "module",
   "scripts": {
     "build": "echo GOM Picker Pro static ready",

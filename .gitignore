@@ -22,6 +22,9 @@ desktop.ini
 # Test data & Browser caches
 edge_user_data*/
 
-# Build outputs
-dist/GOM_Color_Picker_Pro_Portable/
+# Build outputs & Release binaries (>100MB)
+build/
+dist/
+downloads/*.exe
+downloads/*Portable.zip
 
