@@ -492,6 +492,9 @@ En los flujos de trabajo tradicionales, los ilustradores suelen contar con palet
   * *Grandes Maestros:* Las 20+ obras maestras históricas analizadas (Monet, Van Gogh, Rembrandt, Sorolla, etc.).
   * *Taller Clásico:* Paletas de taller (Zorn, Apeles, Caravaggio, Velázquez).
   * *Catálogos Industriales:* Copic Sketch Marker Systems y Pantone Formula Guide.
+* **Muestrario Táctil de Alta Visibilidad:**
+  * Cada muestra en el muelle se presenta como un **azulejo de color táctil de gran formato** ($86\times 96\text{ px}$), dotado de una superficie cromática generosa de $52\text{ px}$ de altura con bisel brillante, código HEX en tipografía monoespaciada de alto contraste, nombre de la muestra y etiqueta de desplazamiento $\Delta E$.
+  * **Carga Inmediata:** Al hacer clic sobre cualquier azulejo cromático, se transfiere automáticamente el tono al selector frontal de trabajo (FG) de la suite.
 * **Controles por Biblioteca en el Muelle:**
   * **Ponderación de Influencia (Weight Slider $0.2\times$ a $2.0\times$):** Permite indicar qué biblioteca debe ejercer de eje gravitacional dominante. Por ejemplo, al asignar $1.5\times$ a la paleta del entorno y $0.6\times$ a la de atrezzo, las muestras de atrezzo se adaptan a la atmósfera ambiental sin desvirtuar el entorno.
   * **Casilla de Activación:** Permite incluir o pausar bibliotecas individuales del cálculo en tiempo real.
@@ -500,7 +503,7 @@ En los flujos de trabajo tradicionales, los ilustradores suelen contar con palet
 
 ### 10.2 Las 7 Estrategias Matemáticas y Físicas de Armonización
 1. **Veladura Atmosférica & Tinte Común (*Atmospheric Glaze*):**
-   * Baña todas las muestras en una misma fuente lumínica ambiental con control de intensidad ($0-100\%$) y presets rápidos (Luz Dorada 2800K, Aurora Ámbar, Cielo Azul 9500K, Bruma Nórdica, Bosque Místico, Cyberpunk Neón, etc.).
+   * Baña todas las muestras en una misma fuente lumínica ambiental mediante un pozo de color de taller (*Studio Color Well*) con visualización de HEX en tiempo real, control de intensidad ($0-100\%$) y presets rápidos (Luz Dorada 2800K, Aurora Ámbar, Cielo Azul 9500K, Bruma Nórdica, Bosque Místico, Cyberpunk Neón, etc.) con halos luminosos acordes a su tono.
    * Modos de fusión: *Soft Light* (luz cinematográfica suave), *Multiply* (sustracción de acuarela/óleo), *Overlay* (alto contraste), *Color* (re-tintado OKLCH sin perder valor) y *Kubelka-Munk Físico* (simulación de barniz pigmentario real).
    * Rango de afectación: Todo el espectro, solo luces, solo sombras o *Split-Toning Cruzado* (luces cálidas con sombras frías complementarias).
 2. **Proyección y Contención a Máscara de Gamut (Gurney):**
@@ -533,9 +536,17 @@ El visualizador central incluye un radar polar de alta resolución con aceleraci
 * **Medalla de Rango:** Clasifica la cohesión final en grados **S+, A, B, C, D**, acompañada por el diferencial numérico (ej. $+44\text{ pts}$).
 * **Informe Diagnóstico:** Resumen textual automático que detalla qué discordancias han sido resueltas.
 
-### 10.5 Tiras Comparativas "Antes / Después" en Paralelo
-* Despliega cada biblioteca con sus muestras alineadas en tarjetas individuales.
-* Cada tarjeta muestra el chip original, la flecha de transición, el chip armonizado, la distancia perceptual $\Delta E$, el botón de bloqueo (Pin 📌) y el botón para cargar la muestra directamente como color frontal de trabajo.
+### 10.5 Tiras Comparativas "Antes / Después" en Paralelo (Studio Cards)
+* **Selector Rápido de Filtro por Biblioteca:** Pestañas superiores que permiten alternar entre ver todas las bibliotecas del muelle o aislar una específica para análisis minucioso.
+* **Tarjetas Comparativas de Estudio de Alta Definición:**
+  * **Estandarte Bicolor Dividido (*Hero Dual-Split Banner*):** Franja superior de $56\text{ px}$ de altura dividida al $50\%$ entre el tono original (con etiqueta `ORIGINAL` y su código HEX) y el tono armonizado (con etiqueta `ARMONIZADO` y su nuevo código HEX). Ambas mitades cuentan con respuesta táctil independiente: hacer clic en el lado izquierdo carga el color original en el selector frontal, mientras que hacer clic en el derecho carga el tono armonizado.
+  * **Puente Central de Transición:** Icono conector luminoso que ilustra el flujo de armonización.
+  * **Etiquetas Categóricas $\Delta E$ Perceptuales:**
+    * 🔒 **Inmutable ($\Delta E = 0.0$):** Ámbar dorado para muestras bloqueadas con ancla fija.
+    * ✨ **Sutil ($\Delta E < 3.0$):** Verde esmeralda para adaptaciones sutiles y naturales.
+    * 🎨 **Armónico ($\Delta E < 10.0$):** Índigo/azul para sincronizaciones cromáticas balanceadas.
+    * ⚡ **Notable ($\Delta E \ge 10.0$):** Violeta/ámbar para realineaciones de espectro amplio.
+  * **Acciones en 1 Clic:** Botón de anclaje inmutable (📌 Fijar/Bloquear), casilla de inclusión/exclusión en la biblioteca común final y botón directo `🎨 Cargar` en color frontal.
 
 ### 10.6 Hub de Generación de Salida & Fusión
 * **Crear Nueva Biblioteca Común Armonizada:**

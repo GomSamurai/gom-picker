@@ -1269,10 +1269,10 @@ export const LibraryHarmonizerEngine = {
 
     if (this.deck.length === 0) {
       container.innerHTML = `
-        <div style="padding: 24px; text-align: center; border: 1px dashed var(--border-subtle); border-radius: var(--radius-md); background: rgba(0,0,0,0.2);">
-          <span style="font-size: 2rem; display: block; margin-bottom: 8px;">📭</span>
-          <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 12px;">El muelle de armonización está vacío.</p>
-          <button id="btnLibHarmDeckAddEmpty" class="tool-action-btn active-toggle" style="margin: 0 auto;">
+        <div style="padding: 32px 20px; text-align: center; border: 1px dashed var(--border-subtle); border-radius: var(--radius-md); background: rgba(0,0,0,0.25);">
+          <span style="font-size: 2.2rem; display: block; margin-bottom: 10px;">📭</span>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 14px;">El muelle de armonización está vacío.</p>
+          <button id="btnLibHarmDeckAddEmpty" class="tool-action-btn active-toggle" style="margin: 0 auto; padding: 8px 16px;">
             <span>➕</span> Añadir Bibliotecas al Muelle
           </button>
         </div>
@@ -1285,32 +1285,48 @@ export const LibraryHarmonizerEngine = {
     this.deck.forEach(lib => {
       const card = document.createElement('div');
       card.className = `lib-harm-deck-card ${lib.enabled ? '' : 'deck-card-disabled'}`;
-      card.style.borderLeft = `4px solid ${lib.badgeColor}`;
+      card.style.borderLeft = `5px solid ${lib.badgeColor}`;
 
-      // Swatch pills preview with lock pin & inclusion
+      // Generous tactile swatch tiles with rich color surface, uppercase HEX, swatch name, lock pin & deltaE tag
       const swatchesHtml = lib.swatches.map(sw => {
         return `
           <div class="lib-harm-deck-swatch ${sw.locked ? 'swatch-locked' : ''} ${sw.included ? '' : 'swatch-excluded'}" 
-               data-swatch-id="${sw.id}" data-lib-id="${lib.id}" title="${sw.name} (${sw.originalHex})">
-            <span class="deck-swatch-dot" style="background-color: ${sw.originalHex};"></span>
-            <span class="deck-swatch-hex">${sw.originalHex}</span>
-            <button class="deck-swatch-pin-btn" title="${sw.locked ? 'Desbloquear' : 'Fijar como inmutable 📌'}">
-              ${sw.locked ? '📌' : '🔓'}
-            </button>
+               data-swatch-id="${sw.id}" data-lib-id="${lib.id}" title="${sw.name} (${sw.originalHex}) — Clic para cargar en frontal">
+            
+            <div class="deck-swatch-color-box" style="background-color: ${sw.originalHex};">
+              <div class="deck-swatch-gloss"></div>
+              <button class="deck-swatch-pin-btn ${sw.locked ? 'pin-active' : ''}" title="${sw.locked ? 'Desbloquear muestra' : 'Fijar como muestra inmutable (Ancla) 📌'}">
+                ${sw.locked ? '📌' : '🔓'}
+              </button>
+              <div class="deck-swatch-load-indicator">🎨</div>
+            </div>
+
+            <div class="deck-swatch-meta">
+              <span class="deck-swatch-hex">${sw.originalHex}</span>
+              <span class="deck-swatch-name" title="${sw.name}">${sw.name || 'Muestra'}</span>
+              ${sw.deltaE !== undefined && sw.deltaE > 0 ? `
+                <span class="deck-swatch-delta-tag" title="Desplazamiento armónico: ΔE ${sw.deltaE}">
+                  ΔE ${sw.deltaE}
+                </span>
+              ` : ''}
+            </div>
+
           </div>
         `;
       }).join('');
 
       card.innerHTML = `
         <div class="deck-card-header">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" class="lib-deck-toggle-chk" ${lib.enabled ? 'checked' : ''} title="Activar/desactivar en el cálculo">
-            <span class="deck-badge-dot" style="background-color: ${lib.badgeColor};"></span>
+          <div class="deck-header-info">
+            <input type="checkbox" class="lib-deck-toggle-chk" ${lib.enabled ? 'checked' : ''} title="Activar/desactivar en el cálculo armónico">
+            <span class="deck-badge-dot" style="background-color: ${lib.badgeColor}; box-shadow: 0 0 10px ${lib.badgeColor};"></span>
             <strong class="deck-card-title">${lib.name}</strong>
             <span class="deck-category-badge">${lib.category}</span>
+            <span class="deck-count-pill">${lib.swatches.length} muestras</span>
           </div>
-          <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="deck-header-actions">
             <div class="deck-weight-control" title="Ponderación / Peso de influencia en la armonización">
+              <span class="deck-weight-icon">⚖️</span>
               <label>Influencia:</label>
               <input type="range" class="deck-weight-slider" min="0.2" max="2.0" step="0.1" value="${lib.weight}">
               <span class="deck-weight-val">${lib.weight.toFixed(1)}x</span>
@@ -1353,7 +1369,7 @@ export const LibraryHarmonizerEngine = {
       // Swatch click to set active color
       card.querySelectorAll('.lib-harm-deck-swatch').forEach(swEl => {
         swEl.addEventListener('click', (e) => {
-          if (e.target.tagName.toLowerCase() === 'button') return;
+          if (e.target.closest('button')) return;
           const swId = swEl.dataset.swatchId;
           const sw = lib.swatches.find(s => s.id === swId);
           if (sw && this.app) {
@@ -1396,19 +1412,20 @@ export const LibraryHarmonizerEngine = {
       const row = document.createElement('div');
       row.className = `lib-harm-drawer-item ${isAlreadyInDeck ? 'drawer-item-in-deck' : ''}`;
 
-      const chipsHtml = lib.colors.slice(0, 10).map(c => `
+      const chipsHtml = lib.colors.slice(0, 12).map(c => `
         <span class="drawer-swatch-chip" style="background-color: ${c};" title="${c}"></span>
       `).join('');
 
       row.innerHTML = `
         <div style="flex: 1; min-width: 0;">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-            <strong style="font-size: 0.82rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${lib.name}</strong>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <strong style="font-size: 0.85rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${lib.name}</strong>
             <span class="drawer-category-badge">${lib.category}</span>
+            <span class="deck-count-pill">${lib.colors.length}</span>
           </div>
-          <div style="display: flex; gap: 3px; align-items: center;">
+          <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
             ${chipsHtml}
-            ${lib.colors.length > 10 ? `<span style="font-size: 0.65rem; color: var(--text-muted); margin-left: 4px;">+${lib.colors.length - 10}</span>` : ''}
+            ${lib.colors.length > 12 ? `<span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600; margin-left: 4px;">+${lib.colors.length - 12}</span>` : ''}
           </div>
         </div>
         <button class="tool-action-btn ${isAlreadyInDeck ? '' : 'active-toggle'} drawer-add-btn" ${isAlreadyInDeck ? 'disabled' : ''}>
@@ -1446,8 +1463,8 @@ export const LibraryHarmonizerEngine = {
       const presetsHtml = this.GLAZE_PRESETS.map(gp => `
         <button class="glaze-preset-pill ${p.color.toUpperCase() === gp.hex.toUpperCase() ? 'preset-active' : ''}" 
                 data-hex="${gp.hex}" title="${gp.desc}">
-          <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${gp.hex}; vertical-align:middle; margin-right:4px;"></span>
-          ${gp.name}
+          <span class="preset-pill-dot" style="background-color:${gp.hex}; box-shadow: 0 0 8px ${gp.hex};"></span>
+          <span class="preset-pill-name">${gp.name}</span>
         </button>
       `).join('');
 
@@ -1455,22 +1472,32 @@ export const LibraryHarmonizerEngine = {
         <div class="strat-controls-grid">
           <div class="strat-control-col">
             <label class="strat-label">Tinte / Veladura Principal:</label>
-            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
-              <input type="color" id="libHarmGlazeColor" value="${p.color}" class="color-picker-input">
-              <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-primary);">${p.color}</span>
+            <div class="studio-color-well-row">
+              <div class="studio-color-well-wrap" title="Haz clic para seleccionar el color de veladura">
+                <div class="studio-color-well" style="background-color: ${p.color}; box-shadow: 0 0 16px ${p.color}50;">
+                  <input type="color" id="libHarmGlazeColor" value="${p.color}" class="color-picker-input">
+                </div>
+              </div>
+              <div class="studio-color-well-info">
+                <span class="studio-color-well-hex">${p.color}</span>
+                <span class="studio-color-well-hint">Color unificador del baño atmosférico</span>
+              </div>
             </div>
-            <div class="glaze-presets-row">
+            <div class="glaze-presets-row" style="margin-top: 10px;">
               ${presetsHtml}
             </div>
           </div>
 
           <div class="strat-control-col">
             <div class="strat-slider-row">
-              <label class="strat-label">Intensidad de la Veladura: <span id="libHarmGlazeIntensityVal">${Math.round(p.intensity * 100)}%</span></label>
+              <div class="strat-slider-header">
+                <label class="strat-label">Intensidad de la Veladura:</label>
+                <span id="libHarmGlazeIntensityVal" class="strat-val-badge">${Math.round(p.intensity * 100)}%</span>
+              </div>
               <input type="range" id="libHarmGlazeIntensity" min="0" max="1" step="0.01" value="${p.intensity}">
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
               <div>
                 <label class="strat-label">Modo de Fusión:</label>
                 <select id="libHarmGlazeBlendMode" class="chip-select" style="width: 100%;">
@@ -1502,7 +1529,7 @@ export const LibraryHarmonizerEngine = {
           <div class="strat-control-col">
             <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
               <label class="strat-label" style="margin-bottom: 0;">Geometría de la Máscara:</label>
-              <select id="libHarmGamutShape" class="chip-select">
+              <select id="libHarmGamutShape" class="chip-select" style="flex: 1;">
                 <option value="triangle" ${p.shape === 'triangle' ? 'selected' : ''}>Triángulo Armónico</option>
                 <option value="diamond" ${p.shape === 'diamond' ? 'selected' : ''}>Diamante Equilibrado</option>
                 <option value="slit" ${p.shape === 'slit' ? 'selected' : ''}>Hendidura Complementaria</option>
@@ -1512,20 +1539,26 @@ export const LibraryHarmonizerEngine = {
             </div>
 
             <div class="strat-slider-row">
-              <label class="strat-label">Rotación Angular: <span id="libHarmGamutAngleVal">${p.angle}°</span></label>
+              <div class="strat-slider-header">
+                <label class="strat-label">Rotación Angular:</label>
+                <span id="libHarmGamutAngleVal" class="strat-val-badge">${p.angle}°</span>
+              </div>
               <input type="range" id="libHarmGamutAngle" min="0" max="360" step="1" value="${p.angle}">
             </div>
           </div>
 
           <div class="strat-control-col">
             <div class="strat-slider-row">
-              <label class="strat-label">Apertura / Escala del Gamut: <span id="libHarmGamutScaleVal">${Math.round(p.scale * 100)}%</span></label>
+              <div class="strat-slider-header">
+                <label class="strat-label">Apertura / Escala del Gamut:</label>
+                <span id="libHarmGamutScaleVal" class="strat-val-badge">${Math.round(p.scale * 100)}%</span>
+              </div>
               <input type="range" id="libHarmGamutScale" min="0.2" max="0.9" step="0.02" value="${p.scale}">
             </div>
 
-            <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
+            <div style="display: flex; gap: 8px; align-items: center; margin-top: 10px;">
               <label class="strat-label" style="margin-bottom: 0;">Modo de Contención:</label>
-              <select id="libHarmGamutMode" class="chip-select">
+              <select id="libHarmGamutMode" class="chip-select" style="flex: 1;">
                 <option value="soft_attract" ${p.mode === 'soft_attract' ? 'selected' : ''}>Atracción Centrípeta Suave</option>
                 <option value="strict_clamp" ${p.mode === 'strict_clamp' ? 'selected' : ''}>Proyección Estricta al Borde</option>
               </select>
@@ -1549,8 +1582,8 @@ export const LibraryHarmonizerEngine = {
             </div>
 
             <div style="display: flex; gap: 8px; align-items: center;">
-              <label class="strat-label" style="margin-bottom: 0;">Acorde Armónico Objetivo:</label>
-              <select id="libHarmAnchorChord" class="chip-select">
+              <label class="strat-label" style="margin-bottom: 0;">Acorde Armónico:</label>
+              <select id="libHarmAnchorChord" class="chip-select" style="flex: 1;">
                 <option value="analogous" ${p.chord === 'analogous' ? 'selected' : ''}>Análoga (±30°)</option>
                 <option value="split_complementary" ${p.chord === 'split_complementary' ? 'selected' : ''}>Split-Complementario (150°/210°)</option>
                 <option value="triadic" ${p.chord === 'triadic' ? 'selected' : ''}>Tríada Equilátera (120°/240°)</option>
@@ -1562,7 +1595,10 @@ export const LibraryHarmonizerEngine = {
 
           <div class="strat-control-col">
             <div class="strat-slider-row">
-              <label class="strat-label">Fuerza de Sintonización / Atracción: <span id="libHarmAnchorStrengthVal">${Math.round(p.strength * 100)}%</span></label>
+              <div class="strat-slider-header">
+                <label class="strat-label">Fuerza de Sintonización / Atracción:</label>
+                <span id="libHarmAnchorStrengthVal" class="strat-val-badge">${Math.round(p.strength * 100)}%</span>
+              </div>
               <input type="range" id="libHarmAnchorStrength" min="0" max="1" step="0.02" value="${p.strength}">
             </div>
             <p style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; margin-top: 8px;">
@@ -1577,23 +1613,32 @@ export const LibraryHarmonizerEngine = {
         <div class="strat-controls-grid">
           <div class="strat-control-col">
             <div class="strat-slider-row">
-              <label class="strat-label">Sombra Ancla ($L_{\\min}$): <span id="libHarmOklchMinLVal">${Math.round(p.minL * 100)}%</span></label>
+              <div class="strat-slider-header">
+                <label class="strat-label">Sombra Ancla ($L_{\\min}$):</label>
+                <span id="libHarmOklchMinLVal" class="strat-val-badge">${Math.round(p.minL * 100)}%</span>
+              </div>
               <input type="range" id="libHarmOklchMinL" min="0.05" max="0.35" step="0.01" value="${p.minL}">
             </div>
             <div class="strat-slider-row" style="margin-top: 8px;">
-              <label class="strat-label">Luz Focal Ancla ($L_{\\max}$): <span id="libHarmOklchMaxLVal">${Math.round(p.maxL * 100)}%</span></label>
+              <div class="strat-slider-header">
+                <label class="strat-label">Luz Focal Ancla ($L_{\\max}$):</label>
+                <span id="libHarmOklchMaxLVal" class="strat-val-badge">${Math.round(p.maxL * 100)}%</span>
+              </div>
               <input type="range" id="libHarmOklchMaxL" min="0.75" max="0.98" step="0.01" value="${p.maxL}">
             </div>
           </div>
 
           <div class="strat-control-col">
             <div class="strat-slider-row">
-              <label class="strat-label">Techo de Croma ($C_{\\max}$): <span id="libHarmOklchMaxCVal">${p.maxChroma.toFixed(2)}</span></label>
+              <div class="strat-slider-header">
+                <label class="strat-label">Techo de Croma ($C_{\\max}$):</label>
+                <span id="libHarmOklchMaxCVal" class="strat-val-badge">${p.maxChroma.toFixed(2)}</span>
+              </div>
               <input type="range" id="libHarmOklchMaxC" min="0.08" max="0.32" step="0.01" value="${p.maxChroma}">
             </div>
             <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
               <label class="strat-label" style="margin-bottom: 0;">Curva Tonal:</label>
-              <select id="libHarmOklchCurve" class="chip-select">
+              <select id="libHarmOklchCurve" class="chip-select" style="flex: 1;">
                 <option value="s_curve" ${p.curve === 's_curve' ? 'selected' : ''}>Curva S de Contraste</option>
                 <option value="linear" ${p.curve === 'linear' ? 'selected' : ''}>Lineal Uniforme</option>
                 <option value="golden_ratio" ${p.curve === 'golden_ratio' ? 'selected' : ''}>Proporción Áurea</option>
@@ -1625,7 +1670,10 @@ export const LibraryHarmonizerEngine = {
 
           <div class="strat-control-col">
             <div class="strat-slider-row">
-              <label class="strat-label">Proporción de Mezcla Sustractiva: <span id="libHarmPigmentRatioVal">${Math.round(p.ratio * 100)}%</span></label>
+              <div class="strat-slider-header">
+                <label class="strat-label">Proporción de Mezcla Sustractiva:</label>
+                <span id="libHarmPigmentRatioVal" class="strat-val-badge">${Math.round(p.ratio * 100)}%</span>
+              </div>
               <input type="range" id="libHarmPigmentRatio" min="0.05" max="0.50" step="0.01" value="${p.ratio}">
             </div>
           </div>
@@ -1637,7 +1685,10 @@ export const LibraryHarmonizerEngine = {
         <div class="strat-controls-grid">
           <div class="strat-control-col">
             <div class="strat-slider-row">
-              <label class="strat-label">Ajuste Kelvin Térmico: <span id="libHarmKelvinVal">${p.kelvinShift > 0 ? '+' : ''}${p.kelvinShift} K</span></label>
+              <div class="strat-slider-header">
+                <label class="strat-label">Ajuste Kelvin Térmico:</label>
+                <span id="libHarmKelvinVal" class="strat-val-badge">${p.kelvinShift > 0 ? '+' : ''}${p.kelvinShift} K</span>
+              </div>
               <input type="range" id="libHarmKelvinShift" min="-4000" max="4000" step="100" value="${p.kelvinShift}">
             </div>
           </div>
@@ -1653,8 +1704,8 @@ export const LibraryHarmonizerEngine = {
       `;
     } else if (strat === 'hierarchy') {
       html = `
-        <div style="padding: 10px; font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">
-          <strong>Regla Áurea de Composición 60 • 30 • 10:</strong> Modula la saturación para reservar el máximo croma exclusivamente al 10% de acentos focales, dejando un 30% en medios tonos secundarios y un 60% en tonos de base atmosférica desaturados.
+        <div style="padding: 12px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); border-left: 3px solid var(--accent-primary);">
+          <strong style="color: #fff;">Regla Áurea de Composición 60 • 30 • 10:</strong> Modula la saturación para reservar el máximo croma exclusivamente al 10% de acentos focales, dejando un 30% en medios tonos secundarios y un 60% en tonos de base atmosférica desaturados.
         </div>
       `;
     }
@@ -1670,6 +1721,13 @@ export const LibraryHarmonizerEngine = {
         colorInput.addEventListener('input', (e) => {
           this.params.glaze.color = e.target.value;
           this.params.glaze.rgb = ColorMath.hexToRgb(e.target.value);
+          const well = colorInput.closest('.studio-color-well');
+          if (well) {
+            well.style.backgroundColor = e.target.value;
+            well.style.boxShadow = `0 0 16px ${e.target.value}50`;
+          }
+          const hexDisplay = colorInput.closest('.studio-color-well-row')?.querySelector('.studio-color-well-hex');
+          if (hexDisplay) hexDisplay.textContent = e.target.value;
           this.computeHarmonization();
           this.renderPreviewOnly();
         });
@@ -2090,11 +2148,41 @@ export const LibraryHarmonizerEngine = {
 
   renderComparisonList() {
     const container = document.getElementById('libHarmComparisonListContainer');
+    const filterContainer = document.getElementById('libHarmCompFilterContainer');
     if (!container) return;
     container.innerHTML = '';
 
+    if (filterContainer) {
+      filterContainer.innerHTML = '';
+      if (this.deck.length > 1) {
+        const allBtn = document.createElement('button');
+        allBtn.className = `chip-select ${this.activeComparisonView === 'all' ? 'active-toggle' : ''}`;
+        allBtn.style.fontSize = '0.72rem';
+        allBtn.style.padding = '3px 8px';
+        allBtn.textContent = 'Todas';
+        allBtn.addEventListener('click', () => {
+          this.activeComparisonView = 'all';
+          this.renderComparisonList();
+        });
+        filterContainer.appendChild(allBtn);
+
+        this.deck.forEach(d => {
+          const btn = document.createElement('button');
+          btn.className = `chip-select ${this.activeComparisonView === d.id ? 'active-toggle' : ''}`;
+          btn.style.fontSize = '0.72rem';
+          btn.style.padding = '3px 8px';
+          btn.innerHTML = `<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${d.badgeColor}; margin-right:4px;"></span> ${d.name}`;
+          btn.addEventListener('click', () => {
+            this.activeComparisonView = d.id;
+            this.renderComparisonList();
+          });
+          filterContainer.appendChild(btn);
+        });
+      }
+    }
+
     if (this.deck.length === 0) {
-      container.innerHTML = `<p style="padding: 20px; color: var(--text-muted); font-size: 0.8rem; text-align: center;">Sin bibliotecas para comparar.</p>`;
+      container.innerHTML = `<p style="padding: 24px; color: var(--text-muted); font-size: 0.85rem; text-align: center;">Sin bibliotecas seleccionadas en el muelle para comparar.</p>`;
       return;
     }
 
@@ -2110,14 +2198,20 @@ export const LibraryHarmonizerEngine = {
         ? (lib.swatches.reduce((sum, s) => sum + (s.deltaE || 0), 0) / lib.swatches.length).toFixed(1)
         : '0.0';
 
+      const avgNum = parseFloat(avgDeltaE);
+      const avgClass = avgNum === 0 ? 'delta-pill-locked' : avgNum < 4 ? 'delta-pill-subtle' : avgNum < 12 ? 'delta-pill-harmonic' : 'delta-pill-major';
+
       section.innerHTML = `
         <div class="comp-section-header">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="deck-badge-dot" style="background-color: ${lib.badgeColor};"></span>
-            <strong>${lib.name}</strong>
+          <div class="comp-section-title-wrap">
+            <span class="deck-badge-dot" style="background-color: ${lib.badgeColor}; box-shadow: 0 0 10px ${lib.badgeColor};"></span>
+            <strong class="comp-section-name">${lib.name}</strong>
             <span class="deck-category-badge">${lib.category}</span>
+            <span class="deck-count-pill">${lib.swatches.length} muestras</span>
           </div>
-          <span class="comp-avg-delta">ΔE Promedio: ${avgDeltaE}</span>
+          <span class="comp-avg-delta ${avgClass}">
+            <span>ΔE Promedio:</span> <strong>${avgDeltaE}</strong>
+          </span>
         </div>
         <div class="comp-swatches-grid">
           <!-- Populated below -->
@@ -2130,44 +2224,100 @@ export const LibraryHarmonizerEngine = {
         const item = document.createElement('div');
         item.className = `comp-swatch-card ${sw.locked ? 'card-locked' : ''} ${sw.included ? '' : 'card-excluded'}`;
 
+        const dE = typeof sw.deltaE === 'number' ? sw.deltaE : 0;
+        let deltaHtml = '';
+        if (sw.locked) {
+          deltaHtml = `<span class="comp-delta-badge badge-locked" title="Muestra fijada como inmutable">📌 Ancla Inmutable (ΔE 0.0)</span>`;
+        } else if (dE < 3.0) {
+          deltaHtml = `<span class="comp-delta-badge badge-subtle" title="Desplazamiento armónico sutil">✨ Sutil • ΔE ${dE}</span>`;
+        } else if (dE < 10.0) {
+          deltaHtml = `<span class="comp-delta-badge badge-harmonic" title="Sincronización armónica balanceada">🎨 Armónico • ΔE ${dE}</span>`;
+        } else {
+          deltaHtml = `<span class="comp-delta-badge badge-major" title="Realineación cromática notable">⚡ Notable • ΔE ${dE}</span>`;
+        }
+
         item.innerHTML = `
-          <div class="comp-swatch-chips-pair">
-            <div class="comp-chip-wrap">
-              <span class="comp-chip" style="background-color: ${sw.originalHex};" title="Original: ${sw.originalHex}"></span>
-              <span class="comp-chip-label">Orig</span>
+          <!-- HERO DUAL-SPLIT COLOR BANNER -->
+          <div class="comp-split-banner">
+            <div class="comp-split-side comp-split-orig" style="background-color: ${sw.originalHex};" 
+                 title="Original: ${sw.originalHex} (Clic para cargar en selector)" data-hex="${sw.originalHex}">
+              <div class="comp-split-sheen"></div>
+              <span class="comp-split-phase">ORIGINAL</span>
+              <span class="comp-split-hex">${sw.originalHex}</span>
             </div>
-            <span class="comp-arrow">→</span>
-            <div class="comp-chip-wrap">
-              <span class="comp-chip" style="background-color: ${sw.harmonizedHex};" title="Armonizado: ${sw.harmonizedHex}"></span>
-              <span class="comp-chip-label">Arm</span>
+            
+            <div class="comp-split-bridge" title="Transformación armónica">
+              <span class="comp-bridge-arrow">➔</span>
+            </div>
+            
+            <div class="comp-split-side comp-split-harm" style="background-color: ${sw.harmonizedHex};" 
+                 title="Armonizado: ${sw.harmonizedHex} (Clic para cargar en selector)" data-hex="${sw.harmonizedHex}">
+              <div class="comp-split-sheen"></div>
+              <span class="comp-split-phase">ARMONIZADO</span>
+              <span class="comp-split-hex">${sw.harmonizedHex}</span>
             </div>
           </div>
-          <div class="comp-swatch-info">
-            <span class="comp-name" title="${sw.name}">${sw.name}</span>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
-              <span class="comp-hex">${sw.harmonizedHex}</span>
-              <span class="comp-delta-badge">ΔE ${sw.deltaE}</span>
+
+          <!-- CARD BODY & CONTROLS -->
+          <div class="comp-swatch-body">
+            <div class="comp-swatch-header-row">
+              <strong class="comp-name" title="${sw.name}">${sw.name}</strong>
+              ${deltaHtml}
             </div>
-          </div>
-          <div class="comp-swatch-actions">
-            <button class="comp-action-btn btn-pin" title="${sw.locked ? 'Desbloquear' : 'Fijar como inmutable 📌'}">
-              ${sw.locked ? '📌' : '🔓'}
-            </button>
-            <input type="checkbox" class="comp-include-chk" ${sw.included ? 'checked' : ''} title="Incluir en biblioteca común">
-            <button class="comp-action-btn btn-fg" title="Cargar como color frontal">🎨</button>
+
+            <div class="comp-swatch-footer-row">
+              <label class="comp-include-label" title="Incluir en la biblioteca común unificada">
+                <input type="checkbox" class="comp-include-chk" ${sw.included ? 'checked' : ''}>
+                <span>Incluir en común</span>
+              </label>
+
+              <div class="comp-actions-group">
+                <button class="comp-action-btn btn-pin ${sw.locked ? 'btn-pin-locked' : ''}" 
+                        title="${sw.locked ? 'Desbloquear muestra' : 'Fijar como muestra inmutable (Ancla) 📌'}">
+                  ${sw.locked ? '📌 Fijada' : '🔓 Bloquear'}
+                </button>
+                <button class="comp-action-btn btn-fg" title="Cargar armonizado (${sw.harmonizedHex}) en color frontal">
+                  🎨 Cargar
+                </button>
+              </div>
+            </div>
           </div>
         `;
 
-        // Action events
+        // Action events: click on split sides loads the respective color
+        const origSide = item.querySelector('.comp-split-orig');
+        if (origSide && this.app) {
+          origSide.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.app.setActiveWell('fg');
+            this.app.setColorDirectly(sw.originalRgb);
+            this.app.showToast?.(`Color original ${sw.originalHex} cargado en frontal`);
+          });
+        }
+
+        const harmSide = item.querySelector('.comp-split-harm');
+        if (harmSide && this.app) {
+          harmSide.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.app.setActiveWell('fg');
+            this.app.setColorDirectly(sw.harmonizedRgb);
+            this.app.showToast?.(`Color armonizado ${sw.harmonizedHex} cargado en frontal`);
+          });
+        }
+
         const pinBtn = item.querySelector('.btn-pin');
-        if (pinBtn) pinBtn.addEventListener('click', () => this.toggleSwatchLocked(lib.id, sw.id));
+        if (pinBtn) pinBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.toggleSwatchLocked(lib.id, sw.id);
+        });
 
         const chk = item.querySelector('.comp-include-chk');
         if (chk) chk.addEventListener('change', () => this.toggleSwatchIncluded(lib.id, sw.id));
 
         const fgBtn = item.querySelector('.btn-fg');
         if (fgBtn && this.app) {
-          fgBtn.addEventListener('click', () => {
+          fgBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             this.app.setActiveWell('fg');
             this.app.setColorDirectly(sw.harmonizedRgb);
             this.app.showToast?.(`Color armonizado ${sw.harmonizedHex} cargado en frontal`);
@@ -2189,9 +2339,12 @@ export const LibraryHarmonizerEngine = {
       if (this.results.consensusPalette && this.results.consensusPalette.length > 0) {
         this.results.consensusPalette.forEach(c => {
           const chip = document.createElement('div');
-          chip.className = 'output-preview-chip';
-          chip.style.backgroundColor = c.hex;
-          chip.title = `${c.name} (${c.hex})`;
+          chip.className = 'output-preview-card';
+          chip.title = `${c.name} (${c.hex}) — Clic para cargar en frontal`;
+          chip.innerHTML = `
+            <div class="output-preview-color" style="background-color: ${c.hex};"></div>
+            <span class="output-preview-hex">${c.hex}</span>
+          `;
           chip.addEventListener('click', () => {
             if (this.app) {
               this.app.setActiveWell('fg');
@@ -2213,9 +2366,12 @@ export const LibraryHarmonizerEngine = {
       if (this.results.accentRecommendations && this.results.accentRecommendations.length > 0) {
         this.results.accentRecommendations.forEach(a => {
           const chip = document.createElement('div');
-          chip.className = 'output-preview-chip';
-          chip.style.backgroundColor = a.hex;
-          chip.title = `${a.name} (${a.hex})`;
+          chip.className = 'output-preview-card';
+          chip.title = `${a.name} (${a.hex}) — Clic para cargar en frontal`;
+          chip.innerHTML = `
+            <div class="output-preview-color" style="background-color: ${a.hex};"></div>
+            <span class="output-preview-hex">${a.hex}</span>
+          `;
           chip.addEventListener('click', () => {
             if (this.app) {
               this.app.setActiveWell('fg');

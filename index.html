@@ -1242,25 +1242,25 @@
 
           <!-- Strategy Switcher Buttons -->
           <div class="lib-harm-strategy-bar">
-            <button class="chip-select active-toggle lib-harm-strategy-btn" data-strategy="glaze" title="Baña todas las muestras en una luz o veladura común unificadora">
+            <button class="lib-harm-strategy-btn active-toggle" data-strategy="glaze" title="Baña todas las muestras en una luz o veladura común unificadora">
               🌅 Veladura Atmosférica & Tinte
             </button>
-            <button class="chip-select lib-harm-strategy-btn" data-strategy="gamut" title="Proyecta y contiene todas las muestras en una máscara de gama geométrica estricta">
+            <button class="lib-harm-strategy-btn" data-strategy="gamut" title="Proyecta y contiene todas las muestras en una máscara de gama geométrica estricta">
               🎯 Proyección a Gamut (Gurney)
             </button>
-            <button class="chip-select lib-harm-strategy-btn" data-strategy="anchor" title="Sintoniza todas las muestras a intervalos armónicos de un ancla maestra">
+            <button class="lib-harm-strategy-btn" data-strategy="anchor" title="Sintoniza todas las muestras a intervalos armónicos de un ancla maestra">
               ⚓ Ancla Armónica Maestra
             </button>
-            <button class="chip-select lib-harm-strategy-btn" data-strategy="oklch" title="Normaliza la escala de valores y equilibra el contraste en espacio perceptual OKLCH">
+            <button class="lib-harm-strategy-btn" data-strategy="oklch" title="Normaliza la escala de valores y equilibra el contraste en espacio perceptual OKLCH">
               📐 Normalización Tonal OKLCH
             </button>
-            <button class="chip-select lib-harm-strategy-btn" data-strategy="pigment" title="Unifica molecularmente mediante la adición de un tubo real de taller con física Kubelka-Munk">
+            <button class="lib-harm-strategy-btn" data-strategy="pigment" title="Unifica molecularmente mediante la adición de un tubo real de taller con física Kubelka-Munk">
               🧪 Unificación Pigmentaria (Farges)
             </button>
-            <button class="chip-select lib-harm-strategy-btn" data-strategy="temperature" title="Alinea térmicamente las muestras según la ley de luminismo de Sorolla">
+            <button class="lib-harm-strategy-btn" data-strategy="temperature" title="Alinea térmicamente las muestras según la ley de luminismo de Sorolla">
               🌡️ Sintonización Térmica (Sorolla)
             </button>
-            <button class="chip-select lib-harm-strategy-btn" data-strategy="hierarchy" title="Asigna roles compositivos 60% base, 30% secundario y 10% acento focal">
+            <button class="lib-harm-strategy-btn" data-strategy="hierarchy" title="Asigna roles compositivos 60% base, 30% secundario y 10% acento focal">
               🎭 Jerarquía 60-30-10
             </button>
           </div>
@@ -1357,6 +1357,9 @@
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 1rem;">🔍</span>
               <strong style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-primary);">Comparación Detallada Muestra por Muestra (Originales vs. Armonizadas)</strong>
+            </div>
+            <div id="libHarmCompFilterContainer" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+              <!-- Populated dynamically by libraryHarmonizer.js -->
             </div>
           </div>
 
