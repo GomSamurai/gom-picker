@@ -1578,7 +1578,10 @@ export const LibraryHarmonizerEngine = {
                 <option value="pool_average" ${p.anchorMode === 'pool_average' ? 'selected' : ''}>Tono Promedio del Muelle</option>
                 <option value="custom" ${p.anchorMode === 'custom' ? 'selected' : ''}>Color Personalizado</option>
               </select>
-              <input type="color" id="libHarmAnchorCustomColor" value="${p.customColor}" class="color-picker-input">
+              <div id="libHarmAnchorCustomWrap" style="display: ${p.anchorMode === 'custom' ? 'flex' : 'none'}; align-items: center; gap: 6px;">
+                <input type="color" id="libHarmAnchorCustomColor" value="${p.customColor}" class="color-picker-input">
+                <span id="libHarmAnchorCustomHex" style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: #fff;">${p.customColor}</span>
+              </div>
             </div>
 
             <div style="display: flex; gap: 8px; align-items: center;">
@@ -1809,19 +1812,29 @@ export const LibraryHarmonizerEngine = {
       });
     } else if (strat === 'anchor') {
       const modeSel = document.getElementById('libHarmAnchorMode');
-      if (modeSel) modeSel.addEventListener('change', (e) => {
-        this.params.anchor.anchorMode = e.target.value;
-        this.computeHarmonization();
-        this.renderPreviewOnly();
-      });
+      const customWrap = document.getElementById('libHarmAnchorCustomWrap');
+      if (modeSel) {
+        modeSel.addEventListener('change', (e) => {
+          this.params.anchor.anchorMode = e.target.value;
+          if (customWrap) {
+            customWrap.style.display = e.target.value === 'custom' ? 'flex' : 'none';
+          }
+          this.computeHarmonization();
+          this.renderPreviewOnly();
+        });
+      }
 
       const colorInput = document.getElementById('libHarmAnchorCustomColor');
-      if (colorInput) colorInput.addEventListener('input', (e) => {
-        this.params.anchor.customColor = e.target.value;
-        this.params.anchor.customRgb = ColorMath.hexToRgb(e.target.value);
-        this.computeHarmonization();
-        this.renderPreviewOnly();
-      });
+      const hexSpan = document.getElementById('libHarmAnchorCustomHex');
+      if (colorInput) {
+        colorInput.addEventListener('input', (e) => {
+          this.params.anchor.customColor = e.target.value;
+          this.params.anchor.customRgb = ColorMath.hexToRgb(e.target.value);
+          if (hexSpan) hexSpan.textContent = e.target.value;
+          this.computeHarmonization();
+          this.renderPreviewOnly();
+        });
+      }
 
       const chordSel = document.getElementById('libHarmAnchorChord');
       if (chordSel) chordSel.addEventListener('change', (e) => {
