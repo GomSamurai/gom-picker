@@ -51,6 +51,10 @@
           <span class="tab-icon">🎭</span>
           <span class="tab-label">Estudio Paletas</span>
         </button>
+        <button class="nav-tab-btn" data-tab="library_harmonizer" title="Armonizador Multi-Biblioteca: Sincronización, Fusión & Cohesión Cromática">
+          <span class="tab-icon">⚖️</span>
+          <span class="tab-label">Armonizador Bibliotecas</span>
+        </button>
         <button class="nav-tab-btn" data-tab="hyper4d" title="Hiperespacio 4D: Visualizador, Comparador & Estudio Cuadridimensional">
           <span class="tab-icon">🔮</span>
           <span class="tab-label">Hiperespacio 4D</span>
@@ -300,7 +304,10 @@
               <button id="btnToggleHistoryGrid" class="history-btn-action" title="Alternar entre Carrusel / Cuadrícula completa (⊞)">
                 <span id="historyGridIcon">⊞</span>
               </button>
-              <button id="btnClearHistory" class="history-btn-action danger" title="Vaciar historial de muestras (🗑️)">
+              <button id="btnDeleteSelectedHistory" class="history-btn-action danger-hover" title="Eliminar muestra seleccionada del historial (✕ / Supr)">
+                <span id="btnDeleteSelectedHistoryIcon">✕</span>
+              </button>
+              <button id="btnClearHistory" class="history-btn-action danger" title="Vaciar todo el historial de muestras (🗑️)">
                 <span>🗑️</span>
               </button>
             </div>
@@ -1129,6 +1136,291 @@
             </div>
           </div>
 
+        </div>
+
+      </div>
+
+      <!-- TAB: MULTI-LIBRARY HARMONIZER STUDIO (ARMONIZADOR DE BIBLIOTECAS) -->
+      <div id="viewLibraryHarmonizer" class="tab-view" style="display: none;">
+        
+        <!-- PANEL 1: CONTROL BAR & SUITE QUICK ACTIONS -->
+        <div class="glass-panel">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
+            <div class="panel-title">
+              <span>⚖️</span> Armonizador Inter-Bibliotecas & Fusión de Muestras
+            </div>
+            
+            <!-- Quick Actions -->
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <button id="btnLibHarmOpenDrawer" class="tool-action-btn active-toggle" title="Abrir selector para añadir bibliotecas al muelle">
+                <span>➕</span> Añadir Bibliotecas
+              </button>
+              <button id="btnLibHarmDemoDuo" class="tool-action-btn" title="Cargar paletas de demostración (Zorn + Monet)">
+                <span>✨</span> Dúo Demo
+              </button>
+              <button id="btnLibHarmOpenSheet" class="tool-action-btn" title="Exportar lámina en alta resolución 4K / A4 300 DPI">
+                <span>📄</span> Hoja 4K / PDF
+              </button>
+              <button id="btnLibHarmSendWetMixer" class="tool-action-btn" title="Cargar muestras armonizadas en el lienzo Wet Mixer">
+                <span>🖌️</span> A Wet Mixer
+              </button>
+              <button id="btnLibHarmSendHyper4D" class="tool-action-btn" title="Proyectar armonización en el Hiperespacio 4D">
+                <span>🔮</span> A Hiperespacio 4D
+              </button>
+            </div>
+          </div>
+
+          <!-- Pedagogical Banner -->
+          <div class="pedagogical-banner">
+            <p style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.45;">
+              <strong>Estación de Sintonización Armónica & Fusión Cruzada:</strong> 
+              Selecciona múltiples bibliotecas de color simultáneamente (de usuario, grandes maestros, catálogos Copic/Pantone o tubos de taller) y sincroniza sus muestras mediante 
+              <strong>veladuras atmosféricas</strong>, <strong>proyección a máscaras de gama</strong>, <strong>normalización tonal OKLCH</strong>, <strong>afinación a anclas maestras</strong> o <strong>unificación molecular sustractiva de taller</strong>. 
+              Evalúa la convergencia visual en el radar polar, genera nuevas bibliotecas comunes armonizadas o extrae paletas de consenso y acentos.
+            </p>
+          </div>
+        </div>
+
+        <!-- PANEL 2: ACTIVE DECK & MULTI-LIBRARY DOCK -->
+        <div class="glass-panel">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1rem;">📚</span>
+              <strong style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-primary);">Muelle de Bibliotecas Seleccionadas</strong>
+              <span id="libHarmDeckCountBadge" class="deck-category-badge" style="background: rgba(99, 102, 241, 0.2); border-color: var(--accent-primary); color: #C7D2FE;">0 Bibliotecas</span>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+              <button id="btnLibHarmAllUser" class="tool-action-btn" title="Añadir todas tus paletas de usuario guardadas">
+                <span>📁</span> Todas Mis Paletas
+              </button>
+              <button id="btnLibHarmClearDeck" class="tool-action-btn" title="Vaciar muelle de bibliotecas">
+                <span>🗑️</span> Vaciar Muelle
+              </button>
+            </div>
+          </div>
+
+          <!-- Collapsible Drawer for Picking Libraries -->
+          <div id="libHarmPickerDrawer" class="lib-harm-drawer" style="display: none;">
+            <div class="drawer-header">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 0.9rem;">🔍</span>
+                <strong style="font-size: 0.8rem; color: var(--text-primary);">Explorador de Bibliotecas Disponibles</strong>
+              </div>
+              <button id="btnLibHarmCloseDrawer" class="modal-close-btn" style="width: 24px; height: 24px; font-size: 0.8rem;" title="Cerrar explorador">✕</button>
+            </div>
+
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
+              <input type="text" id="libHarmDrawerSearch" placeholder="Buscar por nombre o categoría..." class="chip-select" style="flex: 1; min-width: 200px; padding: 6px 12px;">
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                <button class="chip-select active-toggle lib-harm-drawer-filter" data-filter="all">Todas</button>
+                <button class="chip-select lib-harm-drawer-filter" data-filter="user">Mis Paletas</button>
+                <button class="chip-select lib-harm-drawer-filter" data-filter="masters">Grandes Maestros</button>
+                <button class="chip-select lib-harm-drawer-filter" data-filter="atelier">Taller Clásico</button>
+                <button class="chip-select lib-harm-drawer-filter" data-filter="catalogs">Copic & Pantone</button>
+              </div>
+            </div>
+
+            <div id="libHarmDrawerListContainer" class="lib-harm-drawer-grid">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Active Deck Cards Container -->
+          <div id="libHarmDeckCardsContainer" class="lib-harm-deck-grid">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- PANEL 3: STRATEGY & HARMONIZATION RULES -->
+        <div class="glass-panel">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1rem;">⚙️</span>
+              <strong style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-primary);">Estrategia y Reglas de Armonización Común</strong>
+            </div>
+          </div>
+
+          <!-- Strategy Switcher Buttons -->
+          <div class="lib-harm-strategy-bar">
+            <button class="chip-select active-toggle lib-harm-strategy-btn" data-strategy="glaze" title="Baña todas las muestras en una luz o veladura común unificadora">
+              🌅 Veladura Atmosférica & Tinte
+            </button>
+            <button class="chip-select lib-harm-strategy-btn" data-strategy="gamut" title="Proyecta y contiene todas las muestras en una máscara de gama geométrica estricta">
+              🎯 Proyección a Gamut (Gurney)
+            </button>
+            <button class="chip-select lib-harm-strategy-btn" data-strategy="anchor" title="Sintoniza todas las muestras a intervalos armónicos de un ancla maestra">
+              ⚓ Ancla Armónica Maestra
+            </button>
+            <button class="chip-select lib-harm-strategy-btn" data-strategy="oklch" title="Normaliza la escala de valores y equilibra el contraste en espacio perceptual OKLCH">
+              📐 Normalización Tonal OKLCH
+            </button>
+            <button class="chip-select lib-harm-strategy-btn" data-strategy="pigment" title="Unifica molecularmente mediante la adición de un tubo real de taller con física Kubelka-Munk">
+              🧪 Unificación Pigmentaria (Farges)
+            </button>
+            <button class="chip-select lib-harm-strategy-btn" data-strategy="temperature" title="Alinea térmicamente las muestras según la ley de luminismo de Sorolla">
+              🌡️ Sintonización Térmica (Sorolla)
+            </button>
+            <button class="chip-select lib-harm-strategy-btn" data-strategy="hierarchy" title="Asigna roles compositivos 60% base, 30% secundario y 10% acento focal">
+              🎭 Jerarquía 60-30-10
+            </button>
+          </div>
+
+          <!-- Strategy Dynamic Controls -->
+          <div id="libHarmStrategyControlsContainer" style="margin-top: 12px;">
+            <!-- Populated dynamically by libraryHarmonizer.js -->
+          </div>
+        </div>
+
+        <!-- PANEL 4: RADAR CROMÁTICO POLAR & MÉTRICAS DE COHESIÓN (2 COLUMNAS) -->
+        <div class="glass-panel">
+          <div class="lib-harm-visuals-grid">
+            
+            <!-- Left: Polar Dispersion & Convergence Radar -->
+            <div class="lib-harm-radar-box">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div>
+                  <strong style="font-size: 0.82rem; color: var(--text-primary); text-transform: uppercase;">🌐 Radar Polar de Convergencia</strong>
+                  <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Trayectorias de migración y contorno conjunto del Gamut Hull</p>
+                </div>
+                <span style="font-size: 0.68rem; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">Pasa el ratón para inspeccionar</span>
+              </div>
+              <div style="display: flex; justify-content: center; align-items: center; position: relative;">
+                <canvas id="libHarmRadarCanvas" style="width: 100%; max-width: 340px; height: 340px; border-radius: 50%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-subtle); box-shadow: 0 4px 20px rgba(0,0,0,0.5);"></canvas>
+              </div>
+              <div style="display: flex; justify-content: center; gap: 14px; margin-top: 10px; font-size: 0.7rem; color: var(--text-secondary);">
+                <span><span style="display: inline-block; width: 10px; height: 2px; border-top: 2px dashed rgba(255,255,255,0.4); vertical-align: middle; margin-right: 4px;"></span> Gamut Hull Original</span>
+                <span><span style="display: inline-block; width: 10px; height: 10px; background: rgba(99,102,241,0.25); border: 1px solid #6366F1; border-radius: 2px; vertical-align: middle; margin-right: 4px;"></span> Gamut Hull Armonizado</span>
+              </div>
+            </div>
+
+            <!-- Right: Cohesion Score Meter & Diagnostics -->
+            <div class="lib-harm-metrics-box">
+              <strong style="font-size: 0.82rem; color: var(--text-primary); text-transform: uppercase; display: block; margin-bottom: 8px;">📊 Índice de Cohesión Inter-Bibliotecas</strong>
+              
+              <div class="lib-harm-score-card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Antes vs. Después:</span>
+                    <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 2px;">
+                      <span id="libHarmScoreBefore" style="font-size: 1.1rem; font-weight: 700; color: var(--text-muted);">0</span>
+                      <span style="font-size: 0.9rem; color: var(--text-muted);">→</span>
+                      <span id="libHarmScoreAfter" style="font-size: 1.8rem; font-weight: 800; color: #FFFFFF; font-family: var(--font-display);">0</span>
+                      <span style="font-size: 0.8rem; color: var(--text-muted);">/ 100</span>
+                    </div>
+                  </div>
+                  <div style="text-align: right;">
+                    <span id="libHarmGradeBadgeAfter" class="grade-badge grade-s-plus" style="font-size: 1.1rem; padding: 4px 12px;">S+</span>
+                    <div id="libHarmScoreDiff" style="font-size: 0.75rem; font-weight: 700; margin-top: 4px; color: var(--accent-emerald);">+0 pts</div>
+                  </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-top: 10px;">
+                  <div id="libHarmScoreBarFill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #6366F1, #10B981); transition: width 0.3s ease;"></div>
+                </div>
+              </div>
+
+              <!-- Diagnostics List -->
+              <div style="margin-top: 12px;">
+                <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Diagnóstico Académico de Sincronía:</span>
+                <ul id="libHarmDiagnosticsList" style="list-style: none; padding: 0; margin-top: 6px;">
+                  <!-- Populated by JS -->
+                </ul>
+              </div>
+
+              <!-- Quick Distilled Previews -->
+              <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Consenso Armónico (Paleta Puente K-Means):</span>
+                  <span style="font-size: 0.68rem; color: var(--text-muted);">Clic para cargar</span>
+                </div>
+                <div id="libHarmConsensusChipsContainer" style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <!-- Populated by JS -->
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 6px;">
+                  <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Acentos de Contrapunto Recomendados:</span>
+                  <span style="font-size: 0.68rem; color: var(--text-muted);">Clic para cargar</span>
+                </div>
+                <div id="libHarmAccentsChipsContainer" style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- PANEL 5: SIDE-BY-SIDE COMPARISON STREAM -->
+        <div class="glass-panel">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1rem;">🔍</span>
+              <strong style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-primary);">Comparación Detallada Muestra por Muestra (Originales vs. Armonizadas)</strong>
+            </div>
+          </div>
+
+          <div id="libHarmComparisonListContainer" class="lib-harm-comp-container">
+            <!-- Populated dynamically by libraryHarmonizer.js -->
+          </div>
+        </div>
+
+        <!-- PANEL 6: GENERATION & OUTPUT HUB -->
+        <div class="glass-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span>🚀</span> Fusión, Creación de Nuevas Bibliotecas & Exportación
+            </div>
+          </div>
+
+          <div class="lib-harm-output-grid">
+            
+            <!-- Output Action 1: Create Unified Master Library -->
+            <div class="output-action-card">
+              <strong style="font-size: 0.82rem; color: var(--text-primary); display: block; margin-bottom: 6px;">✨ Crear Nueva Biblioteca Común Armonizada</strong>
+              <p style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.4;">
+                Fusiona las muestras de todas las bibliotecas seleccionadas en una nueva biblioteca independiente en tu colección personal.
+              </p>
+              
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <input type="text" id="libHarmMasterNameInput" placeholder="Nombre de la nueva biblioteca..." class="chip-select" style="width: 100%; padding: 6px 10px;">
+                
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <select id="libHarmExportModeSelect" class="chip-select" style="flex: 1;">
+                    <option value="all">Todas las muestras armonizadas</option>
+                    <option value="deduplicate">Deduplicadas perceptualmente (ΔE > 4)</option>
+                    <option value="consensus">Paleta Puente Consenso (8 tonos K-Means)</option>
+                    <option value="selected_only">Solo muestras marcadas (Checkboxes)</option>
+                  </select>
+                </div>
+
+                <button id="btnLibHarmCreateMaster" class="tool-action-btn active-toggle" style="width: 100%; justify-content: center; padding: 8px;">
+                  <span>📦</span> Guardar Nueva Biblioteca Común
+                </button>
+              </div>
+            </div>
+
+            <!-- Output Action 2: Batch Update & Clone -->
+            <div class="output-action-card">
+              <strong style="font-size: 0.82rem; color: var(--text-primary); display: block; margin-bottom: 6px;">🔄 Operaciones en Lote sobre Bibliotecas</strong>
+              <p style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.4;">
+                Aplica la sincronización cromática directamente a las bibliotecas de origen o extrae elementos complementarios.
+              </p>
+              
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button id="btnLibHarmUpdateInPlace" class="tool-action-btn" style="width: 100%; justify-content: flex-start;">
+                  <span>🔄</span> Actualizar Paletas de Usuario Seleccionadas
+                </button>
+                <button id="btnLibHarmCloneHarmonized" class="tool-action-btn" style="width: 100%; justify-content: flex-start;">
+                  <span>📋</span> Clonar como [Armonizadas] (Sin sobreescribir)
+                </button>
+                <button id="btnLibHarmExtractAccents" class="tool-action-btn" style="width: 100%; justify-content: flex-start;">
+                  <span>🎯</span> Guardar Minipaleta de Acentos de Contrapunto
+                </button>
+              </div>
+            </div>
+
+          </div>
         </div>
 
       </div>
@@ -1970,9 +2262,146 @@
             </div>
           </div>
 
-          <!-- Main Live Canvas Viewport (click for eyedropper) -->
-          <div class="image-canvas-container" style="margin-top: 14px;">
+          <!-- ADVANCED SELECTION, MASKING & ZOOM TOOLBAR -->
+          <div class="extract-pro-toolbar" id="extractProToolbar" style="margin-top: 14px;">
+            <!-- Row 1: Tools selection -->
+            <div class="extract-tool-strip">
+              <div class="tool-strip-group">
+                <span class="tool-strip-label">Herramientas:</span>
+                <button type="button" class="extract-tool-btn active-tool" data-tool="eyedropper" id="toolEyedropper" title="Pipeta cuentagotas en vivo (Click para muestrear color)">
+                  <span>🎯</span> Pipeta
+                </button>
+                <button type="button" class="extract-tool-btn" data-tool="rect" id="toolRect" title="Marco Rectangular (M)">
+                  <span>🔲</span> Rectángulo
+                </button>
+                <button type="button" class="extract-tool-btn" data-tool="ellipse" id="toolEllipse" title="Marco Elíptico">
+                  <span>⭕</span> Elipse
+                </button>
+                <button type="button" class="extract-tool-btn" data-tool="lasso" id="toolLasso" title="Lazo Libre a mano alzada (L)">
+                  <span>➰</span> Lazo
+                </button>
+                <button type="button" class="extract-tool-btn" data-tool="polygon" id="toolPolygon" title="Lazo Poligonal (Clics sucesivos, doble clic para cerrar)">
+                  <span>📐</span> Polígono
+                </button>
+                <button type="button" class="extract-tool-btn" data-tool="brush_sel" id="toolBrushSel" title="Pincel de Selección Directa (B)">
+                  <span>🖌️</span> Pincel Sel
+                </button>
+              </div>
+
+              <div class="tool-strip-separator"></div>
+
+              <div class="tool-strip-group">
+                <span class="tool-strip-label">Máscara:</span>
+                <button type="button" class="extract-tool-btn mask-btn" data-tool="mask_brush" id="toolMaskBrush" title="Pincel de Máscara de Exclusión (Pinta zonas que el extractor ignorará)">
+                  <span>🚫</span> Pincel Máscara
+                </button>
+                <button type="button" class="extract-tool-btn mask-btn" data-tool="mask_eraser" id="toolMaskEraser" title="Goma de Borrar Máscara">
+                  <span>🧽</span> Borrador
+                </button>
+              </div>
+
+              <div class="tool-strip-separator"></div>
+
+              <div class="tool-strip-group">
+                <span class="tool-strip-label">Navegación:</span>
+                <button type="button" class="extract-tool-btn" data-tool="pan" id="toolPan" title="Mano / Desplazamiento (Arrastra o mantén Barra Espaciadora)">
+                  <span>🖐️</span> Mano
+                </button>
+                <button type="button" class="extract-tool-btn" data-tool="zoom" id="toolZoom" title="Herramienta Lupa / Zoom (Clic: Acercar • Alt+Clic: Alejar)">
+                  <span>🔍</span> Lupa
+                </button>
+              </div>
+            </div>
+
+            <!-- Row 2: Modes, Options, Brush Slider & Zoom Controls -->
+            <div class="extract-subtool-strip">
+              <div class="subtool-group">
+                <span class="tool-strip-label">Modo Selección:</span>
+                <div class="segmented-mode-group">
+                  <button type="button" class="seg-btn active-seg" data-sel-mode="new" id="btnSelModeNew" title="Nueva Selección (Reemplaza la actual)">
+                    <span>⏹️</span> Nueva
+                  </button>
+                  <button type="button" class="seg-btn" data-sel-mode="add" id="btnSelModeAdd" title="Añadir a la selección actual (+ / Shift)">
+                    <span>➕</span> Añadir
+                  </button>
+                  <button type="button" class="seg-btn" data-sel-mode="sub" id="btnSelModeSub" title="Restar de la selección actual (- / Alt)">
+                    <span>➖</span> Restar
+                  </button>
+                </div>
+                <button type="button" class="chip-select-sm" id="btnSelInvert" title="Invertir área seleccionada">
+                  <span>🔄</span> Invertir
+                </button>
+                <button type="button" class="chip-select-sm danger-sm" id="btnSelClear" title="Deseleccionar todo (Ctrl+D)">
+                  <span>🗑️</span> Quitar Sel
+                </button>
+              </div>
+
+              <div class="tool-strip-separator"></div>
+
+              <div class="subtool-group" id="brushSizeGroup">
+                <span class="tool-strip-label">Radio Pincel:</span>
+                <input type="range" id="extractBrushSizeSlider" min="6" max="80" value="24" class="slider-sm" title="Tamaño del pincel de selección / máscara">
+                <span id="extractBrushSizeLabel" class="val-badge-sm">24px</span>
+              </div>
+
+              <div class="tool-strip-separator"></div>
+
+              <div class="subtool-group">
+                <span class="tool-strip-label">Máscara:</span>
+                <button type="button" class="chip-select-sm" id="btnToggleMaskVis" title="Mostrar u ocultar tinte rojo de la máscara">
+                  <span id="maskVisIcon">👁️</span> Ver
+                </button>
+                <button type="button" class="chip-select-sm" id="btnMaskInvert" title="Invertir zonas de exclusión">
+                  <span>🔄</span> Invertir
+                </button>
+                <button type="button" class="chip-select-sm danger-sm" id="btnMaskClear" title="Limpiar toda la máscara">
+                  <span>🗑️</span> Borrar
+                </button>
+              </div>
+
+              <div class="tool-strip-separator"></div>
+
+              <div class="subtool-group" style="margin-left: auto;">
+                <span class="tool-strip-label">Zoom:</span>
+                <button type="button" class="zoom-btn" id="btnZoomOut" title="Alejar (-)">−</button>
+                <span id="zoomLevelBadge" class="zoom-level-pill" title="Nivel de zoom actual">100%</span>
+                <button type="button" class="zoom-btn" id="btnZoomIn" title="Acercar (+)">+</button>
+                <button type="button" class="chip-select-sm" id="btnZoomFit" title="Ajustar imagen completa a la ventana">⛶ Ajustar</button>
+                <button type="button" class="chip-select-sm" id="btnZoom100" title="Tamaño real (100%)">1:1</button>
+              </div>
+            </div>
+
+            <!-- Row 3: Status HUD Bar -->
+            <div class="extract-status-bar" id="extractStatusBar">
+              <div class="status-col">
+                <span id="extractSelectionStatus" class="status-pill-badge active">
+                  <span>🎯</span> Toda la imagen (100%)
+                </span>
+                <span id="extractMaskStatus" class="status-pill-badge mask" style="display: none;">
+                  <span>🚫</span> Máscara: 0%
+                </span>
+              </div>
+              <div class="status-col" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                <span id="extractCursorCoords" class="status-hint-text">X: 0, Y: 0</span>
+                <span id="extractSampledColorBadge" class="status-color-badge" style="display: none;">
+                  <span class="sampled-color-dot" id="sampledColorDot"></span>
+                  <span id="sampledColorHex">#FFFFFF</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Live Canvas Viewport with Loupe HUD -->
+          <div class="image-canvas-container" id="extractCanvasContainer" style="margin-top: 6px; position: relative; overflow: hidden; min-height: 380px;">
             <canvas id="extractCanvas"></canvas>
+            <!-- Magnifier Floating Loupe HUD -->
+            <div id="extractLoupeHud" class="extract-loupe-hud" style="display: none;">
+              <canvas id="loupeCanvas" width="90" height="90"></canvas>
+              <div class="loupe-info">
+                <span id="loupeHex">#FFFFFF</span>
+                <span id="loupeCoords">X:0 Y:0</span>
+              </div>
+            </div>
           </div>
 
           <!-- MULTI-IMAGE BATCH MANAGEMENT SECTION -->
@@ -2079,49 +2508,107 @@
             </div>
           </div>
 
-          <!-- Extractor Controls Bar -->
-          <div class="extract-controls-bar" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-top: 10px;">
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <label style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Cantidad:</label>
-              <select id="extractCountSelect" class="chip-select">
-                <option value="4">4 colores</option>
-                <option value="6" selected>6 colores</option>
-                <option value="8">8 colores</option>
-                <option value="12">12 colores</option>
-                <option value="16">16 colores</option>
-              </select>
+          <!-- Extractor Deterministic Presets & Advanced Extraction Controls Panel -->
+          <div class="extract-controls-panel" id="extractControlsPanel" style="margin-top: 10px;">
+            <!-- Row 1: Presets, Mathematical Method & Quality Precision Calibration -->
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.07);">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <label for="extractPresetSelect" style="font-size: 0.75rem; color: #E0E7FF; font-weight: 700;">Preset Fiel:</label>
+                <select id="extractPresetSelect" class="chip-select" style="font-weight: 600; min-width: 220px; border-color: rgba(99, 102, 241, 0.45);">
+                  <option value="preset_balanced" selected>🎨 Maestro Equilibrado (Fidelidad Pro)</option>
+                  <option value="preset_dominant">👑 Dominancia Pura / Frecuencia</option>
+                  <option value="preset_vibrant">✨ Alta Saturación & Énfasis</option>
+                  <option value="preset_portrait">👤 Academia & Retrato (Carnaciones)</option>
+                  <option value="preset_tonal_range">🌓 Rango Tonal Completo (Luces/Sombras)</option>
+                  <option value="preset_pastel">🍬 Pasteles & Atmósfera Suave</option>
+                  <option value="preset_contrast">⚡ Alto Contraste & Polarización</option>
+                  <option value="preset_median_cut">📐 Geometría Median Cut (MMCQ)</option>
+                  <option value="custom">⚙️ Personalizado (Ajuste Manual)</option>
+                </select>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <label for="extractMethodSelect" style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Método Matemático:</label>
+                <select id="extractMethodSelect" class="chip-select">
+                  <option value="kmeans_density" selected>🔬 K-Means Determinista (Picos 3D)</option>
+                  <option value="kmeans_furthest">📐 K-Means Determinista (Voronoi Furthest)</option>
+                  <option value="median_cut">📦 Corte Medio Modificado (MMCQ)</option>
+                  <option value="histogram_peaks">📊 Picos de Histograma Perceptual</option>
+                  <option value="octree">🌳 Cuantización Octree</option>
+                </select>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <label for="extractQualitySelect" style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Precisión:</label>
+                <select id="extractQualitySelect" class="chip-select">
+                  <option value="ultra">💎 Ultra (~20.000 px)</option>
+                  <option value="fine" selected>🎯 Fina (~8.500 px)</option>
+                  <option value="fast">⚡ Rápida (~4.000 px)</option>
+                </select>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <label for="extractDedupSelect" style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Unicidad ΔE:</label>
+                <select id="extractDedupSelect" class="chip-select">
+                  <option value="strict">🔍 Estricta (ΔE 0.045 - Matices)</option>
+                  <option value="balanced" selected>⚖️ Equilibrada (ΔE 0.075)</option>
+                  <option value="distinct">🌈 Distintiva (ΔE 0.120 - Muy Distintos)</option>
+                </select>
+              </div>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <label style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Filtro Analítico:</label>
-              <select id="extractFilterSelect" class="chip-select">
-                <option value="dominant">Dominantes (Frecuencia)</option>
-                <option value="vibrant">Vibrantes / Saturados</option>
-                <option value="pastel">Pasteles / Claros</option>
-                <option value="dark">Sombras / Profundos</option>
-                <option value="contrast">Alto Contraste Tonal</option>
-                <option value="flesh">👤 Tonos de Piel (Carnaciones / Retrato)</option>
-                <option value="warm">☀️ Cálidos / Solares</option>
-                <option value="cool">❄️ Fríos / Sombras Celestes</option>
-              </select>
-            </div>
+            <!-- Row 2: Count, Filter, Sorting, Determinism Badge & Action -->
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <label for="extractCountSelect" style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Cantidad:</label>
+                <select id="extractCountSelect" class="chip-select">
+                  <option value="3">3 colores</option>
+                  <option value="4">4 colores</option>
+                  <option value="5">5 colores</option>
+                  <option value="6" selected>6 colores</option>
+                  <option value="8">8 colores</option>
+                  <option value="10">10 colores</option>
+                  <option value="12">12 colores</option>
+                  <option value="16">16 colores</option>
+                </select>
+              </div>
 
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <label style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Orden:</label>
-              <select id="extractSortSelect" class="chip-select">
-                <option value="dominance">Por Dominancia %</option>
-                <option value="luminance">Por Luminosidad (Ascendente)</option>
-                <option value="luminance_desc">Por Luminosidad (Descendente)</option>
-                <option value="hue">Por Matiz (Hue 0-360°)</option>
-                <option value="saturation">Por Saturación / Croma</option>
-                <option value="warmth">Por Temperatura (Cálido ➔ Frío)</option>
-                <option value="harmonic">Secuencia Armónica Óptima</option>
-              </select>
-            </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <label for="extractFilterSelect" style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Filtro Analítico:</label>
+                <select id="extractFilterSelect" class="chip-select">
+                  <option value="dominant">Dominantes (Frecuencia)</option>
+                  <option value="vibrant">Vibrantes / Saturados</option>
+                  <option value="pastel">Pasteles / Claros</option>
+                  <option value="dark">Sombras / Profundos</option>
+                  <option value="contrast">Alto Contraste Tonal</option>
+                  <option value="flesh">👤 Tonos de Piel (Carnaciones / Retrato)</option>
+                  <option value="warm">☀️ Cálidos / Solares</option>
+                  <option value="cool">❄️ Fríos / Sombras Celestes</option>
+                </select>
+              </div>
 
-            <button id="btnExtractAction" class="tool-action-btn active-toggle" style="margin-left: auto;">
-              <span>⚡</span> Extraer Paleta
-            </button>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <label for="extractSortSelect" style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Orden:</label>
+                <select id="extractSortSelect" class="chip-select">
+                  <option value="dominance">Por Dominancia %</option>
+                  <option value="luminance">Por Luminosidad (Ascendente)</option>
+                  <option value="luminance_desc">Por Luminosidad (Descendente)</option>
+                  <option value="hue">Por Matiz (Hue 0-360°)</option>
+                  <option value="saturation">Por Saturación / Croma</option>
+                  <option value="warmth">Por Temperatura (Cálido ➔ Frío)</option>
+                  <option value="harmonic">Secuencia Armónica Óptima</option>
+                </select>
+              </div>
+
+              <!-- Reliability / Determinism Proof Badge -->
+              <span class="deterministic-pill-badge" id="deterministicBadge" title="Algoritmo 100% determinista: el resultado matemático es idéntico e invariable en cada ejecución">
+                <span class="dot-live"></span> 🔒 100% Determinista & Fiel
+              </span>
+
+              <button id="btnExtractAction" class="tool-action-btn active-toggle" style="margin-left: auto; padding: 6px 14px; font-weight: 700;">
+                <span>⚡</span> Extraer Paleta Fiel
+              </button>
+            </div>
           </div>
 
           <!-- Extracted Palette Results & Deep Suite Integrations -->
@@ -3777,6 +4264,19 @@
           <div class="shortcut-row"><span>Generar nueva armonía IA</span><kbd>Espacio</kbd></div>
           <div class="shortcut-row"><span>Copiar código HEX actual</span><kbd>Click HEX</kbd></div>
           <div class="shortcut-row"><span>Alternar Barra Lateral</span><kbd>Tab</kbd></div>
+        </div>
+
+        <div class="shortcut-group">
+          <div class="shortcut-group-title">Extractor K-Means & Selección</div>
+          <div class="shortcut-row"><span>Marco Rectangular / Elíptico</span><kbd>M</kbd></div>
+          <div class="shortcut-row"><span>Lazo Libre / Poligonal</span><kbd>L</kbd></div>
+          <div class="shortcut-row"><span>Pincel de Selección Directa</span><kbd>B</kbd></div>
+          <div class="shortcut-row"><span>Pincel / Borrador de Máscara</span><kbd>X</kbd></div>
+          <div class="shortcut-row"><span>Pipeta Cuentagotas</span><kbd>I</kbd></div>
+          <div class="shortcut-row"><span>Mano (Pan) / Desplazar</span><kbd>H / Espacio</kbd></div>
+          <div class="shortcut-row"><span>Lupa / Zoom interactivo</span><kbd>Z</kbd></div>
+          <div class="shortcut-row"><span>Acercar / Alejar / Ajustar</span><kbd>+ / - / 0</kbd></div>
+          <div class="shortcut-row"><span>Deseleccionar todo</span><kbd>Ctrl + D</kbd></div>
         </div>
 
         <div class="shortcut-group">

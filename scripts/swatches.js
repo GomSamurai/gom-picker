@@ -15,6 +15,7 @@ export class SwatchManager {
     this.history = this.loadHistory();
     this.activePaletteId = this.loadActivePaletteId();
     this.lastDeleted = null;
+    this.lastHistoryDeleted = null;
   }
 
   loadActivePaletteId() {
@@ -395,6 +396,87 @@ export class SwatchManager {
   addToHistory(hex) {
     const cleanHex = this._normalizeHex(hex);
     this.history = [cleanHex, ...this.history.filter(h => h !== cleanHex)].slice(0, 32);
+    this._saveHistory();
+  }
+
+  removeFromHistory(hexOrIndex) {
+    if (typeof hexOrIndex === 'number') {
+      if (hexOrIndex >= 0 && hexOrIndex < this.history.length) {
+        const removed = this.history.splice(hexOrIndex, 1)[0];
+        this.lastHistoryDeleted = { items: [{ hex: removed, index: hexOrIndex }] };
+        this._saveHistory();
+        return removed;
+      }
+    } else if (typeof hexOrIndex === 'string') {
+      const cleanHex = this._normalizeHex(hexOrIndex);
+      const idx = this.history.findIndex(h => this._normalizeHex(h).toUpperCase() === cleanHex.toUpperCase());
+      if (idx !== -1) {
+        const removed = this.history.splice(idx, 1)[0];
+        this.lastHistoryDeleted = { items: [{ hex: removed, index: idx }] };
+        this._saveHistory();
+        return removed;
+      }
+    }
+    return null;
+  }
+
+  removeMultipleFromHistory(indicesOrHexes) {
+    if (!Array.isArray(indicesOrHexes) || indicesOrHexes.length === 0) return [];
+    const removedItems = [];
+
+    // Check if numbers (indices)
+    if (typeof indicesOrHexes[0] === 'number') {
+      // Sort descending to safely splice from highest to lowest index
+      const sortedIndices = [...new Set(indicesOrHexes)].filter(i => i >= 0 && i < this.history.length).sort((a, b) => b - a);
+      for (const idx of sortedIndices) {
+        const [hex] = this.history.splice(idx, 1);
+        if (hex) removedItems.push({ hex, index: idx });
+      }
+    } else {
+      // Hex strings
+      const hexSet = new Set(indicesOrHexes.map(h => this._normalizeHex(h).toUpperCase()));
+      for (let i = this.history.length - 1; i >= 0; i--) {
+        const clean = this._normalizeHex(this.history[i]).toUpperCase();
+        if (hexSet.has(clean)) {
+          const [hex] = this.history.splice(i, 1);
+          removedItems.push({ hex, index: i });
+        }
+      }
+    }
+
+    if (removedItems.length > 0) {
+      this.lastHistoryDeleted = { items: removedItems };
+      this._saveHistory();
+    }
+    return removedItems;
+  }
+
+  clearHistory() {
+    if (!this.history || this.history.length === 0) return [];
+    const previous = [...this.history];
+    this.lastHistoryDeleted = { items: previous.map((hex, index) => ({ hex, index })) };
+    this.history = [];
+    this._saveHistory();
+    return previous;
+  }
+
+  undoLastHistoryDelete() {
+    if (!this.lastHistoryDeleted || !this.lastHistoryDeleted.items) return null;
+    const { items } = this.lastHistoryDeleted;
+    // Restore items sorted by index ascending
+    const sorted = [...items].sort((a, b) => a.index - b.index);
+    for (const item of sorted) {
+      const idx = Math.min(item.index, this.history.length);
+      this.history.splice(idx, 0, item.hex);
+    }
+    if (this.history.length > 32) this.history = this.history.slice(0, 32);
+    this._saveHistory();
+    const restored = [...items];
+    this.lastHistoryDeleted = null;
+    return restored;
+  }
+
+  _saveHistory() {
     try {
       localStorage.setItem(this.historyKey, JSON.stringify(this.history));
     } catch (e) {

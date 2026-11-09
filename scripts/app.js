@@ -36,6 +36,7 @@ import { Hyper4DStudio } from './hyper4d.js?v=4.0';
 import { PaletteImporterEngine } from './paletteImporter.js';
 import { PaletteOptimizer } from './paletteOptimizer.js';
 import { SmartColorNamer } from './smartColorNamer.js';
+import { LibraryHarmonizerEngine } from './libraryHarmonizer.js';
 
 class GomPickerApp {
   constructor() {
@@ -43,6 +44,7 @@ class GomPickerApp {
     this.fgColor = { r: 0, g: 0, b: 0, hex: '#000000' };
     this.bgColor = { r: 255, g: 255, b: 255, hex: '#FFFFFF' };
     this.baseFgColor = { r: 0, g: 0, b: 0, hex: '#000000' };
+    this.libraryHarmonizer = LibraryHarmonizerEngine;
     this.baseBgColor = { r: 255, g: 255, b: 255, hex: '#FFFFFF' };
     this.savedWheelMode = 'triangle';
     this.savedTab = null;
@@ -77,6 +79,10 @@ class GomPickerApp {
     this.colorHistory = [];
     this.colorHistoryIndex = -1;
     this.historyDebounceTimer = null;
+
+    // Recent color history interactive selection
+    this.selectedHistoryIndices = new Set();
+    this.activeHistoryIndex = -1;
 
     // Command palette & shortcuts state
     this.commandPaletteOpen = false;
@@ -192,6 +198,7 @@ class GomPickerApp {
     safeBind('_bindCvdControls', this._bindCvdControls);
     safeBind('_bindProfileBackupControls', this._bindProfileBackupControls);
     safeBind('_bindExtensionModal', this._bindExtensionModal);
+    safeBind('_bindLibraryHarmonizer', () => this.libraryHarmonizer.init(this));
     this.hyper4dStudio = new Hyper4DStudio(this);
     safeBind('hyper4dInit', () => this.hyper4dStudio.init());
     
@@ -943,6 +950,7 @@ class GomPickerApp {
     const centerViews = {
       studio: document.getElementById('viewStudio'),
       palette_studio: document.getElementById('viewPaletteStudio'),
+      library_harmonizer: document.getElementById('viewLibraryHarmonizer'),
       hyper4d: document.getElementById('viewHyper4D'),
       gamut_munsell: document.getElementById('viewGamutMunsell'),
       chromilla: document.getElementById('viewChromilla'),
@@ -957,6 +965,7 @@ class GomPickerApp {
     const tabMeta = {
       studio: { title: 'Estudio Cromático', sub: 'Rueda Coolorus, Armonías interactivas y Bandas Compañeras', icon: '🎨' },
       palette_studio: { title: 'Estudio Avanzado de Paletas & Matrices', sub: 'Paletas de Maestros, Bibliotecas y Paleta de Usuario con análisis físico 2D', icon: '🎭' },
+      library_harmonizer: { title: 'Armonizador Multi-Biblioteca & Fusión', sub: 'Sincronización armónica cruzada, veladuras comunes, proyección de gama y fusión de colecciones', icon: '⚖️' },
       hyper4d: { title: 'Hiperespacio 4D del Color', sub: 'Visualizador, Comparador & Desglose Cuadridimensional SO(4)', icon: '🔮' },
       gamut_munsell: { title: 'Máscaras de Gama & Sistema Munsell', sub: 'Gamut Masking de James Gurney y espacio tridimensional Munsell', icon: '🎯' },
       chromilla: { title: 'Chromilla: Catálogo de Tubos Reales', sub: 'Inventario físico de pigmentos (Óleo, Acrílico, Acuarela)', icon: '🧪' },
@@ -1028,6 +1037,7 @@ class GomPickerApp {
         // Trigger fresh tab renders upon switching
         if (tabKey === 'masters') this._bindMasterPainters();
         if (tabKey === 'palette_studio') this.renderPaletteStudio();
+        if (tabKey === 'library_harmonizer') this.libraryHarmonizer.render(this);
         if (tabKey === 'gamut_munsell') {
           const hsv = this.colorWheel?.currentHsv || { h: 210 };
           this.renderMunsellSliceChart(hsv.h);
@@ -1042,6 +1052,13 @@ class GomPickerApp {
         }
         if (tabKey === 'atmosphere') {
           this.renderAtmosphereStages();
+        }
+        if (tabKey === 'extractor') {
+          setTimeout(() => {
+            if (this.imageExtractor && this.imageExtractor.currentImage) {
+              this.imageExtractor.fitToContainer();
+            }
+          }, 80);
         }
         if (tabKey === 'wetmixer') {
           if (!this.wetMixer) this._initWetMixer();
@@ -1759,7 +1776,17 @@ class GomPickerApp {
     let palette = null;
     let isBuiltIn = false;
 
-    if (!paletteId) {
+    const isHistory = el.classList.contains('history-item') || el.dataset?.isHistory === 'true' || !!el.closest('#historyRibbon');
+    if (isHistory) {
+      if (index < 0 && el.dataset?.index !== undefined) {
+        index = parseInt(el.dataset.index);
+      }
+      if (index < 0 && this.swatchManager.history) {
+        index = this.swatchManager.history.indexOf(hex);
+      }
+    }
+
+    if (!paletteId && !isHistory) {
       const card = el.closest?.('.palette-collection-card, [data-palette-id]');
       if (card && card.dataset.paletteId) {
         paletteId = card.dataset.paletteId;
@@ -1793,6 +1820,7 @@ class GomPickerApp {
       palette,
       index,
       isBuiltIn,
+      isHistory,
       element: el
     };
   }
@@ -2148,7 +2176,8 @@ class GomPickerApp {
 
       items.push({
         icon: '🗑️',
-        label: `Eliminar de "${palette.name}"`,
+        label: `Eliminar muestra de "${palette.name}"`,
+        badge: 'Paleta',
         danger: true,
         action: () => {
           const res = this.swatchManager.removeColorFromPalette(palette.id, index);
@@ -2167,8 +2196,51 @@ class GomPickerApp {
           }
         }
       });
+    } else if (palette && isBuiltIn && index >= 0) {
+      items.push({ divider: true });
+      items.push({
+        icon: '🗑️',
+        label: `Eliminar muestra (personalizar biblioteca)`,
+        badge: 'Crear editable',
+        danger: true,
+        action: () => {
+          this.removeColorFromBuiltInPalette(palette, index, hex);
+        }
+      });
     } else {
       // Swatch not in user palette (History, Wheel, Matrix, etc.)
+      if (!swatchData.isHistory && activePal && !activePal.isBuiltIn && Array.isArray(activePal.colors)) {
+        const activeIdx = activePal.colors.findIndex(c => {
+          const h = typeof c === 'string' ? c : c.hex;
+          return h && h.toUpperCase() === hex.toUpperCase();
+        });
+        if (activeIdx !== -1) {
+          items.push({ divider: true });
+          items.push({
+            icon: '🗑️',
+            label: `Eliminar muestra de "${activePal.name}"`,
+            badge: 'Paleta Activa',
+            danger: true,
+            action: () => {
+              const res = this.swatchManager.removeColorFromPalette(activePal.id, activeIdx);
+              if (res) {
+                this.renderSwatchesCollection();
+                this.renderQuickPalette();
+                this.showToast(`Color ${hex} eliminado de "${activePal.name}"`, 'info', 7500, {
+                  text: '↩️ Deshacer',
+                  onClick: () => {
+                    const und = this.swatchManager.undoLastDelete();
+                    this.renderSwatchesCollection();
+                    this.renderQuickPalette();
+                    if (und) this.showToast(`Color ${und.hex} restaurado en '${und.paletteName}'`, 'success');
+                  }
+                });
+              }
+            }
+          });
+        }
+      }
+
       items.push({ divider: true });
       items.push({
         icon: '🤖',
@@ -2253,6 +2325,50 @@ class GomPickerApp {
             }
           }
         ]
+      });
+    }
+
+    // Specific operations if swatch is from Recent History
+    if (swatchData.isHistory) {
+      items.push({ divider: true });
+      items.push({
+        icon: '🗑️',
+        label: 'Eliminar muestra del historial',
+        badge: hex,
+        danger: true,
+        action: () => {
+          this.deleteHistoryItemAt(swatchData.index >= 0 ? swatchData.index : hex);
+        }
+      });
+
+      if (this.selectedHistoryIndices && this.selectedHistoryIndices.size > 1 && this.selectedHistoryIndices.has(swatchData.index)) {
+        items.push({
+          icon: '🗑️',
+          label: `Eliminar ${this.selectedHistoryIndices.size} muestras seleccionadas del historial`,
+          danger: true,
+          action: () => {
+            this.deleteSelectedHistoryItems();
+          }
+        });
+      }
+    }
+
+    // Global History Undo if lastHistoryDeleted exists
+    if (this.swatchManager.lastHistoryDeleted && this.swatchManager.lastHistoryDeleted.items) {
+      const itemsCount = this.swatchManager.lastHistoryDeleted.items.length;
+      items.push({ divider: true });
+      items.push({
+        icon: '↩️',
+        label: itemsCount === 1 
+          ? `Deshacer eliminación de historial (${this.swatchManager.lastHistoryDeleted.items[0].hex})`
+          : `Deshacer eliminación de historial (${itemsCount} muestras)`,
+        badge: 'Historial',
+        highlight: true,
+        action: () => {
+          this.swatchManager.undoLastHistoryDelete();
+          this.renderHistoryRibbon();
+          this.showToast('Historial restaurado', 'success');
+        }
       });
     }
 
@@ -6344,25 +6460,288 @@ class GomPickerApp {
       });
     }
 
-    // Canvas Live Eyedropper
-    if (extractCanvas) {
-      extractCanvas.addEventListener('click', (e) => {
-        const rect = extractCanvas.getBoundingClientRect();
-        const scaleX = extractCanvas.width / rect.width;
-        const scaleY = extractCanvas.height / rect.height;
-        const x = (e.clientX - rect.left) * scaleX;
-        const y = (e.clientY - rect.top) * scaleY;
-        const sampled = this.imageExtractor.getColorAt(x, y);
-        if (sampled) {
+    // --- ADVANCED SELECTION, MASKING & VIEWPORT CALLBACKS ---
+    if (this.imageExtractor) {
+      // 1. Color Sampled Callback (Eyedropper tool single click)
+      this.imageExtractor.onColorSampled = (sampled, e) => {
+        if (e && (e.shiftKey || e.button === 2)) {
+          this.bgColor = { ...sampled.rgb, hex: sampled.hex };
+          this.syncDisplay();
+          this.showToast(`Color de Fondo (BG) asignado: ${sampled.hex}`);
+        } else {
           this.setColorDirectly(sampled.rgb);
           this.showToast(`Cuentagotas: ${sampled.hex}`);
+        }
+      };
+
+      // 2. Selection & Mask Change Callback (Updates status HUD and triggers live K-Means update)
+      this.imageExtractor.onSelectionChange = (stats) => {
+        const selStatus = document.getElementById('extractSelectionStatus');
+        const maskStatus = document.getElementById('extractMaskStatus');
+
+        if (selStatus) {
+          if (stats.hasSelection) {
+            selStatus.classList.add('active');
+            selStatus.innerHTML = `<span>🎯</span> Selección: ${stats.selectedPercent}% (${stats.selectedCount.toLocaleString()} px)`;
+          } else {
+            selStatus.classList.remove('active');
+            selStatus.innerHTML = `<span>🎯</span> Toda la imagen (100%)`;
+          }
+        }
+
+        if (maskStatus) {
+          if (stats.hasExclusionMask && stats.maskedCount > 0) {
+            maskStatus.style.display = 'inline-flex';
+            maskStatus.innerHTML = `<span>🚫</span> Máscara: ${stats.maskedPercent}% (${stats.maskedCount.toLocaleString()} px excluidos)`;
+          } else {
+            maskStatus.style.display = 'none';
+          }
+        }
+
+        // Live palette extraction upon committing a new selection or modifying exclusion mask
+        if (this.imageExtractor.sourceWidth > 0) {
+          this.runImageExtraction();
+        }
+      };
+
+      // 3. Hover Pixel Callback (Inspector coordinates & color badge)
+      this.imageExtractor.onHoverPixel = (data) => {
+        const coords = document.getElementById('extractCursorCoords');
+        if (coords) {
+          coords.textContent = `X: ${data.imgX}, Y: ${data.imgY}`;
+        }
+        const badge = document.getElementById('extractSampledColorBadge');
+        const dot = document.getElementById('sampledColorDot');
+        const hex = document.getElementById('sampledColorHex');
+        if (badge && dot && hex) {
+          if (data.inBounds) {
+            badge.style.display = 'inline-flex';
+            dot.style.backgroundColor = data.hex;
+            hex.textContent = data.hex;
+          } else {
+            badge.style.display = 'none';
+          }
+        }
+      };
+
+      // 4. Zoom Change Callback (Synchronizes zoom level pill)
+      this.imageExtractor.onZoomChange = (zoomLevel) => {
+        const badge = document.getElementById('zoomLevelBadge');
+        if (badge) {
+          badge.textContent = `${Math.round(zoomLevel * 100)}%`;
+        }
+      };
+    }
+
+    // --- TOOLBAR CONTROLS: TOOLS, MODES, BRUSH & MASK ACTIONS ---
+
+    // Tool Selection Buttons
+    const toolBtns = document.querySelectorAll('.extract-tool-btn');
+    toolBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tool = btn.dataset.tool;
+        if (!tool || !this.imageExtractor) return;
+        toolBtns.forEach(b => b.classList.remove('active-tool'));
+        btn.classList.add('active-tool');
+        this.imageExtractor.setTool(tool);
+
+        // Adjust visibility/emphasis of brush size slider
+        const brushGroup = document.getElementById('brushSizeGroup');
+        if (brushGroup) {
+          const usesBrush = ['brush_sel', 'mask_brush', 'mask_eraser'].includes(tool);
+          brushGroup.style.opacity = usesBrush ? '1' : '0.4';
+          brushGroup.style.pointerEvents = usesBrush ? 'auto' : 'none';
+        }
+      });
+    });
+
+    // Selection Combine Mode Buttons (New / Add / Subtract)
+    const segModeBtns = document.querySelectorAll('.seg-btn[data-sel-mode]');
+    segModeBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const mode = btn.dataset.selMode;
+        if (!mode || !this.imageExtractor) return;
+        segModeBtns.forEach(b => b.classList.remove('active-seg'));
+        btn.classList.add('active-seg');
+        this.imageExtractor.setSelectionMode(mode);
+        const modeLabels = {
+          new: 'Nueva Selección',
+          add: 'Añadir a Selección (+ / Shift)',
+          sub: 'Restar de Selección (- / Alt)'
+        };
+        this.showToast(`Modo: ${modeLabels[mode] || mode}`, 'info');
+      });
+    });
+
+    // Invert Selection
+    const btnSelInvert = document.getElementById('btnSelInvert');
+    if (btnSelInvert) {
+      btnSelInvert.addEventListener('click', () => {
+        if (!this.imageExtractor) return;
+        this.imageExtractor.invertSelection();
+        this.showToast('Selección invertida', 'info');
+      });
+    }
+
+    // Clear Selection (Deselect)
+    const btnSelClear = document.getElementById('btnSelClear');
+    if (btnSelClear) {
+      btnSelClear.addEventListener('click', () => {
+        if (!this.imageExtractor) return;
+        this.imageExtractor.clearSelection();
+        this.showToast('Selección deseleccionada', 'info');
+      });
+    }
+
+    // Brush Size Slider
+    const brushSlider = document.getElementById('extractBrushSizeSlider');
+    const brushLabel = document.getElementById('extractBrushSizeLabel');
+    if (brushSlider) {
+      brushSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        if (brushLabel) brushLabel.textContent = `${val}px`;
+        if (this.imageExtractor) this.imageExtractor.setBrushSize(val);
+      });
+    }
+
+    // Mask Controls: Toggle Visibility, Invert, Clear
+    const btnToggleMaskVis = document.getElementById('btnToggleMaskVis');
+    const maskVisIcon = document.getElementById('maskVisIcon');
+    if (btnToggleMaskVis) {
+      btnToggleMaskVis.addEventListener('click', () => {
+        if (!this.imageExtractor) return;
+        const visible = this.imageExtractor.toggleMaskVisibility();
+        if (maskVisIcon) maskVisIcon.textContent = visible ? '👁️' : '🙈';
+        this.showToast(visible ? 'Máscara visible (tinte rojo)' : 'Máscara oculta', 'info');
+      });
+    }
+
+    const btnMaskInvert = document.getElementById('btnMaskInvert');
+    if (btnMaskInvert) {
+      btnMaskInvert.addEventListener('click', () => {
+        if (!this.imageExtractor) return;
+        this.imageExtractor.invertExclusionMask();
+        this.showToast('Máscara de exclusión invertida', 'info');
+      });
+    }
+
+    const btnMaskClear = document.getElementById('btnMaskClear');
+    if (btnMaskClear) {
+      btnMaskClear.addEventListener('click', () => {
+        if (!this.imageExtractor) return;
+        this.imageExtractor.clearExclusionMask();
+        this.showToast('Máscara eliminada', 'info');
+      });
+    }
+
+    // Viewport Zoom Controls (+, -, Fit, 1:1)
+    const btnZoomIn = document.getElementById('btnZoomIn');
+    if (btnZoomIn) {
+      btnZoomIn.addEventListener('click', () => {
+        if (!this.imageExtractor) return;
+        const cx = this.imageExtractor.canvas.width / 2;
+        const cy = this.imageExtractor.canvas.height / 2;
+        this.imageExtractor.zoomAt(cx, cy, 1.3);
+      });
+    }
+
+    const btnZoomOut = document.getElementById('btnZoomOut');
+    if (btnZoomOut) {
+      btnZoomOut.addEventListener('click', () => {
+        if (!this.imageExtractor) return;
+        const cx = this.imageExtractor.canvas.width / 2;
+        const cy = this.imageExtractor.canvas.height / 2;
+        this.imageExtractor.zoomAt(cx, cy, 0.77);
+      });
+    }
+
+    const btnZoomFit = document.getElementById('btnZoomFit');
+    if (btnZoomFit) {
+      btnZoomFit.addEventListener('click', () => {
+        if (!this.imageExtractor) return;
+        this.imageExtractor.fitToContainer();
+      });
+    }
+
+    const btnZoom100 = document.getElementById('btnZoom100');
+    if (btnZoom100) {
+      btnZoom100.addEventListener('click', () => {
+        if (!this.imageExtractor) return;
+        this.imageExtractor.setZoom(1.0);
+      });
+    }
+
+    // Responsive Canvas Resize Observer
+    window.addEventListener('resize', () => {
+      const activeView = document.querySelector('.main-view.active-view');
+      if (activeView && activeView.id === 'viewExtractor' && this.imageExtractor && this.imageExtractor.currentImage) {
+        this.imageExtractor.fitToContainer();
+      }
+    });
+
+    const presetSelect = document.getElementById('extractPresetSelect');
+    const methodSelect = document.getElementById('extractMethodSelect');
+    const qualitySelect = document.getElementById('extractQualitySelect');
+    const dedupSelect = document.getElementById('extractDedupSelect');
+    const countSelect = document.getElementById('extractCountSelect');
+    const filterSelect = document.getElementById('extractFilterSelect');
+    const sortSelect = document.getElementById('extractSortSelect');
+
+    // Preset Selection Binding
+    if (presetSelect) {
+      presetSelect.addEventListener('change', () => {
+        const presetId = presetSelect.value;
+        if (presetId === 'custom') return;
+        const preset = ImageExtractor.PRESETS[presetId];
+        if (preset) {
+          if (methodSelect) methodSelect.value = preset.method;
+          if (filterSelect) filterSelect.value = preset.filterMode;
+          if (sortSelect) sortSelect.value = preset.sortBy;
+          if (dedupSelect) {
+            dedupSelect.value = preset.dedupTolerance <= 0.05 ? 'strict' : (preset.dedupTolerance >= 0.1 ? 'distinct' : 'balanced');
+          }
+          this.runImageExtraction();
+          this.showToast(`Preset fiel aplicado: ${preset.name}`, 'info');
         }
       });
     }
 
-    const countSelect = document.getElementById('extractCountSelect');
-    const filterSelect = document.getElementById('extractFilterSelect');
-    const sortSelect = document.getElementById('extractSortSelect');
+    // Mathematical Extraction Method Binding
+    if (methodSelect) {
+      methodSelect.addEventListener('change', () => {
+        if (presetSelect) presetSelect.value = 'custom';
+        this.runImageExtraction();
+        const methodNames = {
+          kmeans_density: 'K-Means Determinista (Picos 3D)',
+          kmeans_furthest: 'K-Means Determinista (Voronoi Furthest)',
+          median_cut: 'Corte Medio Modificado (MMCQ)',
+          histogram_peaks: 'Picos de Histograma Perceptual',
+          octree: 'Cuantización Octree'
+        };
+        this.showToast(`Método matemático: ${methodNames[methodSelect.value] || methodSelect.value}`, 'info');
+      });
+    }
+
+    // Sampling Precision Quality Binding
+    if (qualitySelect) {
+      qualitySelect.addEventListener('change', () => {
+        this.runImageExtraction();
+        const qNames = { ultra: 'Ultra (~20.000 px analizados)', fine: 'Fina (~8.500 px)', fast: 'Rápida (~4.000 px)' };
+        this.showToast(`Precisión de muestreo: ${qNames[qualitySelect.value] || qualitySelect.value}`, 'info');
+      });
+    }
+
+    // Delta-E Deduplication Tolerance Binding
+    if (dedupSelect) {
+      dedupSelect.addEventListener('change', () => {
+        if (presetSelect) presetSelect.value = 'custom';
+        this.runImageExtraction();
+        const dNames = { strict: 'Estricta (ΔE 0.045)', balanced: 'Equilibrada (ΔE 0.075)', distinct: 'Distintiva (ΔE 0.120)' };
+        this.showToast(`Tolerancia de unicidad: ${dNames[dedupSelect.value] || dedupSelect.value}`, 'info');
+      });
+    }
 
     if (countSelect) {
       countSelect.addEventListener('change', () => this.runImageExtraction());
@@ -6370,6 +6749,7 @@ class GomPickerApp {
 
     if (filterSelect) {
       filterSelect.addEventListener('change', () => {
+        if (presetSelect) presetSelect.value = 'custom';
         this.runImageExtraction();
         const filterNames = {
           dominant: 'Dominantes (Frecuencia)',
@@ -6381,7 +6761,7 @@ class GomPickerApp {
           warm: 'Cálidos / Solares',
           cool: 'Fríos / Sombras Celestes'
         };
-        this.showToast(`Filtro K-Means: ${filterNames[filterSelect.value] || filterSelect.value}`, 'info');
+        this.showToast(`Filtro analítico: ${filterNames[filterSelect.value] || filterSelect.value}`, 'info');
       });
     }
 
@@ -6399,7 +6779,10 @@ class GomPickerApp {
     }
 
     if (btnExtract) {
-      btnExtract.addEventListener('click', () => this.runImageExtraction());
+      btnExtract.addEventListener('click', () => {
+        this.runImageExtraction();
+        this.showToast('Paleta fiel extraída con éxito (100% Determinista)', 'success');
+      });
     }
 
     if (btnSaveExtracted) {
@@ -6806,12 +7189,18 @@ class GomPickerApp {
     const count = parseInt(document.getElementById('extractCountSelect')?.value || '6', 10);
     const filter = document.getElementById('extractFilterSelect')?.value || 'dominant';
     const sort = document.getElementById('extractSortSelect')?.value || 'dominance';
+    const method = document.getElementById('extractMethodSelect')?.value || 'kmeans_density';
+    const quality = document.getElementById('extractQualitySelect')?.value || 'fine';
+    const dedup = document.getElementById('extractDedupSelect')?.value || 'balanced';
 
     this.imageExtractor.options.colorCount = count;
     this.imageExtractor.options.filterMode = filter;
     this.imageExtractor.options.sortBy = sort;
+    this.imageExtractor.options.method = method;
+    this.imageExtractor.options.quality = quality;
+    this.imageExtractor.options.dedupTolerance = dedup;
 
-    const results = this.imageExtractor.extractPalette(count, filter, sort);
+    const results = this.imageExtractor.extractPalette(count, filter, sort, method, quality, dedup);
     this.renderExtractedPalette(results);
   }
 
@@ -8497,6 +8886,7 @@ class GomPickerApp {
     const btnLeft = document.getElementById('btnScrollHistoryLeft');
     const btnRight = document.getElementById('btnScrollHistoryRight');
     const btnGrid = document.getElementById('btnToggleHistoryGrid');
+    const btnDeleteSelected = document.getElementById('btnDeleteSelectedHistory');
     const btnClear = document.getElementById('btnClearHistory');
     const btnAddActive = document.getElementById('btnHistoryAddActive');
 
@@ -8546,15 +8936,27 @@ class GomPickerApp {
       } catch (_) {}
     }
 
+    if (btnDeleteSelected) {
+      btnDeleteSelected.addEventListener('click', () => {
+        this.deleteSelectedHistoryItems();
+      });
+    }
+
     if (btnClear) {
       btnClear.addEventListener('click', () => {
         if (!this.swatchManager.history || this.swatchManager.history.length === 0) return;
-        this.swatchManager.history = [];
-        try {
-          localStorage.setItem(this.swatchManager.historyKey, JSON.stringify([]));
-        } catch (_) {}
+        const previous = this.swatchManager.clearHistory();
+        this.selectedHistoryIndices.clear();
+        this.activeHistoryIndex = -1;
         this.renderHistoryRibbon();
-        this.showToast('Historial reciente vaciado', 'info');
+        this.showToast(`Historial reciente vaciado (${previous.length} muestras)`, 'info', 7500, {
+          text: '↩️ Deshacer',
+          onClick: () => {
+            this.swatchManager.undoLastHistoryDelete();
+            this.renderHistoryRibbon();
+            this.showToast('Historial restaurado', 'success');
+          }
+        });
       });
     }
 
@@ -8566,6 +8968,20 @@ class GomPickerApp {
         this.showToast(`Color ${curHex} añadido al historial`);
       });
     }
+
+    // Keyboard shortcut: Delete or Backspace removes selected history swatch(es)
+    document.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const historyLen = this.swatchManager.history?.length || 0;
+        const hasSelection = this.selectedHistoryIndices.size > 0 || (this.activeHistoryIndex >= 0 && this.activeHistoryIndex < historyLen);
+        const isHistoryFocused = document.activeElement && (document.activeElement.classList.contains('history-item') || document.activeElement.closest?.('#historyRibbonWrapper'));
+        if (hasSelection && (isHistoryFocused || this.selectedHistoryIndices.size > 0)) {
+          e.preventDefault();
+          this.deleteSelectedHistoryItems();
+        }
+      }
+    });
 
     // Drag and Drop support onto the history ribbon
     if (wrapper) {
@@ -8589,16 +9005,131 @@ class GomPickerApp {
     }
   }
 
+  deleteSelectedHistoryItems() {
+    const history = this.swatchManager.history || [];
+    if (history.length === 0) return;
+
+    let targetIndices = [];
+    if (this.selectedHistoryIndices.size > 0) {
+      targetIndices = Array.from(this.selectedHistoryIndices);
+    } else if (this.activeHistoryIndex >= 0 && this.activeHistoryIndex < history.length) {
+      targetIndices = [this.activeHistoryIndex];
+    } else {
+      // Default to the first (most recent) item if none explicitly highlighted
+      targetIndices = [0];
+    }
+
+    const removed = this.swatchManager.removeMultipleFromHistory(targetIndices);
+    this.selectedHistoryIndices.clear();
+    this.activeHistoryIndex = -1;
+    this.renderHistoryRibbon();
+
+    if (removed && removed.length > 0) {
+      const msg = removed.length === 1 
+        ? `Muestra ${removed[0].hex} eliminada del historial`
+        : `${removed.length} muestras eliminadas del historial`;
+      
+      this.showToast(msg, 'info', 7500, {
+        text: '↩️ Deshacer',
+        onClick: () => {
+          this.swatchManager.undoLastHistoryDelete();
+          this.renderHistoryRibbon();
+          this.showToast('Muestra(s) restaurada(s) en el historial', 'success');
+        }
+      });
+    }
+  }
+
+  deleteHistoryItemAt(indexOrHex) {
+    let removedHex = null;
+    if (typeof indexOrHex === 'number') {
+      const hex = this.swatchManager.history[indexOrHex];
+      this.selectedHistoryIndices.delete(indexOrHex);
+      if (this.activeHistoryIndex === indexOrHex) this.activeHistoryIndex = -1;
+      removedHex = this.swatchManager.removeFromHistory(indexOrHex);
+    } else {
+      removedHex = this.swatchManager.removeFromHistory(indexOrHex);
+    }
+    this.renderHistoryRibbon();
+
+    if (removedHex) {
+      this.showToast(`Muestra ${removedHex} eliminada del historial`, 'info', 7500, {
+        text: '↩️ Deshacer',
+        onClick: () => {
+          this.swatchManager.undoLastHistoryDelete();
+          this.renderHistoryRibbon();
+          this.showToast(`Muestra ${removedHex} restaurada en el historial`, 'success');
+        }
+      });
+    }
+  }
+
+  removeColorFromBuiltInPalette(palette, index, hex) {
+    if (!palette || index < 0) return;
+    const rawColors = (palette.colors || []).map(c => typeof c === 'string' ? c : (c.hex || c));
+    const newColors = [...rawColors];
+    newColors.splice(index, 1);
+    const newName = `${palette.name} (Personalizada)`;
+    const newPal = this.swatchManager.addPalette(newName, newColors);
+    this.swatchManager.setActivePalette(newPal.id);
+    this.renderSwatchesCollection();
+    this.renderQuickPalette();
+    this.showToast(`Biblioteca personalizada creada sin la muestra ${hex}`, 'success', 7500, {
+      text: '↩️ Deshacer',
+      onClick: () => {
+        this.swatchManager.deletePalette(newPal.id);
+        this.renderSwatchesCollection();
+        this.renderQuickPalette();
+        this.showToast('Biblioteca personalizada eliminada', 'info');
+      }
+    });
+  }
+
   renderHistoryRibbon() {
     const container = document.getElementById('historyRibbon');
     const badge = document.getElementById('historyCountBadge');
     const lastHex = document.getElementById('historyLastHex');
+    const btnDelSelected = document.getElementById('btnDeleteSelectedHistory');
+    const btnDelIcon = document.getElementById('btnDeleteSelectedHistoryIcon');
     if (!container) return;
     container.innerHTML = '';
 
     const history = this.swatchManager.history || [];
     if (badge) badge.textContent = `${history.length}`;
     if (lastHex && history.length > 0) lastHex.textContent = history[0];
+
+    // Clean up out-of-bound indices
+    if (this.activeHistoryIndex >= history.length) {
+      this.activeHistoryIndex = history.length - 1;
+    }
+    const validSelected = new Set();
+    this.selectedHistoryIndices.forEach(idx => {
+      if (idx >= 0 && idx < history.length) validSelected.add(idx);
+    });
+    this.selectedHistoryIndices = validSelected;
+
+    // Update delete selected button appearance
+    if (btnDelSelected) {
+      const selCount = this.selectedHistoryIndices.size;
+      if (history.length === 0) {
+        btnDelSelected.disabled = true;
+        btnDelSelected.style.opacity = '0.35';
+        btnDelSelected.title = 'Historial vacío';
+        if (btnDelIcon) btnDelIcon.textContent = '✕';
+      } else if (selCount > 1) {
+        btnDelSelected.disabled = false;
+        btnDelSelected.style.opacity = '1';
+        btnDelSelected.classList.add('active-danger');
+        btnDelSelected.title = `Eliminar ${selCount} muestras seleccionadas del historial (Supr)`;
+        if (btnDelIcon) btnDelIcon.textContent = `✕ ${selCount}`;
+      } else {
+        btnDelSelected.disabled = false;
+        btnDelSelected.style.opacity = '1';
+        btnDelSelected.classList.remove('active-danger');
+        btnDelSelected.title = 'Eliminar muestra seleccionada del historial (Supr / Del)';
+        if (btnDelIcon) btnDelIcon.textContent = '✕';
+      }
+    }
 
     if (history.length === 0) {
       const empty = document.createElement('div');
@@ -8613,18 +9144,70 @@ class GomPickerApp {
     history.forEach((hex, idx) => {
       const chip = document.createElement('div');
       chip.className = 'history-item';
+      chip.tabIndex = 0; // Focusable for keyboard navigation
       if (hex.toUpperCase() === currentHex) {
         chip.classList.add('active-fg');
       }
+
+      // Check if selected
+      const isSelected = this.selectedHistoryIndices.has(idx) || 
+        (this.selectedHistoryIndices.size === 0 && idx === this.activeHistoryIndex);
+      if (isSelected) {
+        chip.classList.add('selected');
+      }
+
       chip.style.backgroundColor = hex;
-      chip.title = `${hex} (#${idx + 1}) • Click: Frontal • Alt+Click: Fondo • Arrastra para guardar`;
+      chip.title = `${hex} (#${idx + 1})\n• Click: Elegir como Frontal\n• Alt+Click: Elegir como Fondo\n• Ctrl+Click: Selección múltiple\n• Click derecho / ×: Eliminar del historial`;
       chip.dataset.swatchHex = hex;
+      chip.dataset.index = idx;
+      chip.dataset.isHistory = 'true';
       chip.dataset.swatchLabel = `Historial ${hex}`;
       chip.draggable = true;
 
+      // Inline delete badge on hover
+      const delBtn = document.createElement('button');
+      delBtn.className = 'history-item-del-btn';
+      delBtn.innerHTML = '×';
+      delBtn.title = `Eliminar ${hex} del historial`;
+      delBtn.setAttribute('aria-label', `Eliminar ${hex} del historial`);
+      delBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.deleteHistoryItemAt(idx);
+      });
+      chip.appendChild(delBtn);
+
       chip.addEventListener('click', (e) => {
+        if (e.target.closest('.history-item-del-btn')) return;
+
+        if (e.ctrlKey || e.metaKey) {
+          // Toggle multi-selection
+          if (this.selectedHistoryIndices.has(idx)) {
+            this.selectedHistoryIndices.delete(idx);
+          } else {
+            this.selectedHistoryIndices.add(idx);
+          }
+          this.activeHistoryIndex = idx;
+          this.renderHistoryRibbon();
+          return;
+        }
+
+        if (e.shiftKey && this.activeHistoryIndex >= 0) {
+          // Range selection
+          const start = Math.min(this.activeHistoryIndex, idx);
+          const end = Math.max(this.activeHistoryIndex, idx);
+          for (let i = start; i <= end; i++) {
+            this.selectedHistoryIndices.add(i);
+          }
+          this.renderHistoryRibbon();
+          return;
+        }
+
+        // Normal click: set selection and activate color
+        this.selectedHistoryIndices.clear();
+        this.activeHistoryIndex = idx;
+
         if (e.altKey) {
-          // Alt+click sets Background color
           this.activeWell = 'bg';
           const bgWell = document.getElementById('bgWell');
           const fgWell = document.getElementById('fgWell');
@@ -8636,6 +9219,12 @@ class GomPickerApp {
           this.setColorDirectly(ColorMath.hexToRgb(hex));
           this.showToast(`Color del historial: ${hex}`);
         }
+        this.renderHistoryRibbon();
+      });
+
+      chip.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', hex);
+        e.dataTransfer.effectAllowed = 'copy';
       });
 
       container.appendChild(chip);
@@ -9076,6 +9665,17 @@ class GomPickerApp {
         return;
       }
 
+      // Deselect (Ctrl+D) in Extractor
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+        const activeView = document.querySelector('.main-view.active-view');
+        if (activeView && activeView.id === 'viewExtractor') {
+          e.preventDefault();
+          this.imageExtractor?.clearSelection();
+          this.showToast('Selección deseleccionada', 'info');
+          return;
+        }
+      }
+
       // Tab toggles sidebar
       if (e.key === 'Tab') {
         e.preventDefault();
@@ -9083,9 +9683,62 @@ class GomPickerApp {
         return;
       }
 
-      // EyeDropper (I)
+      // Extractor Workspace Specific Tool Shortcuts
+      const activeView = document.querySelector('.main-view.active-view');
+      const isExtractor = activeView && activeView.id === 'viewExtractor';
+
+      if (isExtractor && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (e.key === 'm' || e.key === 'M') {
+          e.preventDefault();
+          const next = this.imageExtractor?.activeTool === 'rect' ? 'ellipse' : 'rect';
+          document.querySelector(`.extract-tool-btn[data-tool="${next}"]`)?.click();
+          return;
+        }
+        if (e.key === 'l' || e.key === 'L') {
+          e.preventDefault();
+          const next = this.imageExtractor?.activeTool === 'lasso' ? 'polygon' : 'lasso';
+          document.querySelector(`.extract-tool-btn[data-tool="${next}"]`)?.click();
+          return;
+        }
+        if (e.key === 'b' || e.key === 'B') {
+          e.preventDefault();
+          document.querySelector('.extract-tool-btn[data-tool="brush_sel"]')?.click();
+          return;
+        }
+        if (e.key === 'h' || e.key === 'H') {
+          e.preventDefault();
+          document.querySelector('.extract-tool-btn[data-tool="pan"]')?.click();
+          return;
+        }
+        if (e.key === 'z' || e.key === 'Z') {
+          e.preventDefault();
+          document.querySelector('.extract-tool-btn[data-tool="zoom"]')?.click();
+          return;
+        }
+        if (e.key === '+' || e.key === '=') {
+          e.preventDefault();
+          document.getElementById('btnZoomIn')?.click();
+          return;
+        }
+        if (e.key === '-' || e.key === '_') {
+          e.preventDefault();
+          document.getElementById('btnZoomOut')?.click();
+          return;
+        }
+        if (e.key === '0') {
+          e.preventDefault();
+          document.getElementById('btnZoomFit')?.click();
+          return;
+        }
+      }
+
+      // EyeDropper (I) - Pipeta de imagen en Extractor o Pipeta de pantalla global
       if (e.key === 'i' || e.key === 'I') {
         e.preventDefault();
+        if (isExtractor) {
+          document.querySelector('.extract-tool-btn[data-tool="eyedropper"]')?.click();
+          return;
+        }
         this.triggerEyeDropper();
         return;
       }
@@ -9097,9 +9750,14 @@ class GomPickerApp {
         return;
       }
 
-      // Swap Wells (X)
+      // Swap Wells (X) / Alternar Pincel y Goma de Máscara en Extractor
       if (e.key === 'x' || e.key === 'X') {
         e.preventDefault();
+        if (isExtractor) {
+          const next = this.imageExtractor?.activeTool === 'mask_brush' ? 'mask_eraser' : 'mask_brush';
+          document.querySelector(`.extract-tool-btn[data-tool="${next}"]`)?.click();
+          return;
+        }
         this.swapWells();
         return;
       }
@@ -9118,8 +9776,11 @@ class GomPickerApp {
         return;
       }
 
-      // Space generates AI palette
+      // Space generates AI palette (except in Extractor where Space is used for Pan)
       if (e.key === ' ') {
+        if (isExtractor) {
+          return; // Let ImageExtractor spacebar pan operate
+        }
         e.preventDefault();
         document.getElementById('btnAiGenerate')?.click();
         return;
