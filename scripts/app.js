@@ -361,7 +361,7 @@ class GomPickerApp {
     }
   }
 
-  setColorDirectly(rgb, broadcast = true) {
+  setColorDirectly(rgb, broadcast = true, addToHistory = true) {
     // Preserve as pristine base studio color
     if (this.activeWell === 'fg') {
       this.baseFgColor = { ...rgb, hex: ColorMath.rgbToHex(rgb.r, rgb.g, rgb.b) };
@@ -394,8 +394,10 @@ class GomPickerApp {
       harmonies: HarmonyEngine.getHarmony(hsv, this.colorWheel.harmonyRule)
     }, broadcast);
 
-    this.swatchManager.addToHistory(hex);
-    this.renderHistoryRibbon();
+    if (addToHistory) {
+      this.swatchManager.addToHistory(hex);
+      this.renderHistoryRibbon();
+    }
     this.pushColorHistory(true);
   }
 
@@ -1835,6 +1837,16 @@ class GomPickerApp {
     menu.id = 'swatchContextMenu';
     menu.className = 'swatch-context-menu';
 
+    // If context menu was triggered on a history swatch, ensure it's selected in the ribbon
+    if (swatchData.isHistory && typeof swatchData.index === 'number' && swatchData.index >= 0) {
+      if (!this.selectedHistoryIndices.has(swatchData.index)) {
+        this.selectedHistoryIndices.clear();
+        this.selectedHistoryIndices.add(swatchData.index);
+        this.activeHistoryIndex = swatchData.index;
+        this.renderHistoryRibbon();
+      }
+    }
+
     const { hex, rgb, label, palette, index, isBuiltIn } = swatchData;
     const cmyk = ColorMath.rgbToCmyk(rgb.r, rgb.g, rgb.b);
     const munsell = MunsellSystem.rgbToMunsell(rgb.r, rgb.g, rgb.b);
@@ -1871,7 +1883,7 @@ class GomPickerApp {
       label: 'Color Frontal (FG)',
       action: () => {
         this.setActiveWell('fg');
-        this.setColorDirectly(rgb);
+        this.setColorDirectly(rgb, true, !swatchData.isHistory);
         this.showToast(`Establecido como Frontal: ${hex}`);
       }
     });
@@ -1881,7 +1893,7 @@ class GomPickerApp {
       label: 'Color Fondo (BG)',
       action: () => {
         this.setActiveWell('bg');
-        this.setColorDirectly(rgb);
+        this.setColorDirectly(rgb, true, !swatchData.isHistory);
         this.showToast(`Establecido como Fondo: ${hex}`);
       }
     });
@@ -9157,29 +9169,14 @@ class GomPickerApp {
       }
 
       chip.style.backgroundColor = hex;
-      chip.title = `${hex} (#${idx + 1})\n• Click: Elegir como Frontal\n• Alt+Click: Elegir como Fondo\n• Ctrl+Click: Selección múltiple\n• Click derecho / ×: Eliminar del historial`;
+      chip.title = `${hex} (#${idx + 1})\n• Clic: Seleccionar / Frontal (FG)\n• Alt+Clic: Fondo (BG)\n• Ctrl+Clic: Selección múltiple\n• Botón ✕ / Supr: Eliminar del historial\n• Clic derecho: Opciones de muestra`;
       chip.dataset.swatchHex = hex;
       chip.dataset.index = idx;
       chip.dataset.isHistory = 'true';
       chip.dataset.swatchLabel = `Historial ${hex}`;
       chip.draggable = true;
 
-      // Inline delete badge on hover
-      const delBtn = document.createElement('button');
-      delBtn.className = 'history-item-del-btn';
-      delBtn.innerHTML = '×';
-      delBtn.title = `Eliminar ${hex} del historial`;
-      delBtn.setAttribute('aria-label', `Eliminar ${hex} del historial`);
-      delBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.deleteHistoryItemAt(idx);
-      });
-      chip.appendChild(delBtn);
-
       chip.addEventListener('click', (e) => {
-        if (e.target.closest('.history-item-del-btn')) return;
-
         if (e.ctrlKey || e.metaKey) {
           // Toggle multi-selection
           if (this.selectedHistoryIndices.has(idx)) {
@@ -9203,8 +9200,9 @@ class GomPickerApp {
           return;
         }
 
-        // Normal click: set selection and activate color
+        // Normal click: set selection and activate color WITHOUT moving swatch in history
         this.selectedHistoryIndices.clear();
+        this.selectedHistoryIndices.add(idx);
         this.activeHistoryIndex = idx;
 
         if (e.altKey) {
@@ -9213,10 +9211,10 @@ class GomPickerApp {
           const fgWell = document.getElementById('fgWell');
           if (bgWell) bgWell.classList.add('active');
           if (fgWell) fgWell.classList.remove('active');
-          this.setColorDirectly(ColorMath.hexToRgb(hex));
+          this.setColorDirectly(ColorMath.hexToRgb(hex), true, false);
           this.showToast(`Fondo (BG) actualizado: ${hex}`);
         } else {
-          this.setColorDirectly(ColorMath.hexToRgb(hex));
+          this.setColorDirectly(ColorMath.hexToRgb(hex), true, false);
           this.showToast(`Color del historial: ${hex}`);
         }
         this.renderHistoryRibbon();

@@ -473,9 +473,10 @@ GOM Color Picker Pro implementa un sistema universal de clic derecho (`openUnive
   * **Renombrado Inteligente con IA:** Permite asignar nombres de pigmentos históricos (`PB29`, `PBr7`), códigos Pantone, Copic Sketch o descripciones poéticas directamente desde el menú contextual.
 
 * **Historial Reciente Interactivo:**
-  * **Selección Quirúrgica Individual y Múltiple:** Puedes hacer clic sobre cualquier muestra del carrusel para seleccionarla. Con `Ctrl + Click` (o `Cmd + Click`) alternas selección múltiple de muestras dispersas, y con `Shift + Click` seleccionas rangos continuos.
-  * **Botón de Eliminación Rápida (`✕` / `Supr`):** El panel de controles del historial incorpora un botón de eliminación selectiva. Si tienes una o más muestras seleccionadas, el botón indica el número (ej. `✕ 3`) y las elimina al pulsar o al presionar la tecla `Supr` / `Delete` del teclado.
-  * **Insignia Flotante Individual (`×`):** Al posar el cursor sobre cualquier pastilla del historial, emerge un botón micro-circular rojo en la esquina superior para descartar esa muestra específica en un abrir y cerrar de ojos.
+  * **Selección Estable Sin Reordenación:** Al hacer clic sobre cualquier muestra del carrusel para seleccionarla, se carga inmediatamente como color de trabajo (FG o BG con Alt) **manteniéndose fija en su posición cronológica original** sin saltar al primer lugar, permitiendo identificarla y seleccionarla con total fidelidad.
+  * **Selección Quirúrgica Individual y Múltiple:** Con `Ctrl + Click` (o `Cmd + Click`) alternas selección múltiple de muestras dispersas, y con `Shift + Click` seleccionas rangos continuos.
+  * **Botón de Eliminación Rápida (`✕` / `Supr`):** El panel de controles del historial incorpora un botón de eliminación selectiva (a la izquierda de la papelera). Si tienes una o más muestras seleccionadas, el botón indica el número (ej. `✕ 3`) y las elimina limpiamente al pulsar o al presionar la tecla `Supr` / `Delete` del teclado.
+  * **Menú Contextual Quirúrgico (Clic Derecho):** Permite eliminar la muestra seleccionada directamente o el lote multiseleccionado mediante clic derecho.
   * **Sistema de Deshacer Multicapa (`↩️ Deshacer`):** Cualquier eliminación individual, múltiple o vaciado completo del historial muestra una notificación flotante interactiva que permite revertir la acción instantáneamente sin pérdida de datos.
 
 ---
